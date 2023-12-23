@@ -22,12 +22,12 @@ func (c *CLI) MetaToSQL(metaCommand string) (string, error) {
 	switch metaCommandArr[0] {
 	case "dt":
 		if len(metaCommandArr) >= 2 {
-			expression = "SHOW TABLES FROM " + metaCommandArr[1]
+			expression = "SHOW TABLES FROM " + metaCommandArr[1] + ";"
 		} else {
 			return "", ErrArgumentNotProvided
 		}
 	case "l":
-		expression = "SHOW DATABASES"
+		expression = "SHOW DATABASES;"
 	default:
 		return "", ErrInvalidMetaCommand
 	}
