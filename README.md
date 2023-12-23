@@ -30,6 +30,43 @@
 ./chdb-go --path /tmp/chdb # interactive persistent mode
 ```
 
+3. Shortcuts
+
+- `\l` to list databases;
+- `\dt dbname` to list tables in database;
+
+```bash
+chdb-io/chdb-go [main] » ./chdb-go 
+Enter your SQL commands; type 'exit' to quit.
+ :) CREATE DATABASE IF NOT EXISTS testdb;
+
+ :) \l
+┏━━━━━━━━━━━━━━━━━━━━┓
+┃ name               ┃
+┡━━━━━━━━━━━━━━━━━━━━┩
+│ INFORMATION_SCHEMA │
+├────────────────────┤
+│ _local             │
+├────────────────────┤
+│ information_schema │
+├────────────────────┤
+│ system             │
+├────────────────────┤
+│ testdb             │
+└────────────────────┘
+
+ :) CREATE TABLE IF NOT EXISTS testdb.testtable (id UInt32) ENGINE = MergeTree()
+:-] ORDER BY id;
+
+ :) \dt testdb
+┏━━━━━━━━━━━┓
+┃ name      ┃
+┡━━━━━━━━━━━┩
+│ testtable │
+└───────────┘
+
+```
+
 #### Go lib Example
 ```go
 package main
@@ -62,3 +99,7 @@ func main() {
 
 - See [lowApi.md](lowApi.md) for the low level APIs.
 - See [chdb.md](chdb.md) for high level APIs.
+
+### Thanks
+
+- cli implementation is based on [clickhouse-cli](https://github.com/memlimit/clickhouse-cli)
