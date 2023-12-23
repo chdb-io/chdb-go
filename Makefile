@@ -12,7 +12,7 @@ install: update_libchdb
 	sudo cp -a libchdb.so /usr/local/lib
 	# if on Linux run `sudo ldconfig` to update the cache
 	# if on macOS run `sudo update_dyld_shared_cache` to update the cache
-	if [[ "$$OSTYPE" == "linux-gnu" ]]; then sudo ldconfig; fi
+	if [ "$$OSTYPE" == "linux-gnu" ]; then sudo ldconfig; fi
 
 test:
 	CGO_ENABLED=1 go test -v -coverprofile=coverage.out ./...
