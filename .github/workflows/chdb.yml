@@ -7,8 +7,26 @@ on:
       - '**/.md'
 
 jobs:
-  build:
+  build_linux:
     runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Fetch library
+      run: |
+          make install
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: "1.21"
+    - name: Build
+      run: |
+          go mod tidy
+          make build
+    - name: Test
+      run: LD_LIBRARY_PATH=./ ./chdb-go "SELECT 12345"
+
+  build_mac:
+    runs-on: macos-12
     steps:
     - uses: actions/checkout@v3
     - name: Fetch library
