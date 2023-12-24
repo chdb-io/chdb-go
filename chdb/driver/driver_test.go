@@ -23,7 +23,7 @@ func TestDb(t *testing.T) {
 			t.Errorf("get result columns fail, err: %s", err)
 		}
 		if len(cols) != 2 {
-			t.Errorf("select version(), result columns length should be 1")
+			t.Errorf("select result columns length should be 2")
 		}
 		var (
 			bar int
