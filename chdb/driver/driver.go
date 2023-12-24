@@ -1,15 +1,17 @@
 package chdb
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
 	"reflect"
-  "bytes"
-  wrapper "github.com/chdb-io/chdb-go/chdb"
-  "github.com/chdb-io/chdb-go/chdbstable"
-  "github.com/apache/arrow/go/v14/arrow/ipc"
+
+	wrapper "github.com/chdb-io/chdb-go/chdb"
+	"github.com/chdb-io/chdb-go/chdbstable"
+
+	"github.com/apache/arrow/go/v14/arrow/ipc"
 )
 
 func init() {
@@ -60,14 +62,16 @@ func (c *conn) Query(query string, values []driver.Value) (driver.Rows, error) {
 }
 
 func (c *conn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
-  result := wrapper.Query(query, "Arrow")
-  reader := bytes.NewReader(result.Buf())
-  // rr, err := ipc.NewReader(reader, ipc.WithAllocator(memory.DefaultAllocator))
-  rr, err := ipc.NewFileReader(reader)
-  if err != nil {
-    return nil, err
-  }
-  return &rows{localResult: result, reader: rr}, nil
+	result := wrapper.Query(query, "Arrow")
+	buf := result.Buf()
+	if buf == nil {
+		return nil, fmt.Errorf("result is nil")
+	}
+	reader, err := ipc.NewFileReader(bytes.NewReader(buf))
+	if err != nil {
+		return nil, err
+	}
+	return &rows{localResult: result, reader: reader}, nil
 }
 
 func (c *conn) Begin() (driver.Tx, error) {
@@ -87,14 +91,16 @@ func (c *conn) PrepareContext(ctx context.Context, query string) (driver.Stmt, e
 // todo: prepared statment
 
 type rows struct {
-  localResult *chdbstable.LocalResult
-  // reader *ipc.Reader
-  reader *ipc.FileReader
+	localResult *chdbstable.LocalResult
+	reader      *ipc.FileReader
 }
 
-func (r *rows) Columns() ([]string) {
-  fmt.Println(r.reader.Schema().Metadata().Keys())
-  return r.reader.Schema().Metadata().Keys()
+func (r *rows) Columns() (out []string) {
+	sch := r.reader.Schema()
+	for i := 0; i < sch.NumFields(); i++ {
+		out = append(out, sch.Field(i).Name)
+	}
+	return
 }
 
 func (r *rows) Close() error {
