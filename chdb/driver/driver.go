@@ -1,4 +1,4 @@
-package chdb
+package chdbdriver
 
 import (
 	"bytes"
@@ -7,51 +7,111 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/apache/arrow/go/v14/arrow"
 	"github.com/apache/arrow/go/v14/arrow/array"
 	"github.com/apache/arrow/go/v14/arrow/decimal128"
 	"github.com/apache/arrow/go/v14/arrow/decimal256"
-	wrapper "github.com/chdb-io/chdb-go/chdb"
+	"github.com/chdb-io/chdb-go/chdb"
 	"github.com/chdb-io/chdb-go/chdbstable"
 
 	"github.com/apache/arrow/go/v14/arrow/ipc"
 )
 
+const sessionOptionKey = "session"
+const udfPathOptionKey = "udfPath"
+
 func init() {
 	sql.Register("chdb", Driver{})
 }
 
+type queryHandle func(string, ...string) *chdbstable.LocalResult
+
 type connector struct {
+	udfPath string
+	session *chdb.Session
 }
 
 // Connect returns a connection to a database.
 func (c *connector) Connect(ctx context.Context) (driver.Conn, error) {
-	return &conn{}, nil
+	cc := &conn{udfPath: c.udfPath, session: c.session}
+	cc.SetupQueryFun()
+	return cc, nil
 }
 
 // Driver returns the underying Driver of the connector,
 // compatibility with the Driver method on sql.DB
 func (c *connector) Driver() driver.Driver { return Driver{} }
 
+func parseConnectStr(str string) (ret map[string]string, err error) {
+	ret = make(map[string]string)
+	if len(str) == 0 {
+		return
+	}
+	for _, kv := range strings.Split(str, ";") {
+		parsed := strings.SplitN(kv, "=", 2)
+		if len(parsed) != 2 {
+			return nil, fmt.Errorf("invalid format for connection string, str: %s", kv)
+		}
+
+		ret[strings.TrimSpace(parsed[0])] = strings.TrimSpace(parsed[1])
+	}
+
+	return
+}
+func NewConnect(opts map[string]string) (ret *connector, err error) {
+	ret = &connector{}
+	sessionPath, ok := opts[sessionOptionKey]
+	if ok {
+		ret.session, err = chdb.NewSession(sessionPath)
+		if err != nil {
+			return nil, err
+		}
+	}
+	udfPath, ok := opts[udfPathOptionKey]
+	if ok {
+		ret.udfPath = udfPath
+	}
+	return
+}
+
 type Driver struct{}
 
 // Open returns a new connection to the database.
 func (d Driver) Open(name string) (driver.Conn, error) {
-	return &conn{}, nil
+	cc, err := d.OpenConnector(name)
+	if err != nil {
+		return nil, err
+	}
+	return cc.Connect(context.Background())
 }
 
 // OpenConnector expects the same format as driver.Open
-func (d Driver) OpenConnector(dataSourceName string) (driver.Connector, error) {
-	return &connector{}, nil
+func (d Driver) OpenConnector(name string) (driver.Connector, error) {
+	opts, err := parseConnectStr(name)
+	if err != nil {
+		return nil, err
+	}
+	return NewConnect(opts)
 }
 
 type conn struct {
+	udfPath  string
+	session  *chdb.Session
+	QueryFun queryHandle
 }
 
 func (c *conn) Close() error {
 	return nil
+}
+
+func (c *conn) SetupQueryFun() {
+	c.QueryFun = chdb.Query
+	if c.session != nil {
+		c.QueryFun = c.session.Query
+	}
 }
 
 func (c *conn) Query(query string, values []driver.Value) (driver.Rows, error) {
@@ -67,7 +127,7 @@ func (c *conn) Query(query string, values []driver.Value) (driver.Rows, error) {
 }
 
 func (c *conn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
-	result := wrapper.Query(query, "Arrow")
+	result := c.QueryFun(query, "Arrow", c.udfPath)
 	buf := result.Buf()
 	if buf == nil {
 		return nil, fmt.Errorf("result is nil")
