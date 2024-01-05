@@ -2,8 +2,8 @@ package cli
 
 import (
 	"context"
-	"strings"
 	"io/ioutil"
+	"strings"
 )
 
 // GetCurrentDB from chDB

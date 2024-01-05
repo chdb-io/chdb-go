@@ -33,28 +33,28 @@ func TestQueryToBuffer(t *testing.T) {
 		},
 		// Session
 		{
-			name:         "Session Query 1",
-			queryStr:     "CREATE DATABASE IF NOT EXISTS testdb; "+
-					"CREATE TABLE IF NOT EXISTS testdb.testtable (id UInt32) ENGINE = MergeTree() ORDER BY id;",
-			outputFormat: "CSV",
-			path:         tempDir,
-			udfPath:      "",
+			name: "Session Query 1",
+			queryStr: "CREATE DATABASE IF NOT EXISTS testdb; " +
+				"CREATE TABLE IF NOT EXISTS testdb.testtable (id UInt32) ENGINE = MergeTree() ORDER BY id;",
+			outputFormat:   "CSV",
+			path:           tempDir,
+			udfPath:        "",
 			expectedResult: "",
 		},
 		{
-			name:         "Session Query 2",
-			queryStr:     "USE testdb; INSERT INTO testtable VALUES (1), (2), (3);",
-			outputFormat: "CSV",
-			path:         tempDir,
-			udfPath:      "",
+			name:           "Session Query 2",
+			queryStr:       "USE testdb; INSERT INTO testtable VALUES (1), (2), (3);",
+			outputFormat:   "CSV",
+			path:           tempDir,
+			udfPath:        "",
 			expectedResult: "",
 		},
 		{
-			name:         "Session Query 3",
-			queryStr:     "SELECT * FROM testtable;",
-			outputFormat: "CSV",
-			path:         tempDir,
-			udfPath:      "",
+			name:           "Session Query 3",
+			queryStr:       "SELECT * FROM testtable;",
+			outputFormat:   "CSV",
+			path:           tempDir,
+			udfPath:        "",
 			expectedResult: "1\n2\n3\n",
 		},
 	}
@@ -66,7 +66,7 @@ func TestQueryToBuffer(t *testing.T) {
 
 			// Verify
 			if string(result.Buf()) != tc.expectedResult {
-				t.Errorf("%v queryToBuffer() with queryStr %v, outputFormat %v, path %v, udfPath %v, expect result: %v, got result: %v", 
+				t.Errorf("%v queryToBuffer() with queryStr %v, outputFormat %v, path %v, udfPath %v, expect result: %v, got result: %v",
 					tc.name, tc.queryStr, tc.outputFormat, tc.path, tc.udfPath, tc.expectedResult, string(result.Buf()))
 			}
 		})

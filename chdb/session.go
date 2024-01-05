@@ -9,7 +9,7 @@ import (
 )
 
 type Session struct {
-	path string
+	path   string
 	isTemp bool
 }
 
@@ -37,15 +37,16 @@ func NewSession(paths ...string) (*Session, error) {
 
 // Query calls queryToBuffer with a default output format of "CSV" if not provided.
 func (s *Session) Query(queryStr string, outputFormats ...string) *chdbstable.LocalResult {
-    outputFormat := "CSV" // Default value
-    if len(outputFormats) > 0 {
-        outputFormat = outputFormats[0]
-    }
-    return queryToBuffer(queryStr, outputFormat, s.path, "")
+	outputFormat := "CSV" // Default value
+	if len(outputFormats) > 0 {
+		outputFormat = outputFormats[0]
+	}
+	return queryToBuffer(queryStr, outputFormat, s.path, "")
 }
 
-// Close closes the session and removes the temporary directory 
-//  temporary directory is created when NewSession was called with an empty path.
+// Close closes the session and removes the temporary directory
+//
+//	temporary directory is created when NewSession was called with an empty path.
 func (s *Session) Close() {
 	// Remove the temporary directory if it starts with "chdb_"
 	if s.isTemp && filepath.Base(s.path)[:5] == "chdb_" {
