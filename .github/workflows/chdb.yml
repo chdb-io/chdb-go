@@ -23,6 +23,8 @@ jobs:
           go mod tidy
           make build
     - name: Test
+      run: make test
+    - name: Test main
       run: LD_LIBRARY_PATH=./ ./chdb-go "SELECT 12345"
 
   build_mac:
@@ -41,5 +43,7 @@ jobs:
           go mod tidy
           make build
     - name: Test
+      run: make test
+    - name: Test main
       run: ./chdb-go "SELECT 12345"
 

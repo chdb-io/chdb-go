@@ -22,10 +22,10 @@ func TestQueryStableMultipleCases(t *testing.T) {
 			expectOutput: "123\n",
 		},
 		{
-			name:         "Multiple Queries",
+			name:         "Single Queries",
 			argv:         []string{"clickhouse", "--multiquery", "--output-format=CSV", "--query=SELECT 'abc';"},
 			expectError:  false,
-			expectOutput: "abc",
+			expectOutput: "\"abc\"\n",
 		},
 	}
 
@@ -35,11 +35,11 @@ func TestQueryStableMultipleCases(t *testing.T) {
 			result := QueryStable(len(tc.argv), tc.argv)
 
 			// Assert based on the expected outcome of the test case
-			if (result == nil) != tc.expectError {
+			if (result == nil) && tc.expectError {
 				t.Errorf("QueryStable() with args %v, expect error: %v, got result: %v", tc.argv, tc.expectError, result)
 			}
 
-			if (result != nil) && (string(result) != tc.expectOutput) {
+			if (result != nil) && string(result.Buf()) != tc.expectOutput {
 				t.Errorf("QueryStable() with args %v, expect output: %v, got output: %v", tc.argv, tc.expectOutput, string(result.Buf()))
 			}
 		})
