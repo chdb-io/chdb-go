@@ -6,11 +6,11 @@ import (
 
 // Query calls queryToBuffer with a default output format of "CSV" if not provided.
 func Query(queryStr string, outputFormats ...string) *chdbstable.LocalResult {
-    outputFormat := "CSV" // Default value
-    if len(outputFormats) > 0 {
-        outputFormat = outputFormats[0]
-    }
-    return queryToBuffer(queryStr, outputFormat, "", "")
+	outputFormat := "CSV" // Default value
+	if len(outputFormats) > 0 {
+		outputFormat = outputFormats[0]
+	}
+	return queryToBuffer(queryStr, outputFormat, "", "")
 }
 
 // queryToBuffer constructs the arguments for QueryStable and calls it.

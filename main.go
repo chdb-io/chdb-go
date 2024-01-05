@@ -17,12 +17,12 @@ import (
 
 func main() {
 	// Define command line flags
-	pathFlag := flag.String("path", "", 
-`Specify a custom path for the session, default is a temporary directory and 
+	pathFlag := flag.String("path", "",
+		`Specify a custom path for the session, default is a temporary directory and 
 data will lost after exit. If you want to keep the data, specify a path to a directory.`)
-	
-	helpFlag := flag.Bool("help", false, 
-`Show this help message and exit.
+
+	helpFlag := flag.Bool("help", false,
+		`Show this help message and exit.
 	Usage: chdb-go [options] [sql [output format]]
 	Example:
 		./chdb-go 'SELECT 123' 		 # default output CSV
