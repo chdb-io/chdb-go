@@ -60,7 +60,7 @@ func TestQuery(t *testing.T) {
 	defer session.Cleanup()
 
 	session.Query("CREATE DATABASE IF NOT EXISTS testdb; " +
-	"CREATE TABLE IF NOT EXISTS testdb.testtable (id UInt32) ENGINE = MergeTree() ORDER BY id;")
+		"CREATE TABLE IF NOT EXISTS testdb.testtable (id UInt32) ENGINE = MergeTree() ORDER BY id;")
 
 	session.Query("USE testdb; INSERT INTO testtable VALUES (1), (2), (3);")
 

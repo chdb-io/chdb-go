@@ -38,18 +38,10 @@ func NewSession(paths ...string) (*Session, error) {
 // Query calls queryToBuffer with a default output format of "CSV" if not provided.
 func (s *Session) Query(queryStr string, outputFormats ...string) *chdbstable.LocalResult {
 	outputFormat := "CSV" // Default value
-	udfPath := ""
-	switch len(outputFormats) {
-	case 0:
-	case 1:
+	if len(outputFormats) > 0 {
 		outputFormat = outputFormats[0]
-	case 2:
-		fallthrough
-	default:
-		outputFormat = outputFormats[0]
-		udfPath = outputFormats[1]
 	}
-	return queryToBuffer(queryStr, outputFormat, s.path, udfPath)
+	return queryToBuffer(queryStr, outputFormat, s.path, "")
 }
 
 // Close closes the session and removes the temporary directory

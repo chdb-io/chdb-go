@@ -1,15 +1,15 @@
 package cli
 
 import (
-	"github.com/chdb-io/chdb-go/cli/history"
 	"github.com/chdb-io/chdb-go/chdb"
+	"github.com/chdb-io/chdb-go/cli/history"
 )
 
 // CLI object of cli :)
 type CLI struct {
 	history *history.History
 
-	Session *chdb.Session
+	Session                 *chdb.Session
 	Multiline               bool
 	isMultilineInputStarted bool
 	query                   string
