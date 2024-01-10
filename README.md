@@ -95,6 +95,43 @@ func main() {
 }
 ```
 
+#### Go SQL driver for chDB
+```go
+package main
+
+import (
+        "database/sql"
+        "log"
+
+        _ "github.com/chdb-io/chdb-go/chdb/driver"
+)
+
+func main() {
+        db, err := sql.Open("chdb", "")
+        if err != nil {
+                log.Fatal(err)
+        }
+        rows, err := db.Query(`select COUNT(*) from url('https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_0.parquet')`)
+        if err != nil {
+                log.Fatalf("select fail, err: %s", err)
+        }
+        cols, err := rows.Columns()
+        if err != nil {
+                log.Fatalf("get result columns fail, err: %s", err)
+        }
+        log.Printf("result columns: %v", cols)
+        defer rows.Close()
+        var count int
+        for rows.Next() {
+                err := rows.Scan(&count)
+                if err != nil {
+                        log.Fatalf("scan fail, err: %s", err)
+                }
+                log.Printf("count: %d", count)
+        }
+}
+```
+
 ### Golang API docs
 
 - See [lowApi.md](lowApi.md) for the low level APIs.
