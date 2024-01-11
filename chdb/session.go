@@ -36,7 +36,7 @@ func NewSession(paths ...string) (*Session, error) {
 }
 
 // Query calls queryToBuffer with a default output format of "CSV" if not provided.
-func (s *Session) Query(queryStr string, outputFormats ...string) *chdbstable.LocalResult {
+func (s *Session) Query(queryStr string, outputFormats ...string) (result *chdbstable.LocalResult, err error) {
 	outputFormat := "CSV" // Default value
 	if len(outputFormats) > 0 {
 		outputFormat = outputFormats[0]

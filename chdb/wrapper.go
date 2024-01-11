@@ -5,7 +5,7 @@ import (
 )
 
 // Query calls queryToBuffer with a default output format of "CSV" if not provided.
-func Query(queryStr string, outputFormats ...string) *chdbstable.LocalResult {
+func Query(queryStr string, outputFormats ...string) (result *chdbstable.LocalResult, err error) {
 	outputFormat := "CSV" // Default value
 	if len(outputFormats) > 0 {
 		outputFormat = outputFormats[0]
@@ -14,7 +14,7 @@ func Query(queryStr string, outputFormats ...string) *chdbstable.LocalResult {
 }
 
 // queryToBuffer constructs the arguments for QueryStable and calls it.
-func queryToBuffer(queryStr, outputFormat, path, udfPath string) *chdbstable.LocalResult {
+func queryToBuffer(queryStr, outputFormat, path, udfPath string) (result *chdbstable.LocalResult, err error) {
 	argv := []string{"clickhouse", "--multiquery"}
 
 	// Handle output format

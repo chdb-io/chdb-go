@@ -27,20 +27,48 @@ func TestQueryStableMultipleCases(t *testing.T) {
 			expectError:  false,
 			expectOutput: "\"abc\"\n",
 		},
+		{
+			name:         "Error Query",
+			argv:         []string{"clickhouse", "--multiquery", "--output-format=CSV", "--query=XXX;"},
+			expectError:  true,
+			expectOutput: "",
+		},
 	}
 
 	// Iterate over the test cases
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := QueryStable(len(tc.argv), tc.argv)
+			result, err := QueryStable(len(tc.argv), tc.argv)
 
 			// Assert based on the expected outcome of the test case
-			if (result == nil) && tc.expectError {
-				t.Errorf("QueryStable() with args %v, expect error: %v, got result: %v", tc.argv, tc.expectError, result)
-			}
-
-			if (result != nil) && string(result.Buf()) != tc.expectOutput {
-				t.Errorf("QueryStable() with args %v, expect output: %v, got output: %v", tc.argv, tc.expectOutput, string(result.Buf()))
+			if tc.expectError {
+				if err == nil {
+					t.Errorf("Expected error, but got nil")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Expected no error, but got %v", err)
+				} else {
+					if result == nil {
+						t.Errorf("Expected non-nil result, but got nil")
+					} else {
+						if result.cResult == nil {
+							t.Errorf("Expected non-nil cResult, but got nil")
+						} else {
+							if result.cResult.error_message != nil {
+								t.Errorf("Expected nil error_message, but got %v", result.cResult.error_message)
+							} else {
+								if result.cResult.buf == nil {
+									t.Errorf("Expected non-nil output, but got nil")
+								} else {
+									if tc.expectOutput != string(result.String()) {
+										t.Errorf("Expected output %v, but got %v", tc.expectOutput, string(result.String()))
+									}
+								}
+							}
+						}
+					}
+				}
 			}
 		})
 	}

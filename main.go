@@ -1,16 +1,15 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"os"
 
 	"github.com/c-bata/go-prompt"
 
-	"github.com/chdb-io/chdb-go/cli"
-	"github.com/chdb-io/chdb-go/cli/completer"
-	"github.com/chdb-io/chdb-go/cli/history"
+	// "github.com/chdb-io/chdb-go/cli"
+	// "github.com/chdb-io/chdb-go/cli/completer"
+	// "github.com/chdb-io/chdb-go/cli/history"
 
 	"github.com/chdb-io/chdb-go/chdb"
 )
@@ -63,9 +62,9 @@ data will lost after exit. If you want to keep the data, specify a path to a dir
 			format = args[1]
 		}
 
-		result := chdb.Query(sql, format)
-		if result == nil {
-			fmt.Println("No result or an error occurred.")
+		result, err := chdb.Query(sql, format)
+		if err != nil {
+			fmt.Println(err)
 			return
 		}
 
@@ -77,50 +76,36 @@ data will lost after exit. If you want to keep the data, specify a path to a dir
 func interactiveMode(session *chdb.Session) {
 	fmt.Println("Enter your SQL commands; type 'exit' to quit.")
 
-	h, uh, err := initHistory("")
-	if err != nil {
-		fmt.Errorf("Failed to init history: %s", err)
-		return
-	}
-
-	c := cli.New(session, h, true)
-	complete := completer.New()
-
 	p := prompt.New(
-		c.Executor,
-		complete.Complete,
-		prompt.OptionTitle("chDB golang cli."),
-		prompt.OptionHistory(h.RowsToStrArr(uh)),
-		prompt.OptionPrefix(c.GetCurrentDB(context.Background())+" :) "),
-		prompt.OptionLivePrefix(c.GetLivePrefixState),
-		prompt.OptionPrefixTextColor(prompt.White),
-		prompt.OptionAddKeyBind(prompt.KeyBind{
-			Key: prompt.F3,
-			Fn:  c.MultilineControl,
-		}),
+		func(query string) {
+			if query == "exit" {
+				os.Exit(0)
+			}
+
+			result, err := session.Query(query, "CSV")
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+
+			fmt.Println(result)
+		},
+		func(d prompt.Document) []prompt.Suggest {
+			return []prompt.Suggest{
+				{Text: "SELECT", Description: "SELECT"},
+				{Text: "INSERT", Description: "INSERT"},
+				{Text: "UPDATE", Description: "UPDATE"},
+				{Text: "DELETE", Description: "DELETE"},
+				{Text: "CREATE", Description: "CREATE"},
+				{Text: "ALTER", Description: "ALTER"},
+				{Text: "DROP", Description: "DROP"},
+				{Text: "DESCRIBE", Description: "DESCRIBE"},
+				{Text: "SHOW", Description: "SHOW"},
+				{Text: "OPTIMIZE", Description: "OPTIMIZE"},
+			}
+		},
+		prompt.OptionPrefix(":) "),
+		prompt.OptionTitle("chdb-go"),
 	)
-
 	p.Run()
-}
-
-func initHistory(path string) (*history.History, []*history.Row, error) {
-	var historyPath string
-	if path != "" {
-		historyPath = path
-	} else {
-		home, _ := os.UserHomeDir()
-		historyPath = home + "/.chdb-go-cli-history"
-	}
-
-	h, err := history.New(historyPath)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	uh, err := h.Read()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return h, uh, nil
 }

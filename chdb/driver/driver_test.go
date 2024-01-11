@@ -90,7 +90,10 @@ func TestDbWithSession(t *testing.T) {
 
 	session.Query("USE testdb; INSERT INTO testtable VALUES (1), (2), (3);")
 
-	ret := session.Query("SELECT * FROM testtable;")
+	ret, err := session.Query("SELECT * FROM testtable;")
+	if err != nil {
+		t.Fatalf("Query fail, err: %s", err)
+	}
 	if string(ret.Buf()) != "1\n2\n3\n" {
 		t.Errorf("Query result should be 1\n2\n3\n, got %s", string(ret.Buf()))
 	}
