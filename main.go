@@ -82,7 +82,7 @@ func interactiveMode(session *chdb.Session) {
 				os.Exit(0)
 			}
 
-			result, err := chdb.Query(query, "CSV")
+			result, err := session.Query(query, "CSV")
 			if err != nil {
 				fmt.Println(err)
 				return

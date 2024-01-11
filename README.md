@@ -30,40 +30,11 @@
 ./chdb-go --path /tmp/chdb # interactive persistent mode
 ```
 
-3. Shortcuts
-
-- `\l` to list databases;
-- `\dt dbname` to list tables in database;
-
 ```bash
 chdb-io/chdb-go [main] » ./chdb-go 
 Enter your SQL commands; type 'exit' to quit.
  :) CREATE DATABASE IF NOT EXISTS testdb;
 
- :) \l
-┏━━━━━━━━━━━━━━━━━━━━┓
-┃ name               ┃
-┡━━━━━━━━━━━━━━━━━━━━┩
-│ INFORMATION_SCHEMA │
-├────────────────────┤
-│ _local             │
-├────────────────────┤
-│ information_schema │
-├────────────────────┤
-│ system             │
-├────────────────────┤
-│ testdb             │
-└────────────────────┘
-
- :) CREATE TABLE IF NOT EXISTS testdb.testtable (id UInt32) ENGINE = MergeTree()
-:-] ORDER BY id;
-
- :) \dt testdb
-┏━━━━━━━━━━━┓
-┃ name      ┃
-┡━━━━━━━━━━━┩
-│ testtable │
-└───────────┘
 
 ```
 
@@ -72,26 +43,46 @@ Enter your SQL commands; type 'exit' to quit.
 package main
 
 import (
-    "fmt"
-    "github.com/chdb-io/chdb-go/chdb"
+	"fmt"
+	"os"
+	"path/filepath"
+
+	"github.com/chdb-io/chdb-go/chdb"
 )
 
 func main() {
-    // Stateless Query (ephemeral)
-    result := chdb.Query("SELECT version()", "CSV")
-    fmt.Println(result)
+	// Stateless Query (ephemeral)
+	result, err := chdb.Query("SELECT version()", "CSV")
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(result)
 
-    // Stateful Query (persistent)
-    session, _ := NewSession(path)
-    defer session.Cleanup()
+	tmp_path := filepath.Join(os.TempDir(), "chdb_test")
+	defer os.RemoveAll(tmp_path)
+	// Stateful Query (persistent)
+	session, _ := chdb.NewSession(tmp_path)
+	defer session.Cleanup()
 
-    session.Query("CREATE DATABASE IF NOT EXISTS testdb; " +
-    "CREATE TABLE IF NOT EXISTS testdb.testtable (id UInt32) ENGINE = MergeTree() ORDER BY id;")
+	_, err = session.Query("CREATE DATABASE IF NOT EXISTS testdb; " +
+		"CREATE TABLE IF NOT EXISTS testdb.testtable (id UInt32) ENGINE = MergeTree() ORDER BY id;")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
-    session.Query("USE testdb; INSERT INTO testtable VALUES (1), (2), (3);")
+	_, err = session.Query("USE testdb; INSERT INTO testtable VALUES (1), (2), (3);")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
-    ret := session.Query("SELECT * FROM testtable;")
-    fmt.Println(ret)
+	ret, err := session.Query("SELECT * FROM testtable;")
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		fmt.Println(ret)
+	}
 }
 ```
 
@@ -99,7 +90,3 @@ func main() {
 
 - See [lowApi.md](lowApi.md) for the low level APIs.
 - See [chdb.md](chdb.md) for high level APIs.
-
-### Thanks
-
-- cli implementation is based on [clickhouse-cli](https://github.com/memlimit/clickhouse-cli)
