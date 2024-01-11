@@ -27,7 +27,7 @@ func init() {
 	sql.Register("chdb", Driver{})
 }
 
-type queryHandle func(string, ...string) *chdbstable.LocalResult
+type queryHandle func(string, ...string) (*chdbstable.LocalResult, error)
 
 type connector struct {
 	udfPath string
@@ -127,7 +127,10 @@ func (c *conn) Query(query string, values []driver.Value) (driver.Rows, error) {
 }
 
 func (c *conn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
-	result := c.QueryFun(query, "Arrow", c.udfPath)
+	result, err := c.QueryFun(query, "Arrow", c.udfPath)
+	if err != nil {
+		return nil, err
+	}
 	buf := result.Buf()
 	if buf == nil {
 		return nil, fmt.Errorf("result is nil")
