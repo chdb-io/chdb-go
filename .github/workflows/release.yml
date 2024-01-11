@@ -28,6 +28,7 @@ jobs:
     - name: Upload chdb-go and libchdb.so to release
       if: startsWith(github.ref, 'refs/tags/v')
       run: |
+        cp -a /usr/local/lib/libchdb.so .
         tar -czvf linux-x86_64-chdb-go.tar.gz libchdb.so chdb-go
         gh release upload ${{ github.ref_name }} linux-x86_64-chdb-go.tar.gz --clobber
       env:
@@ -56,6 +57,7 @@ jobs:
     - name: Upload chdb-go and libchdb.so to release
       if: startsWith(github.ref, 'refs/tags/v')
       run: |
+        cp -a /usr/local/lib/libchdb.so .
         tar -czvf macos-x86_64-chdb-go.tar.gz libchdb.so chdb-go
         gh release upload ${{ github.ref_name }} macos-x86_64-chdb-go.tar.gz --clobber
       env:
