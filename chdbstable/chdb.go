@@ -24,7 +24,6 @@ func (e *ChdbError) Error() string {
 // ErrNilResult is returned when the C function returns a nil pointer.
 var ErrNilResult = errors.New("chDB C function returned nil pointer")
 
-
 // LocalResult mirrors the C struct local_result_v2 in Go.
 type LocalResult struct {
 	cResult *C.struct_local_result_v2
@@ -52,8 +51,10 @@ func QueryStable(argc int, argv []string) (result *LocalResult, err error) {
 
 	cResult := C.query_stable_v2(C.int(argc), &cArgv[0])
 	if cResult == nil {
-		// According to the C ABI of chDB, it is not possible to return a nil pointer.
-		return nil, ErrNilResult
+		// According to the C ABI of chDB v1.2.0, the C function query_stable_v2
+		// returns nil if the query returns no data. This is not an error. We
+		// will change this behavior in the future.
+		return newLocalResult(cResult), nil
 	}
 	if cResult.error_message != nil {
 		return nil, &ChdbError{msg: C.GoString(cResult.error_message)}
@@ -107,11 +108,4 @@ func (r *LocalResult) BytesRead() uint64 {
 		return 0
 	}
 	return uint64(r.cResult.bytes_read)
-}
-
-func (r *LocalResult) Error() string {
-	if r.cResult == nil {
-		return ""
-	}
-	return C.GoString(r.cResult.err)
 }
