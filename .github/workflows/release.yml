@@ -32,7 +32,7 @@ jobs:
         tar -czvf linux-x86_64-chdb-go.tar.gz libchdb.so chdb-go
         gh release upload ${{ github.ref_name }} linux-x86_64-chdb-go.tar.gz --clobber
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.ACTION }}
 
   build_mac:
     runs-on: macos-12
@@ -61,4 +61,4 @@ jobs:
         tar -czvf macos-x86_64-chdb-go.tar.gz libchdb.so chdb-go
         gh release upload ${{ github.ref_name }} macos-x86_64-chdb-go.tar.gz --clobber
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.ACTION }}
