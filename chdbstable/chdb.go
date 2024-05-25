@@ -1,7 +1,7 @@
 package chdbstable
 
 /*
-#cgo LDFLAGS: -L. -lchdb
+#cgo LDFLAGS: -L/usr/local/lib -lchdb
 #include <stdlib.h> // Include the C standard library for C.free
 #include "chdb.h"
 */

@@ -9,12 +9,20 @@
 
 ## Install
 
-1. Download and install [`libchdb`](https://github.com/chdb-io/chdb/releases)
-  - run `make update_libchdb` to download and extract libchdb.so. or
-  - run `make install` to install libchdb.so
-2. Build `chdb-go`
+### Install libchdb.so
+1. Install [`libchdb`](https://github.com/chdb-io/chdb/releases)
+  - curl -sL https://lib.chdb.io | bash
+
+### Install chdb-go
+1. Install `chdb-go`
+  - `go install github.com/chdb-io/chdb-go@latest`
+2. Run `chdb-go` with or without persistent `--path`
+  - run `$GOPATH/bin/chdb-go`
+
+### or Build from source
+1. Build `chdb-go`
   - run `make build`
-3. Run `chdb-go` with or without persistent `--path`
+2. Run `chdb-go` with or without persistent `--path`
   - run `./chdb-go`
 
 ## chdb-go CLI

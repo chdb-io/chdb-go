@@ -1,6 +1,6 @@
 module github.com/chdb-io/chdb-go
 
-go 1.21.5
+go 1.21
 
 require (
 	github.com/apache/arrow/go/v14 v14.0.2

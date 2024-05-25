@@ -21,7 +21,7 @@ jobs:
           go mod tidy
           make build 
     - name: Test
-      run: LD_LIBRARY_PATH=. ./chdb-go "SELECT 12345"
+      run: ./chdb-go "SELECT 12345"
     - name: Get Version
       run: |
         echo "VERSION=${{  github.ref_name }}" >> $GITHUB_ENV

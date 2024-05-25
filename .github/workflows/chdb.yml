@@ -25,7 +25,7 @@ jobs:
     - name: Test
       run: make test
     - name: Test main
-      run: LD_LIBRARY_PATH=./ ./chdb-go "SELECT 12345"
+      run: ./chdb-go "SELECT 12345"
 
   build_mac:
     runs-on: macos-12
