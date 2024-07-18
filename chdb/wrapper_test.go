@@ -65,7 +65,7 @@ func TestQueryToBuffer(t *testing.T) {
 			outputFormat:   "CSV",
 			path:           tempDir,
 			udfPath:        "",
-			expectedErrMsg: "Code: 60. DB::Exception: Table _local.nonexist does not exist. (UNKNOWN_TABLE)",
+			expectedErrMsg: "Code: 60. DB::Exception: Unknown table expression identifier 'nonexist' in scope SELECT * FROM nonexist. (UNKNOWN_TABLE)",
 			expectedResult: "",
 		},
 	}
