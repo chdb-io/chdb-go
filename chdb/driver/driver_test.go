@@ -47,6 +47,44 @@ func TestDb(t *testing.T) {
 	}
 }
 
+func TestDbWithCompiledArgs(t *testing.T) {
+	db, err := sql.Open("chdb", "")
+	if err != nil {
+		t.Errorf("open db fail, err:%s", err)
+	}
+	if db.Ping() != nil {
+		t.Errorf("ping db fail")
+	}
+	rows, err := db.Query(`SELECT ?, ?`, 1, "abc")
+	if err != nil {
+		t.Errorf("run Query fail, err:%s", err)
+	}
+	cols, err := rows.Columns()
+	if err != nil {
+		t.Errorf("get result columns fail, err: %s", err)
+	}
+	if len(cols) != 2 {
+		t.Errorf("select result columns length should be 2")
+	}
+	var (
+		bar int
+		foo string
+	)
+	defer rows.Close()
+	for rows.Next() {
+		err := rows.Scan(&bar, &foo)
+		if err != nil {
+			t.Errorf("scan fail, err: %s", err)
+		}
+		if bar != 1 {
+			t.Errorf("expected error")
+		}
+		if foo != "abc" {
+			t.Errorf("expected error")
+		}
+	}
+}
+
 func TestDbWithOpt(t *testing.T) {
 	for _, kv := range []struct {
 		opt       string
