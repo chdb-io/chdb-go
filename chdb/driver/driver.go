@@ -11,6 +11,7 @@ import (
 
 	"github.com/chdb-io/chdb-go/chdb"
 	"github.com/chdb-io/chdb-go/chdbstable"
+	"github.com/huandu/go-sqlbuilder"
 	"github.com/parquet-go/parquet-go"
 
 	"github.com/apache/arrow/go/v15/arrow/ipc"
@@ -196,9 +197,30 @@ func (c *conn) Query(query string, values []driver.Value) (driver.Rows, error) {
 	return c.QueryContext(context.Background(), query, namedValues)
 }
 
-func (c *conn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
+func (c *conn) compileArguments(query string, args []driver.NamedValue) (string, error) {
+	var compiledQuery string
+	if len(args) > 0 {
+		compiledArgs := make([]interface{}, len(args))
+		for idx := range args {
+			compiledArgs[idx] = args[idx].Value
+		}
+		compiled, err := sqlbuilder.ClickHouse.Interpolate(query, compiledArgs)
+		if err != nil {
+			return "", err
+		}
+		compiledQuery = compiled
+	} else {
+		compiledQuery = query
+	}
+	return compiledQuery, nil
+}
 
-	result, err := c.QueryFun(query, c.driverType.String(), c.udfPath)
+func (c *conn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
+	compiledQuery, err := c.compileArguments(query, args)
+	if err != nil {
+		return nil, err
+	}
+	result, err := c.QueryFun(compiledQuery, c.driverType.String(), c.udfPath)
 	if err != nil {
 		return nil, err
 	}
