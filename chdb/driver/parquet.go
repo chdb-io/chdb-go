@@ -13,6 +13,8 @@ import (
 	"github.com/parquet-go/parquet-go"
 )
 
+// NOTE: this function is strictly unsafe and can lead to undefined behavior if the underlying slice is going out of scope or if it is being modified while in use.
+// Use this function ONLY if you know that both of the conditions are respected and you need to allocate less memory possible.
 func bytesToString(data []byte) string {
 	return *(*string)(unsafe.Pointer(&data))
 }
@@ -22,14 +24,15 @@ func getStringFromBytes(v parquet.Value) string {
 }
 
 type parquetRows struct {
-	localResult   *chdbstable.LocalResult     // result from clickhouse
-	reader        *parquet.GenericReader[any] // parquet reader
-	curRecord     parquet.Row                 // TODO: delete this?
-	buffer        []parquet.Row               // record buffer
-	bufferSize    int                         // amount of records to preload into buffer
-	bufferIndex   int64                       // index in the current buffer
-	curRow        int64                       // row counter
-	needNewBuffer bool
+	localResult           *chdbstable.LocalResult     // result from clickhouse
+	reader                *parquet.GenericReader[any] // parquet reader
+	curRecord             parquet.Row                 // TODO: delete this?
+	buffer                []parquet.Row               // record buffer
+	bufferSize            int                         // amount of records to preload into buffer
+	bufferIndex           int64                       // index in the current buffer
+	curRow                int64                       // row counter
+	needNewBuffer         bool
+	useUnsafeStringReader bool
 }
 
 func (r *parquetRows) Columns() (out []string) {
@@ -100,7 +103,14 @@ func (r *parquetRows) Next(dest []driver.Value) error {
 		}
 		switch r.ColumnTypeDatabaseTypeName(columnIndex) {
 		case "STRING":
-			dest[columnIndex] = getStringFromBytes(curVal)
+			// we check if the user has initialized the connection with the unsafeStringReader parameter, and in that case we use `getStringFromBytes` method.
+			// otherwise, we fallback to the traditional way and we allocate a new string
+			if r.useUnsafeStringReader {
+				dest[columnIndex] = getStringFromBytes(curVal)
+			} else {
+				dest[columnIndex] = string(curVal.ByteArray())
+			}
+
 		case "INT8", "INT(8,true)":
 			dest[columnIndex] = int8(curVal.Int32()) //check if this is correct
 		case "INT16", "INT(16,true)":
