@@ -4,7 +4,6 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"io"
-	"os"
 	"time"
 	"unsafe"
 
@@ -34,7 +33,6 @@ type parquetRows struct {
 	curRow                int64                       // row counter
 	needNewBuffer         bool
 	useUnsafeStringReader bool
-	fd                    *os.File
 }
 
 func (r *parquetRows) Columns() (out []string) {
@@ -55,11 +53,6 @@ func (r *parquetRows) Close() error {
 	r.reader = nil
 	r.localResult = nil
 	r.buffer = nil
-	if r.fd != nil {
-		r.fd.Close()
-		os.Remove(r.fd.Name())
-		r.fd = nil
-	}
 	return nil
 }
 

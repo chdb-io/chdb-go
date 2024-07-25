@@ -6,11 +6,8 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
-	"math/rand"
-	"os"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/chdb-io/chdb-go/chdb"
 	"github.com/chdb-io/chdb-go/chdbstable"
@@ -37,10 +34,6 @@ const (
 	defaultBufferSize        = 512
 )
 
-const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-
-var seededRand *rand.Rand = rand.New(rand.NewSource(time.Now().UnixNano()))
-
 func (d DriverType) String() string {
 	switch d {
 	case ARROW:
@@ -53,51 +46,20 @@ func (d DriverType) String() string {
 	return ""
 }
 
-func (d DriverType) PrepareRows(result *chdbstable.LocalResult, buf []byte, bufSize int, useUnsafe bool, filePath string) (driver.Rows, error) {
+func (d DriverType) PrepareRows(result *chdbstable.LocalResult, buf []byte, bufSize int, useUnsafe bool) (driver.Rows, error) {
 	switch d {
 	case ARROW:
-		var reader *ipc.FileReader
-		var err error
-		var fd *os.File
-		if filePath != "" {
-			fd, err = os.Open(filePath)
-			if err != nil {
-				return nil, err
-			}
-
-			reader, err = ipc.NewFileReader(fd)
-			if err != nil {
-				return nil, err
-			}
-
-		} else {
-			reader, err = ipc.NewFileReader(bytes.NewReader(buf))
-			if err != nil {
-				return nil, err
-			}
+		reader, err := ipc.NewFileReader(bytes.NewReader(buf))
+		if err != nil {
+			return nil, err
 		}
-
-		return &arrowRows{localResult: result, reader: reader, fd: fd}, nil
+		return &arrowRows{localResult: result, reader: reader}, nil
 	case PARQUET:
-		var reader *parquet.GenericReader[any]
-		var fd *os.File
-		if filePath != "" {
-			fl, err := os.Open(filePath)
-			if err != nil {
-				return nil, err
-			}
-			fd = fl
-
-			reader = parquet.NewGenericReader[any](fl)
-		} else {
-			reader = parquet.NewGenericReader[any](bytes.NewReader(buf))
-		}
-
+		reader := parquet.NewGenericReader[any](bytes.NewReader(buf))
 		return &parquetRows{
 			localResult: result, reader: reader,
 			bufferSize: bufSize, needNewBuffer: true,
 			useUnsafeStringReader: useUnsafe,
-			fd:                    fd,
 		}, nil
 	}
 	return nil, fmt.Errorf("Unsupported driver type")
@@ -135,8 +97,7 @@ func (c *connector) Connect(ctx context.Context) (driver.Conn, error) {
 	cc := &conn{
 		udfPath: c.udfPath, session: c.session,
 		driverType: c.driverType, bufferSize: c.bufferSize,
-		useUnsafe:              c.useUnsafe,
-		useFileInsteadOfMemory: true,
+		useUnsafe: c.useUnsafe,
 	}
 	cc.SetupQueryFun()
 	return cc, nil
@@ -223,13 +184,12 @@ func (d Driver) OpenConnector(name string) (driver.Connector, error) {
 }
 
 type conn struct {
-	udfPath                string
-	driverType             DriverType
-	bufferSize             int
-	useUnsafe              bool
-	useFileInsteadOfMemory bool
-	session                *chdb.Session
-	QueryFun               queryHandle
+	udfPath    string
+	driverType DriverType
+	bufferSize int
+	useUnsafe  bool
+	session    *chdb.Session
+	QueryFun   queryHandle
 }
 
 func (c *conn) Close() error {
@@ -270,30 +230,13 @@ func (c *conn) compileArguments(query string, args []driver.NamedValue) (string,
 	} else {
 		compiledQuery = query
 	}
-
 	return compiledQuery, nil
-}
-
-func (c *conn) createRandomFilePath(size int) string {
-	b := make([]byte, size)
-	for i := range b {
-		b[i] = charset[seededRand.Intn(len(charset))]
-	}
-	return string(b)
-
 }
 
 func (c *conn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
 	compiledQuery, err := c.compileArguments(query, args)
 	if err != nil {
 		return nil, err
-	}
-	var filePath string
-	if c.useFileInsteadOfMemory {
-		compiledQuery = strings.TrimSuffix(compiledQuery, ";")
-		compiledQuery += " INTO OUTFILE "
-		filePath = fmt.Sprintf("/tmp/%s.%s", c.createRandomFilePath(16), strings.ToLower(c.driverType.String()))
-		compiledQuery += fmt.Sprintf("'%s'", filePath)
 	}
 	result, err := c.QueryFun(compiledQuery, c.driverType.String(), c.udfPath)
 	if err != nil {
@@ -304,7 +247,7 @@ func (c *conn) QueryContext(ctx context.Context, query string, args []driver.Nam
 	if buf == nil {
 		return nil, fmt.Errorf("result is nil")
 	}
-	return c.driverType.PrepareRows(result, buf, c.bufferSize, c.useUnsafe, filePath)
+	return c.driverType.PrepareRows(result, buf, c.bufferSize, c.useUnsafe)
 
 }
 

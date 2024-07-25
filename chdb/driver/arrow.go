@@ -3,7 +3,6 @@ package chdbdriver
 import (
 	"database/sql/driver"
 	"fmt"
-	"os"
 	"reflect"
 	"time"
 
@@ -20,7 +19,6 @@ type arrowRows struct {
 	reader      *ipc.FileReader
 	curRecord   arrow.Record
 	curRow      int64
-	fd          *os.File
 }
 
 func (r *arrowRows) Columns() (out []string) {
@@ -39,10 +37,6 @@ func (r *arrowRows) Close() error {
 	_ = r.reader.Close()
 	r.reader = nil
 	r.localResult = nil
-	if r.fd != nil {
-		_ = r.fd.Close()
-		_ = os.Remove(r.fd.Name())
-	}
 	return nil
 }
 
