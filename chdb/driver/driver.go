@@ -25,12 +25,14 @@ const (
 	INVALID
 )
 
-const sessionOptionKey = "session"
-const udfPathOptionKey = "udfPath"
-const driverTypeKey = "driverType"
-const driverBufferSizeKey = "bufferSize"
-
-const defaultBufferSize = 512
+const (
+	sessionOptionKey         = "session"
+	udfPathOptionKey         = "udfPath"
+	driverTypeKey            = "driverType"
+	useUnsafeStringReaderKey = "useUnsafeStringReader"
+	driverBufferSizeKey      = "bufferSize"
+	defaultBufferSize        = 512
+)
 
 func (d DriverType) String() string {
 	switch d {
@@ -44,7 +46,7 @@ func (d DriverType) String() string {
 	return ""
 }
 
-func (d DriverType) PrepareRows(result *chdbstable.LocalResult, buf []byte, bufSize int) (driver.Rows, error) {
+func (d DriverType) PrepareRows(result *chdbstable.LocalResult, buf []byte, bufSize int, useUnsafe bool) (driver.Rows, error) {
 	switch d {
 	case ARROW:
 		reader, err := ipc.NewFileReader(bytes.NewReader(buf))
@@ -54,7 +56,11 @@ func (d DriverType) PrepareRows(result *chdbstable.LocalResult, buf []byte, bufS
 		return &arrowRows{localResult: result, reader: reader}, nil
 	case PARQUET:
 		reader := parquet.NewGenericReader[any](bytes.NewReader(buf))
-		return &parquetRows{localResult: result, reader: reader, bufferSize: bufSize, needNewBuffer: true}, nil
+		return &parquetRows{
+			localResult: result, reader: reader,
+			bufferSize: bufSize, needNewBuffer: true,
+			useUnsafeStringReader: useUnsafe,
+		}, nil
 	}
 	return nil, fmt.Errorf("Unsupported driver type")
 }
@@ -79,6 +85,7 @@ type connector struct {
 	udfPath    string
 	driverType DriverType
 	bufferSize int
+	useUnsafe  bool
 	session    *chdb.Session
 }
 
@@ -87,7 +94,11 @@ func (c *connector) Connect(ctx context.Context) (driver.Conn, error) {
 	if c.driverType == INVALID {
 		return nil, fmt.Errorf("DriverType not supported")
 	}
-	cc := &conn{udfPath: c.udfPath, session: c.session, driverType: c.driverType, bufferSize: c.bufferSize}
+	cc := &conn{
+		udfPath: c.udfPath, session: c.session,
+		driverType: c.driverType, bufferSize: c.bufferSize,
+		useUnsafe: c.useUnsafe,
+	}
 	cc.SetupQueryFun()
 	return cc, nil
 }
@@ -138,6 +149,12 @@ func NewConnect(opts map[string]string) (ret *connector, err error) {
 	} else {
 		ret.bufferSize = defaultBufferSize
 	}
+	useUnsafe, ok := opts[useUnsafeStringReaderKey]
+	if ok {
+		if strings.ToLower(useUnsafe) == "true" {
+			ret.useUnsafe = true
+		}
+	}
 
 	udfPath, ok := opts[udfPathOptionKey]
 	if ok {
@@ -170,6 +187,7 @@ type conn struct {
 	udfPath    string
 	driverType DriverType
 	bufferSize int
+	useUnsafe  bool
 	session    *chdb.Session
 	QueryFun   queryHandle
 }
@@ -229,7 +247,7 @@ func (c *conn) QueryContext(ctx context.Context, query string, args []driver.Nam
 	if buf == nil {
 		return nil, fmt.Errorf("result is nil")
 	}
-	return c.driverType.PrepareRows(result, buf, c.bufferSize)
+	return c.driverType.PrepareRows(result, buf, c.bufferSize, c.useUnsafe)
 
 }
 
