@@ -167,3 +167,93 @@ func TestDbWithSession(t *testing.T) {
 		count++
 	}
 }
+
+func TestQueryRow(t *testing.T) {
+	sessionDir, err := os.MkdirTemp("", "unittest-sessiondata")
+	if err != nil {
+		t.Fatalf("create temp directory fail, err: %s", err)
+	}
+	defer os.RemoveAll(sessionDir)
+	session, err := chdb.NewSession(sessionDir)
+	if err != nil {
+		t.Fatalf("new session fail, err: %s", err)
+	}
+	defer session.Cleanup()
+
+	session.Query("USE testdb; INSERT INTO testtable VALUES (1), (2), (3);")
+
+	ret, err := session.Query("SELECT * FROM testtable;")
+	if err != nil {
+		t.Fatalf("Query fail, err: %s", err)
+	}
+	if string(ret.Buf()) != "1\n2\n3\n" {
+		t.Errorf("Query result should be 1\n2\n3\n, got %s", string(ret.Buf()))
+	}
+	db, err := sql.Open("chdb", fmt.Sprintf("session=%s", sessionDir))
+	if err != nil {
+		t.Fatalf("open db fail, err: %s", err)
+	}
+	if db.Ping() != nil {
+		t.Fatalf("ping db fail, err: %s", err)
+	}
+	rows := db.QueryRow("select * from testtable;")
+
+	var bar = 0
+	var count = 1
+	err = rows.Scan(&bar)
+	if err != nil {
+		t.Fatalf("scan fail, err: %s", err)
+	}
+	if bar != count {
+		t.Fatalf("result is not match, want: %d actual: %d", count, bar)
+	}
+	err2 := rows.Scan(&bar)
+	if err2 == nil {
+		t.Fatalf("QueryRow method should return only one item")
+	}
+
+}
+
+func TestExec(t *testing.T) {
+	sessionDir, err := os.MkdirTemp("", "unittest-sessiondata")
+	if err != nil {
+		t.Fatalf("create temp directory fail, err: %s", err)
+	}
+	defer os.RemoveAll(sessionDir)
+	session, err := chdb.NewSession(sessionDir)
+	if err != nil {
+		t.Fatalf("new session fail, err: %s", err)
+	}
+	defer session.Cleanup()
+	session.Query("CREATE DATABASE IF NOT EXISTS testdb; " +
+		"CREATE TABLE IF NOT EXISTS testdb.testtable (id UInt32) ENGINE = MergeTree() ORDER BY id;")
+
+	db, err := sql.Open("chdb", fmt.Sprintf("session=%s", sessionDir))
+	if err != nil {
+		t.Fatalf("open db fail, err: %s", err)
+	}
+	if db.Ping() != nil {
+		t.Fatalf("ping db fail, err: %s", err)
+	}
+
+	_, err = db.Exec("INSERT INTO testdb.testtable VALUES (1), (2), (3);")
+	if err != nil {
+		t.Fatalf("exec failed, err: %s", err)
+	}
+	rows := db.QueryRow("select * from testdb.testtable;")
+
+	var bar = 0
+	var count = 1
+	err = rows.Scan(&bar)
+	if err != nil {
+		t.Fatalf("scan fail, err: %s", err)
+	}
+	if bar != count {
+		t.Fatalf("result is not match, want: %d actual: %d", count, bar)
+	}
+	err2 := rows.Scan(&bar)
+	if err2 == nil {
+		t.Fatalf("QueryRow method should return only one item")
+	}
+
+}
