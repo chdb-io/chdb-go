@@ -185,14 +185,14 @@ func TestDbWithConnection(t *testing.T) {
 
 	connection.Query("USE testdb; INSERT INTO testtable VALUES (1), (2), (3);")
 
-	ret, err := connection.Query("SELECT * FROM testtable;")
+	ret, err := connection.Query("SELECT * FROM testdb.testtable;")
 	if err != nil {
 		t.Fatalf("Query fail, err: %s", err)
 	}
 	if string(ret.Buf()) != "1\n2\n3\n" {
 		t.Errorf("Query result should be 1\n2\n3\n, got %s", string(ret.Buf()))
 	}
-	db, err := sql.Open("chdb", fmt.Sprintf("connection=%s", connectionDir))
+	db, err := sql.Open("chdb", fmt.Sprintf("connection=file:%s/chdb.db", connectionDir))
 	if err != nil {
 		t.Fatalf("open db fail, err: %s", err)
 	}
@@ -200,6 +200,56 @@ func TestDbWithConnection(t *testing.T) {
 		t.Fatalf("ping db fail, err: %s", err)
 	}
 	rows, err := db.Query("select * from testtable;")
+	if err != nil {
+		t.Fatalf("exec create function fail, err: %s", err)
+	}
+	defer rows.Close()
+	cols, err := rows.Columns()
+	if err != nil {
+		t.Fatalf("get result columns fail, err: %s", err)
+	}
+	if len(cols) != 1 {
+		t.Fatalf("result columns length shoule be 3, actual: %d", len(cols))
+	}
+	var bar = 0
+	var count = 1
+	for rows.Next() {
+		err = rows.Scan(&bar)
+		if err != nil {
+			t.Fatalf("scan fail, err: %s", err)
+		}
+		if bar != count {
+			t.Fatalf("result is not match, want: %d actual: %d", count, bar)
+		}
+		count++
+	}
+}
+
+func TestDbWithConnectionSqlDriverOnly(t *testing.T) {
+	connectionDir, err := os.MkdirTemp("", "unittest-connectiondata")
+	if err != nil {
+		t.Fatalf("create temp directory fail, err: %s", err)
+	}
+	defer os.RemoveAll(connectionDir)
+	db, err := sql.Open("chdb", fmt.Sprintf("connection=file:%s/chdb.db", connectionDir))
+	if err != nil {
+		t.Fatalf("open db fail, err: %s", err)
+	}
+	if db.Ping() != nil {
+		t.Fatalf("ping db fail, err: %s", err)
+	}
+
+	_, err = db.Exec("CREATE DATABASE IF NOT EXISTS testdb; " +
+		"CREATE TABLE IF NOT EXISTS testdb.testtable (id UInt32) ENGINE = MergeTree() ORDER BY id;")
+	if err != nil {
+		t.Fatalf("could not create database & table: %s", err)
+	}
+	_, err = db.Exec("INSERT INTO testdb.testtable VALUES (1), (2), (3);")
+	if err != nil {
+		t.Fatalf("could not insert rows in the table: %s", err)
+	}
+
+	rows, err := db.Query("select * from testdb.testtable;")
 	if err != nil {
 		t.Fatalf("exec create function fail, err: %s", err)
 	}

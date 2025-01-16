@@ -153,7 +153,9 @@ func (c *connector) Connect(ctx context.Context) (driver.Conn, error) {
 	}
 	cc := &conn{
 		udfPath: c.udfPath, session: c.session,
-		driverType: c.driverType, bufferSize: c.bufferSize,
+		connection:    c.connection,
+		useConnection: c.useConnection,
+		driverType:    c.driverType, bufferSize: c.bufferSize,
 		useUnsafe: c.useUnsafe,
 	}
 	cc.SetupQueryFun()
@@ -353,7 +355,7 @@ func (c *conn) QueryContext(ctx context.Context, query string, args []driver.Nam
 	}
 
 	buf := result.Buf()
-	if buf == nil {
+	if len(buf) == 0 {
 		return nil, fmt.Errorf("result is nil")
 	}
 	return c.driverType.PrepareRows(result, buf, c.bufferSize, c.useUnsafe)
