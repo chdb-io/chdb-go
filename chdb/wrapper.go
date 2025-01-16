@@ -40,3 +40,16 @@ func queryToBuffer(queryStr, outputFormat, path, udfPath string) (result *chdbst
 	// Call QueryStable with the constructed arguments
 	return chdbstable.QueryStable(len(argv), argv)
 }
+
+func initConnection(connStr string) (result *chdbstable.ChdbConn, err error) {
+	argv := []string{connStr}
+	// Call NewConnection with the constructed arguments
+	return chdbstable.NewConnection(len(argv), argv)
+}
+
+func connQueryToBuffer(conn *chdbstable.ChdbConn, queryStr, outputFormat string) (result *chdbstable.LocalResult, err error) {
+	if outputFormat == "" {
+		outputFormat = "CSV"
+	}
+	return conn.QueryConn(queryStr, outputFormat)
+}

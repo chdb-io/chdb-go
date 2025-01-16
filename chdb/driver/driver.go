@@ -27,6 +27,7 @@ const (
 
 const (
 	sessionOptionKey         = "session"
+	connectionOptionKey      = "connection"
 	udfPathOptionKey         = "udfPath"
 	driverTypeKey            = "driverType"
 	useUnsafeStringReaderKey = "useUnsafeStringReader"
@@ -136,11 +137,13 @@ func (e *execResult) RowsAffected() (int64, error) {
 type queryHandle func(string, ...string) (*chdbstable.LocalResult, error)
 
 type connector struct {
-	udfPath    string
-	driverType DriverType
-	bufferSize int
-	useUnsafe  bool
-	session    *chdb.Session
+	udfPath       string
+	driverType    DriverType
+	bufferSize    int
+	useUnsafe     bool
+	session       *chdb.Session
+	connection    *chdb.Connection
+	useConnection bool
 }
 
 // Connect returns a connection to a database.
@@ -185,6 +188,17 @@ func NewConnect(opts map[string]string) (ret *connector, err error) {
 		if err != nil {
 			return nil, err
 		}
+	}
+	connectionStr, ok := opts[connectionOptionKey]
+	if ok {
+		if ret.session != nil {
+			return nil, fmt.Errorf("could not use both session & connection. please use one of the two")
+		}
+		ret.connection, err = chdb.NewConnection(connectionStr)
+		if err != nil {
+			return nil, err
+		}
+		ret.useConnection = true
 	}
 	driverType, ok := opts[driverTypeKey]
 	if ok {
@@ -238,12 +252,14 @@ func (d Driver) OpenConnector(name string) (driver.Connector, error) {
 }
 
 type conn struct {
-	udfPath    string
-	driverType DriverType
-	bufferSize int
-	useUnsafe  bool
-	session    *chdb.Session
-	QueryFun   queryHandle
+	udfPath       string
+	driverType    DriverType
+	bufferSize    int
+	useUnsafe     bool
+	useConnection bool
+	session       *chdb.Session
+	connection    *chdb.Connection
+	QueryFun      queryHandle
 }
 
 func prepareValues(values []driver.Value) []driver.NamedValue {
@@ -266,6 +282,9 @@ func (c *conn) SetupQueryFun() {
 	c.QueryFun = chdb.Query
 	if c.session != nil {
 		c.QueryFun = c.session.Query
+	}
+	if c.connection != nil {
+		c.QueryFun = c.connection.Query
 	}
 }
 

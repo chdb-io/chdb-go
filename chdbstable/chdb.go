@@ -8,6 +8,7 @@ package chdbstable
 import "C"
 import (
 	"errors"
+	"fmt"
 	"runtime"
 	"unsafe"
 )
@@ -29,11 +30,39 @@ type LocalResult struct {
 	cResult *C.struct_local_result_v2
 }
 
+type ChdbConn struct {
+	conn *C.struct_chdb_conn
+}
+
 // newLocalResult creates a new LocalResult and sets a finalizer to free C memory.
 func newLocalResult(cResult *C.struct_local_result_v2) *LocalResult {
 	result := &LocalResult{cResult: cResult}
 	runtime.SetFinalizer(result, freeLocalResult)
 	return result
+}
+
+// newChdbConn creates a new ChdbConn and sets a finalizer to close the connection (and thus free the memory)
+func newChdbConn(conn *C.struct_chdb_conn) *ChdbConn {
+	result := &ChdbConn{conn: conn}
+	runtime.SetFinalizer(result, closeChdbConn)
+	return result
+}
+
+func NewConnection(argc int, argv []string) (*ChdbConn, error) {
+	cArgv := make([]*C.char, len(argv))
+	for i, s := range argv {
+		cArgv[i] = C.CString(s)
+		defer C.free(unsafe.Pointer(cArgv[i]))
+	}
+	conn := C.connect_chdb(C.int(argc), &cArgv[0])
+	if conn == nil {
+		return nil, fmt.Errorf("could not create a chdb connection")
+	}
+	return newChdbConn(*conn), nil
+}
+
+func closeChdbConn(conn *ChdbConn) {
+	C.close_conn(&conn.conn)
 }
 
 // freeLocalResult is called by the garbage collector.
@@ -60,6 +89,32 @@ func QueryStable(argc int, argv []string) (result *LocalResult, err error) {
 		return nil, &ChdbError{msg: C.GoString(cResult.error_message)}
 	}
 	return newLocalResult(cResult), nil
+}
+
+// QueryStable calls the C function query_conn.
+func (c *ChdbConn) QueryConn(queryStr string, formatStr string) (result *LocalResult, err error) {
+
+	query := C.CString(queryStr)
+	format := C.CString(formatStr)
+	// free the strings in the C heap
+	defer C.free(unsafe.Pointer(query))
+	defer C.free(unsafe.Pointer(format))
+
+	cResult := C.query_conn(c.conn, query, format)
+	if cResult == nil {
+		// According to the C ABI of chDB v1.2.0, the C function query_stable_v2
+		// returns nil if the query returns no data. This is not an error. We
+		// will change this behavior in the future.
+		return newLocalResult(cResult), nil
+	}
+	if cResult.error_message != nil {
+		return nil, &ChdbError{msg: C.GoString(cResult.error_message)}
+	}
+	return newLocalResult(cResult), nil
+}
+
+func (c *ChdbConn) Close() {
+	C.close_conn(&c.conn)
 }
 
 // Accessor methods to access fields of the local_result_v2 struct.
