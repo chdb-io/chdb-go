@@ -14,7 +14,7 @@ type Connection struct {
 	isTemp  bool
 }
 
-// NewSession creates a new session with the given path.
+// NewConnection creates a new connection with the given path.
 // If path is empty, a temporary directory is created.
 // Note: The temporary directory is removed when Close is called.
 func NewConnection(paths ...string) (*Connection, error) {
@@ -52,9 +52,9 @@ func (s *Connection) Query(queryStr string, outputFormats ...string) (result *ch
 	return connQueryToBuffer(s.conn, queryStr, outputFormat)
 }
 
-// Close closes the session and removes the temporary directory
+// Close closes the connection and removes the temporary directory
 //
-//	temporary directory is created when NewSession was called with an empty path.
+//	temporary directory is created when Newconnection was called with an empty path.
 func (s *Connection) Close() {
 	// Remove the temporary directory if it starts with "chdb_"
 	s.conn.Close()
@@ -63,18 +63,18 @@ func (s *Connection) Close() {
 	}
 }
 
-// Cleanup closes the session and removes the directory.
+// Cleanup closes the connection and removes the directory.
 func (s *Connection) Cleanup() {
-	// Remove the session directory, no matter if it is temporary or not
+	// Remove the connection directory, no matter if it is temporary or not
 	_ = os.RemoveAll(s.path)
 }
 
-// Path returns the path of the session.
+// Path returns the path of the connection.
 func (s *Connection) Path() string {
 	return s.path
 }
 
-// IsTemp returns whether the session is temporary.
+// IsTemp returns whether the connection is temporary.
 func (s *Connection) IsTemp() bool {
 	return s.isTemp
 }
