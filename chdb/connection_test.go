@@ -64,11 +64,10 @@ func TestQueryOnConnection(t *testing.T) {
 
 	connection.Query(" INSERT INTO testdb.testtable VALUES (1), (2), (3);")
 
-	ret, err := connection.Query("SELECT * FROM testtable;")
+	ret, err := connection.Query("SELECT * FROM testdb.testtable;")
 	if err != nil {
 		t.Errorf("Query failed: %s", err)
 	}
-	t.Errorf("result is: %s", string(ret.Buf()))
 	if string(ret.Buf()) != "1\n2\n3\n" {
 		t.Errorf("Query result should be 1\n2\n3\n, got %s", string(ret.Buf()))
 	}
