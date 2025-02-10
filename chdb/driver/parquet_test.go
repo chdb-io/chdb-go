@@ -3,10 +3,7 @@ package chdbdriver
 import (
 	"database/sql"
 	"fmt"
-	"os"
 	"testing"
-
-	"github.com/chdb-io/chdb-go/chdb"
 )
 
 func TestDbWithParquet(t *testing.T) {
@@ -49,37 +46,27 @@ func TestDbWithParquet(t *testing.T) {
 }
 
 func TestDBWithParquetSession(t *testing.T) {
-	sessionDir, err := os.MkdirTemp("", "unittest-sessiondata")
-	if err != nil {
-		t.Fatalf("create temp directory fail, err: %s", err)
-	}
-	defer os.RemoveAll(sessionDir)
-	session, err := chdb.NewSession(sessionDir)
-	if err != nil {
-		t.Fatalf("new session fail, err: %s", err)
-	}
-	defer session.Cleanup()
 
-	session.Query("CREATE DATABASE IF NOT EXISTS testdb; " +
-		"CREATE TABLE IF NOT EXISTS testdb.testtable (id UInt32) ENGINE = MergeTree() ORDER BY id;")
+	session.Query(
+		"CREATE TABLE IF NOT EXISTS TestDBWithParquetSession (id UInt32) ENGINE = MergeTree() ORDER BY id;")
 
-	session.Query("INSERT INTO testdb.testtable VALUES (1), (2), (3);")
+	session.Query("INSERT INTO TestDBWithParquetSession VALUES (1), (2), (3);")
 
-	ret, err := session.Query("SELECT * FROM testdb.testtable;")
+	ret, err := session.Query("SELECT * FROM TestDBWithParquetSession;")
 	if err != nil {
 		t.Fatalf("Query fail, err: %s", err)
 	}
 	if string(ret.Buf()) != "1\n2\n3\n" {
 		t.Errorf("Query result should be 1\n2\n3\n, got %s", string(ret.Buf()))
 	}
-	db, err := sql.Open("chdb", fmt.Sprintf("session=%s;driverType=%s", sessionDir, "PARQUET"))
+	db, err := sql.Open("chdb", fmt.Sprintf("session=%s;driverType=%s", session.ConnStr(), "PARQUET"))
 	if err != nil {
 		t.Fatalf("open db fail, err: %s", err)
 	}
 	if db.Ping() != nil {
 		t.Fatalf("ping db fail, err: %s", err)
 	}
-	rows, err := db.Query("select * from testdb.testtable;")
+	rows, err := db.Query("select * from TestDBWithParquetSession;")
 	if err != nil {
 		t.Fatalf("exec create function fail, err: %s", err)
 	}
@@ -106,37 +93,27 @@ func TestDBWithParquetSession(t *testing.T) {
 }
 
 func TestDBWithParquetConnection(t *testing.T) {
-	connectionDir, err := os.MkdirTemp("", "unittest-connectiondata")
-	if err != nil {
-		t.Fatalf("create temp directory fail, err: %s", err)
-	}
-	defer os.RemoveAll(connectionDir)
-	connection, err := chdb.NewConnection(connectionDir)
-	if err != nil {
-		t.Fatalf("new connection fail, err: %s", err)
-	}
-	defer connection.Cleanup()
 
-	connection.Query("CREATE DATABASE IF NOT EXISTS testdb; " +
-		"CREATE TABLE IF NOT EXISTS testdb.testtable (id UInt32) ENGINE = MergeTree() ORDER BY id;")
+	session.Query(
+		"CREATE TABLE IF NOT EXISTS TestDBWithParquetConnection (id UInt32) ENGINE = MergeTree() ORDER BY id;")
 
-	connection.Query("INSERT INTO testdb.testtable VALUES (1), (2), (3);")
+	session.Query("INSERT INTO TestDBWithParquetConnection VALUES (1), (2), (3);")
 
-	ret, err := connection.Query("SELECT * FROM testdb.testtable;")
+	ret, err := session.Query("SELECT * FROM TestDBWithParquetConnection;")
 	if err != nil {
 		t.Fatalf("Query fail, err: %s", err)
 	}
 	if string(ret.Buf()) != "1\n2\n3\n" {
 		t.Errorf("Query result should be 1\n2\n3\n, got %s", string(ret.Buf()))
 	}
-	db, err := sql.Open("chdb", fmt.Sprintf("connection=file:%s/chdb.db;driverType=%s", connectionDir, "PARQUET"))
+	db, err := sql.Open("chdb", fmt.Sprintf("session=%s;driverType=%s", session.ConnStr(), "PARQUET"))
 	if err != nil {
 		t.Fatalf("open db fail, err: %s", err)
 	}
 	if db.Ping() != nil {
 		t.Fatalf("ping db fail, err: %s", err)
 	}
-	rows, err := db.Query("select * from testdb.testtable;")
+	rows, err := db.Query("select * from TestDBWithParquetConnection;")
 	if err != nil {
 		t.Fatalf("exec create function fail, err: %s", err)
 	}
