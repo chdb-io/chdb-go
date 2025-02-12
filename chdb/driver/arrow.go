@@ -11,11 +11,11 @@ import (
 	"github.com/apache/arrow/go/v15/arrow/decimal128"
 	"github.com/apache/arrow/go/v15/arrow/decimal256"
 	"github.com/apache/arrow/go/v15/arrow/ipc"
-	"github.com/chdb-io/chdb-go/chdbstable"
+	chdbpurego "github.com/chdb-io/chdb-go/chdb-purego"
 )
 
 type arrowRows struct {
-	localResult *chdbstable.LocalResult
+	localResult chdbpurego.ChdbResult
 	reader      *ipc.FileReader
 	curRecord   arrow.Record
 	curRow      int64

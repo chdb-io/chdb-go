@@ -1,11 +1,11 @@
 package chdb
 
 import (
-	"github.com/chdb-io/chdb-go/chdbstable"
+	chdbpurego "github.com/chdb-io/chdb-go/chdb-purego"
 )
 
 // Query calls queryToBuffer with a default output format of "CSV" if not provided.
-func Query(queryStr string, outputFormats ...string) (result *chdbstable.LocalResult, err error) {
+func Query(queryStr string, outputFormats ...string) (result chdbpurego.ChdbResult, err error) {
 	outputFormat := "CSV" // Default value
 	if len(outputFormats) > 0 {
 		outputFormat = outputFormats[0]
@@ -14,7 +14,7 @@ func Query(queryStr string, outputFormats ...string) (result *chdbstable.LocalRe
 }
 
 // queryToBuffer constructs the arguments for QueryStable and calls it.
-func queryToBuffer(queryStr, outputFormat, path, udfPath string) (result *chdbstable.LocalResult, err error) {
+func queryToBuffer(queryStr, outputFormat, path, udfPath string) (result chdbpurego.ChdbResult, err error) {
 	argv := []string{"clickhouse", "--multiquery"}
 
 	// Handle output format
@@ -38,18 +38,18 @@ func queryToBuffer(queryStr, outputFormat, path, udfPath string) (result *chdbst
 	}
 
 	// Call QueryStable with the constructed arguments
-	return chdbstable.QueryStable(len(argv), argv)
+	return chdbpurego.RawQuery(len(argv), argv)
 }
 
-func initConnection(connStr string) (result *chdbstable.ChdbConn, err error) {
+func initConnection(connStr string) (result chdbpurego.ChdbConn, err error) {
 	argv := []string{connStr}
 	// Call NewConnection with the constructed arguments
-	return chdbstable.NewConnection(len(argv), argv)
+	return chdbpurego.NewConnection(len(argv), argv)
 }
 
-func connQueryToBuffer(conn *chdbstable.ChdbConn, queryStr, outputFormat string) (result *chdbstable.LocalResult, err error) {
+func connQueryToBuffer(conn chdbpurego.ChdbConn, queryStr, outputFormat string) (result chdbpurego.ChdbResult, err error) {
 	if outputFormat == "" {
 		outputFormat = "CSV"
 	}
-	return conn.QueryConn(queryStr, outputFormat)
+	return conn.Query(queryStr, outputFormat)
 }

@@ -45,21 +45,21 @@ func TestMain(m *testing.M) {
 func TestDb(t *testing.T) {
 	db, err := sql.Open("chdb", "")
 	if err != nil {
-		t.Errorf("open db fail, err:%s", err)
+		t.Fatalf("open db fail, err:%s", err)
 	}
 	if db.Ping() != nil {
-		t.Errorf("ping db fail")
+		t.Fatalf("ping db fail")
 	}
 	rows, err := db.Query(`SELECT 1,'abc'`)
 	if err != nil {
-		t.Errorf("run Query fail, err:%s", err)
+		t.Fatalf("run Query fail, err:%s", err)
 	}
 	cols, err := rows.Columns()
 	if err != nil {
-		t.Errorf("get result columns fail, err: %s", err)
+		t.Fatalf("get result columns fail, err: %s", err)
 	}
 	if len(cols) != 2 {
-		t.Errorf("select result columns length should be 2")
+		t.Fatalf("select result columns length should be 2")
 	}
 	var (
 		bar int

@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/chdb-io/chdb-go/chdb"
-	"github.com/chdb-io/chdb-go/chdbstable"
+	chdbpurego "github.com/chdb-io/chdb-go/chdb-purego"
 	"github.com/huandu/go-sqlbuilder"
 	"github.com/parquet-go/parquet-go"
 
@@ -46,7 +46,7 @@ func (d DriverType) String() string {
 	return ""
 }
 
-func (d DriverType) PrepareRows(result *chdbstable.LocalResult, buf []byte, bufSize int, useUnsafe bool) (driver.Rows, error) {
+func (d DriverType) PrepareRows(result chdbpurego.ChdbResult, buf []byte, bufSize int, useUnsafe bool) (driver.Rows, error) {
 	switch d {
 	case ARROW:
 		reader, err := ipc.NewFileReader(bytes.NewReader(buf))
@@ -133,7 +133,7 @@ func (e *execResult) RowsAffected() (int64, error) {
 	return -1, fmt.Errorf("does not support RowsAffected")
 }
 
-type queryHandle func(string, ...string) (*chdbstable.LocalResult, error)
+type queryHandle func(string, ...string) (chdbpurego.ChdbResult, error)
 
 type connector struct {
 	udfPath    string
@@ -214,12 +214,13 @@ func NewConnect(opts map[string]string) (ret *connector, err error) {
 	if ok {
 		ret.udfPath = udfPath
 	}
-	if ret.session == nil {
-		ret.session, err = chdb.NewSession()
-		if err != nil {
-			return nil, err
-		}
-	}
+	// if ret.session == nil {
+
+	// 	ret.session, err = chdb.NewSession()
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// }
 	return
 }
 

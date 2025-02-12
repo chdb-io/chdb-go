@@ -39,6 +39,8 @@ data will lost after exit. If you want to keep the data, specify a path to a dir
 
 	// If path is specified or no additional arguments, enter interactive mode
 	if len(flag.Args()) == 0 {
+		t := "/tmp"
+		pathFlag = &t
 		var err error
 		var session *chdb.Session
 		if *pathFlag != "" {

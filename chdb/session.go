@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/chdb-io/chdb-go/chdbstable"
+	chdbpurego "github.com/chdb-io/chdb-go/chdb-purego"
 )
 
 var (
@@ -13,7 +13,7 @@ var (
 )
 
 type Session struct {
-	conn    *chdbstable.ChdbConn
+	conn    chdbpurego.ChdbConn
 	connStr string
 	path    string
 	isTemp  bool
@@ -53,7 +53,7 @@ func NewSession(paths ...string) (*Session, error) {
 }
 
 // Query calls queryToBuffer with a default output format of "CSV" if not provided.
-func (s *Session) Query(queryStr string, outputFormats ...string) (result *chdbstable.LocalResult, err error) {
+func (s *Session) Query(queryStr string, outputFormats ...string) (result chdbpurego.ChdbResult, err error) {
 	outputFormat := "CSV" // Default value
 	if len(outputFormats) > 0 {
 		outputFormat = outputFormats[0]
