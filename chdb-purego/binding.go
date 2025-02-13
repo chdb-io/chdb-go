@@ -35,14 +35,13 @@ func findLibrary() string {
 }
 
 var (
-	queryStable   func(argc int, argv **byte) *local_result
+	queryStable   func(argc int, argv []string) *local_result
 	freeResult    func(result *local_result)
-	queryStableV2 func(argc int, argv **byte) *local_result_v2
+	queryStableV2 func(argc int, argv []string) *local_result_v2
 	freeResultV2  func(result *local_result_v2)
-	connectChdb   func(argc int, argv **byte) **chdb_conn
+	connectChdb   func(argc int, argv []string) **chdb_conn
 	closeConn     func(conn **chdb_conn)
-	queryConn     func(conn *chdb_conn, query *byte, format *byte) *local_result_v2
-	queryConnV2   func(conn *chdb_conn, query string, format string) *local_result_v2
+	queryConn     func(conn *chdb_conn, query string, format string) *local_result_v2
 )
 
 func init() {
@@ -54,9 +53,10 @@ func init() {
 	purego.RegisterLibFunc(&queryStable, libchdb, "query_stable")
 	purego.RegisterLibFunc(&freeResult, libchdb, "free_result")
 	purego.RegisterLibFunc(&queryStableV2, libchdb, "query_stable_v2")
+
 	purego.RegisterLibFunc(&freeResultV2, libchdb, "free_result_v2")
 	purego.RegisterLibFunc(&connectChdb, libchdb, "connect_chdb")
 	purego.RegisterLibFunc(&closeConn, libchdb, "close_conn")
 	purego.RegisterLibFunc(&queryConn, libchdb, "query_conn")
-	purego.RegisterLibFunc(&queryConnV2, libchdb, "query_conn")
+
 }

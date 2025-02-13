@@ -3,7 +3,6 @@ package chdbpurego
 import (
 	"errors"
 	"fmt"
-	"runtime"
 	"unsafe"
 )
 
@@ -15,6 +14,7 @@ func newChdbResult(cRes *local_result_v2) ChdbResult {
 	res := &result{
 		localResv2: cRes,
 	}
+	// runtime.SetFinalizer(res, res.Free)
 	return res
 
 }
@@ -90,15 +90,15 @@ func (c *result) String() string {
 }
 
 type connection struct {
-	conn   **chdb_conn
-	pinner runtime.Pinner
+	conn **chdb_conn
 }
 
 func NewChdbConn(conn **chdb_conn) ChdbConn {
-	return &connection{
-		conn:   conn,
-		pinner: runtime.Pinner{},
+	c := &connection{
+		conn: conn,
 	}
+	// runtime.SetFinalizer(c, c.Close)
+	return c
 }
 
 // Close implements ChdbConn.
@@ -114,14 +114,10 @@ func (c *connection) Query(queryStr string, formatStr string) (result ChdbResult
 	if c.conn == nil {
 		return nil, fmt.Errorf("invalid connection")
 	}
-	defer c.pinner.Unpin()
-	// qPtr := stringToPtr(queryStr, &c.pinner)
-	// fPtr := stringToPtr(formatStr, &c.pinner)
-	deref := *c.conn
-	// fmt.Printf("queryPtr: %p, formatPtr: %p, conn: %p\n", qPtr, fPtr, deref)
-	// fmt.Printf("query string: %s\n", queryStr)
-	// fmt.Printf("format string: %s\n", formatStr)
-	res := queryConnV2(deref, queryStr, formatStr)
+
+	rawConn := *c.conn
+
+	res := queryConn(rawConn, queryStr, formatStr)
 	if res == nil {
 		// According to the C ABI of chDB v1.2.0, the C function query_stable_v2
 		// returns nil if the query returns no data. This is not an error. We
@@ -147,18 +143,7 @@ func (c *connection) Ready() bool {
 }
 
 func RawQuery(argc int, argv []string) (result ChdbResult, err error) {
-	pinner := runtime.Pinner{}
-	defer pinner.Unpin()
-
-	cArgv := make([]*byte, len(argv))
-	for idx, arg := range argv {
-		cArgv[idx] = (*byte)(unsafe.Pointer(&([]byte(arg + "\x00")[0])))
-
-	}
-	cArgvPtr := (**byte)(unsafe.Pointer(&cArgv[0]))
-	pinner.Pin(cArgvPtr)
-
-	res := queryStableV2(argc, cArgvPtr)
+	res := queryStableV2(argc, argv)
 	if res == nil {
 		// According to the C ABI of chDB v1.2.0, the C function query_stable_v2
 		// returns nil if the query returns no data. This is not an error. We
@@ -173,17 +158,7 @@ func RawQuery(argc int, argv []string) (result ChdbResult, err error) {
 }
 
 func NewConnection(argc int, argv []string) (ChdbConn, error) {
-	pinner := runtime.Pinner{}
-	defer pinner.Unpin()
-
-	cArgv := make([]*byte, len(argv))
-	for idx, arg := range argv {
-		cArgv[idx] = (*byte)(unsafe.Pointer(&([]byte(arg + "\x00")[0])))
-
-	}
-	cArgvPtr := (**byte)(unsafe.Pointer(&cArgv[0]))
-	pinner.Pin(cArgvPtr)
-	conn := connectChdb(argc, cArgvPtr)
+	conn := connectChdb(argc, argv)
 	if conn == nil {
 		return nil, fmt.Errorf("could not create a chdb connection")
 	}

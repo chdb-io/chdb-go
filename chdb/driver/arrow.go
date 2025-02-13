@@ -36,7 +36,9 @@ func (r *arrowRows) Close() error {
 	// ignore reader close
 	_ = r.reader.Close()
 	r.reader = nil
+	r.localResult.Free()
 	r.localResult = nil
+
 	return nil
 }
 

@@ -214,13 +214,13 @@ func NewConnect(opts map[string]string) (ret *connector, err error) {
 	if ok {
 		ret.udfPath = udfPath
 	}
-	// if ret.session == nil {
+	if ret.session == nil {
 
-	// 	ret.session, err = chdb.NewSession()
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// }
+		ret.session, err = chdb.NewSession()
+		if err != nil {
+			return nil, err
+		}
+	}
 	return
 }
 
