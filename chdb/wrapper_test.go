@@ -33,9 +33,17 @@ func TestQueryToBuffer(t *testing.T) {
 		},
 		// Session
 		{
-			name: "Session Query 1",
-			queryStr: "CREATE DATABASE IF NOT EXISTS testdb; " +
-				"CREATE TABLE IF NOT EXISTS testdb.testtable (id UInt32) ENGINE = MergeTree() ORDER BY id;",
+			name:         "Session Query 1",
+			queryStr:     "CREATE DATABASE IF NOT EXISTS testdb; ",
+			outputFormat: "CSV",
+
+			udfPath:        "",
+			expectedErrMsg: "",
+			expectedResult: "",
+		},
+		{
+			name:         "Session Query 1 bis",
+			queryStr:     "CREATE TABLE IF NOT EXISTS testdb.testtable (id UInt32) ENGINE = MergeTree() ORDER BY id;",
 			outputFormat: "CSV",
 
 			udfPath:        "",
