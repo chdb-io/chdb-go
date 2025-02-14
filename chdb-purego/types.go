@@ -32,18 +32,29 @@ type chdb_conn struct {
 }
 
 type ChdbResult interface {
+	// Raw bytes result buffer, used for reading the result of clickhouse query
 	Buf() []byte
+	// String rapresentation of the the buffer
 	String() string
+	// Lenght in bytes of the buffer
 	Len() int
+	// Number of seconds elapsed for the query execution
 	Elapsed() float64
+	// Amount of rows returned by the query
 	RowsRead() uint64
+	// Amount of bytes returned by the query
 	BytesRead() uint64
+	// If the query had any error during execution, here you can retrieve the cause.
 	Error() error
+	// Free the query result and all the allocated memory
 	Free() error
 }
 
 type ChdbConn interface {
+	//Query executes the given queryStr in the underlying clickhouse connection, and output the result in the given formatStr
 	Query(queryStr string, formatStr string) (result ChdbResult, err error)
+	//Ready returns a boolean indicating if the connections is successfully established.
 	Ready() bool
+	//Close the connection and free the underlying allocated memory
 	Close()
 }

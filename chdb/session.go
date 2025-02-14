@@ -52,14 +52,13 @@ func NewSession(paths ...string) (*Session, error) {
 	return globalSession, nil
 }
 
-// Query calls queryToBuffer with a default output format of "CSV" if not provided.
+// Query calls `query_conn` function with the current connection and a default output format of "CSV" if not provided.
 func (s *Session) Query(queryStr string, outputFormats ...string) (result chdbpurego.ChdbResult, err error) {
 	outputFormat := "CSV" // Default value
 	if len(outputFormats) > 0 {
 		outputFormat = outputFormats[0]
 	}
 	return s.conn.Query(queryStr, outputFormat)
-
 }
 
 // Close closes the session and removes the temporary directory
@@ -85,6 +84,7 @@ func (s *Session) Path() string {
 	return s.path
 }
 
+// ConnStr returns the current connection string used for the underlying connection
 func (s *Session) ConnStr() string {
 	return s.connStr
 }

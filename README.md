@@ -67,9 +67,9 @@ func main() {
 	fmt.Println(result)
 
 	tmp_path := filepath.Join(os.TempDir(), "chdb_test")
-	defer os.RemoveAll(tmp_path)
 	// Stateful Query (persistent)
 	session, _ := chdb.NewSession(tmp_path)
+	// session cleanup will also delete the folder
 	defer session.Cleanup()
 
 	_, err = session.Query("CREATE DATABASE IF NOT EXISTS testdb; " +

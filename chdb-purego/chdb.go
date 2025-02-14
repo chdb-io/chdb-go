@@ -93,7 +93,7 @@ type connection struct {
 	conn **chdb_conn
 }
 
-func NewChdbConn(conn **chdb_conn) ChdbConn {
+func newChdbConn(conn **chdb_conn) ChdbConn {
 	c := &connection{
 		conn: conn,
 	}
@@ -131,7 +131,6 @@ func (c *connection) Query(queryStr string, formatStr string) (result ChdbResult
 	return newChdbResult(res), nil
 }
 
-// Ready implements ChdbConn.
 func (c *connection) Ready() bool {
 	if c.conn != nil {
 		deref := *c.conn
@@ -142,6 +141,7 @@ func (c *connection) Ready() bool {
 	return false
 }
 
+// RawQuery will execute the given clickouse query without using any session.
 func RawQuery(argc int, argv []string) (result ChdbResult, err error) {
 	res := queryStableV2(argc, argv)
 	if res == nil {
@@ -157,10 +157,38 @@ func RawQuery(argc int, argv []string) (result ChdbResult, err error) {
 	return newChdbResult(res), nil
 }
 
+// Session will keep the state of query.
+// If path is None, it will create a temporary directory and use it as the database path
+// and the temporary directory will be removed when the session is closed.
+// You can also pass in a path to create a database at that path where will keep your data.
+//
+// You can also use a connection string to pass in the path and other parameters.
+// Examples:
+//   - ":memory:" (for in-memory database)
+//   - "test.db" (for relative path)
+//   - "file:test.db" (same as above)
+//   - "/path/to/test.db" (for absolute path)
+//   - "file:/path/to/test.db" (same as above)
+//   - "file:test.db?param1=value1&param2=value2" (for relative path with query params)
+//   - "file::memory:?verbose&log-level=test" (for in-memory database with query params)
+//   - "///path/to/test.db?param1=value1&param2=value2" (for absolute path)
+//
+// Connection string args handling:
+//
+//	Connection string can contain query params like "file:test.db?param1=value1&param2=value2"
+//	"param1=value1" will be passed to ClickHouse engine as start up args.
+//
+//	For more details, see `clickhouse local --help --verbose`
+//	Some special args handling:
+//	- "mode=ro" would be "--readonly=1" for clickhouse (read-only mode)
+//
+// Important:
+//   - There can be only one session at a time. If you want to create a new session, you need to close the existing one.
+//   - Creating a new session will close the existing one.
 func NewConnection(argc int, argv []string) (ChdbConn, error) {
 	conn := connectChdb(argc, argv)
 	if conn == nil {
 		return nil, fmt.Errorf("could not create a chdb connection")
 	}
-	return NewChdbConn(conn), nil
+	return newChdbConn(conn), nil
 }
