@@ -13,8 +13,6 @@ import (
 	chdbpurego "github.com/chdb-io/chdb-go/chdb-purego"
 	"github.com/huandu/go-sqlbuilder"
 	"github.com/parquet-go/parquet-go"
-
-	"github.com/apache/arrow/go/v15/arrow/ipc"
 )
 
 type DriverType int
@@ -48,12 +46,6 @@ func (d DriverType) String() string {
 
 func (d DriverType) PrepareRows(result chdbpurego.ChdbResult, buf []byte, bufSize int, useUnsafe bool) (driver.Rows, error) {
 	switch d {
-	case ARROW:
-		reader, err := ipc.NewFileReader(bytes.NewReader(buf))
-		if err != nil {
-			return nil, err
-		}
-		return &arrowRows{localResult: result, reader: reader}, nil
 	case PARQUET:
 		reader := parquet.NewGenericReader[any](bytes.NewReader(buf))
 		return &parquetRows{
@@ -214,13 +206,13 @@ func NewConnect(opts map[string]string) (ret *connector, err error) {
 	if ok {
 		ret.udfPath = udfPath
 	}
-	// if ret.session == nil {
+	if ret.session == nil {
 
-	// 	ret.session, err = chdb.NewSession()
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// }
+		ret.session, err = chdb.NewSession()
+		if err != nil {
+			return nil, err
+		}
+	}
 	return
 }
 

@@ -60,7 +60,6 @@ func (s *Session) Query(queryStr string, outputFormats ...string) (result chdbpu
 	}
 	return s.conn.Query(queryStr, outputFormat)
 
-	// return connQueryToBuffer(s.conn, queryStr, outputFormat)
 }
 
 // Close closes the session and removes the temporary directory
