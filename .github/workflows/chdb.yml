@@ -32,7 +32,7 @@ jobs:
       run: ./chdb-go "SELECT 12345"
 
   build_mac:
-    runs-on: macos-12
+    runs-on: macos-15
     steps:
     - uses: actions/checkout@v3
     - name: Fetch library
