@@ -56,12 +56,12 @@ func (c *result) Error() error {
 }
 
 // Free implements ChdbResult.
-func (c *result) Free() error {
+func (c *result) Free() {
 	if c.localResv2 != nil {
 		freeResultV2(c.localResv2)
 		c.localResv2 = nil
 	}
-	return nil
+
 }
 
 // Len implements ChdbResult.

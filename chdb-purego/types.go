@@ -47,7 +47,7 @@ type ChdbResult interface {
 	// If the query had any error during execution, here you can retrieve the cause.
 	Error() error
 	// Free the query result and all the allocated memory
-	Free() error
+	Free()
 }
 
 type ChdbConn interface {
