@@ -67,8 +67,8 @@ func (d DriverType) PrepareRows(result chdbpurego.ChdbResult, buf []byte, bufSiz
 
 func parseDriverType(s string) DriverType {
 	switch strings.ToUpper(s) {
-	case "ARROW":
-		return ARROW
+	// case "ARROW":
+	// 	return ARROW
 	case "PARQUET":
 		return PARQUET
 	}
@@ -190,7 +190,7 @@ func NewConnect(opts map[string]string) (ret *connector, err error) {
 	if ok {
 		ret.driverType = parseDriverType(driverType)
 	} else {
-		ret.driverType = ARROW //default to arrow
+		ret.driverType = PARQUET //default to parquet
 	}
 	bufferSize, ok := opts[driverBufferSizeKey]
 	if ok {
@@ -214,13 +214,13 @@ func NewConnect(opts map[string]string) (ret *connector, err error) {
 	if ok {
 		ret.udfPath = udfPath
 	}
-	if ret.session == nil {
+	// if ret.session == nil {
 
-		ret.session, err = chdb.NewSession()
-		if err != nil {
-			return nil, err
-		}
-	}
+	// 	ret.session, err = chdb.NewSession()
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// }
 	return
 }
 
