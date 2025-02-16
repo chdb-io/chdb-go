@@ -56,10 +56,9 @@ func TestQuery(t *testing.T) {
 	session, _ := NewSession()
 	defer session.Cleanup()
 
-	session.Query("CREATE DATABASE IF NOT EXISTS testdb; " +
-		"CREATE TABLE IF NOT EXISTS testdb.testtable (id UInt32) ENGINE = MergeTree() ORDER BY id;")
+	session.Query("CREATE TABLE IF NOT EXISTS testtable (id UInt32) ENGINE = MergeTree() ORDER BY id;")
 
-	session.Query("USE testdb; INSERT INTO testtable VALUES (1), (2), (3);")
+	session.Query("INSERT INTO testtable VALUES (1), (2), (3);")
 
 	ret, err := session.Query("SELECT * FROM testtable;")
 	if err != nil {
