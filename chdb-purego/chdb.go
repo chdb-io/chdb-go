@@ -141,22 +141,6 @@ func (c *connection) Ready() bool {
 	return false
 }
 
-// RawQuery will execute the given clickouse query without using any session.
-func RawQuery(argc int, argv []string) (result ChdbResult, err error) {
-	res := queryStableV2(argc, argv)
-	if res == nil {
-		// According to the C ABI of chDB v1.2.0, the C function query_stable_v2
-		// returns nil if the query returns no data. This is not an error. We
-		// will change this behavior in the future.
-		return newChdbResult(res), nil
-	}
-	if res.error_message != nil {
-		return nil, errors.New(ptrToGoString(res.error_message))
-	}
-
-	return newChdbResult(res), nil
-}
-
 // Session will keep the state of query.
 // If path is None, it will create a temporary directory and use it as the database path
 // and the temporary directory will be removed when the session is closed.

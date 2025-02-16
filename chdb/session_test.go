@@ -2,6 +2,7 @@ package chdb
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -48,5 +49,51 @@ func TestSessionCleanup(t *testing.T) {
 	// Check if the session directory has been removed
 	if _, err := os.Stat(session.Path()); !os.IsNotExist(err) {
 		t.Errorf("Session directory should be removed after Cleanup: %s", session.Path())
+	}
+}
+
+func TestQuery(t *testing.T) {
+	session, _ := NewSession()
+	defer session.Cleanup()
+
+	session.Query("CREATE DATABASE IF NOT EXISTS testdb; " +
+		"CREATE TABLE IF NOT EXISTS testdb.testtable (id UInt32) ENGINE = MergeTree() ORDER BY id;")
+
+	session.Query("USE testdb; INSERT INTO testtable VALUES (1), (2), (3);")
+
+	ret, err := session.Query("SELECT * FROM testtable;")
+	if err != nil {
+		t.Errorf("Query failed: %s", err)
+	}
+	if string(ret.Buf()) != "1\n2\n3\n" {
+		t.Errorf("Query result should be 1\n2\n3\n, got %s", string(ret.Buf()))
+	}
+}
+
+func TestSessionPathAndIsTemp(t *testing.T) {
+	// Create a new session and check its Path and IsTemp
+	session, _ := NewSession()
+
+	if session.Path() == "" {
+		t.Errorf("Session path should not be empty")
+	}
+
+	if !session.IsTemp() {
+		t.Errorf("Session should be temporary")
+	}
+	session.Close()
+
+	// Create a new session with a specific path and check its Path and IsTemp
+	path := filepath.Join(os.TempDir(), "chdb_test2")
+	defer os.RemoveAll(path)
+	session, _ = NewSession(path)
+	defer session.Cleanup()
+
+	if session.Path() != path {
+		t.Errorf("Session path should be %s, got %s", path, session.Path())
+	}
+
+	if session.IsTemp() {
+		t.Errorf("Session should not be temporary")
 	}
 }
