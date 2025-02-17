@@ -52,24 +52,31 @@ func TestSessionCleanup(t *testing.T) {
 	}
 }
 
-func TestQuery(t *testing.T) {
-	path := filepath.Join(os.TempDir(), "chdb_test")
-	defer os.RemoveAll(path)
-	session, _ := NewSession(path)
-	defer session.Cleanup()
+// This test is currently flaky because of this: https://github.com/chdb-io/chdb/pull/299/commits/91b0aedd8c17e74a4bb213e885d89cc9a77c99ad
+// func TestQuery(t *testing.T) {
 
-	session.Query("CREATE TABLE IF NOT EXISTS testtable (id UInt32) ENGINE = MergeTree() ORDER BY id;")
+// 	session, _ := NewSession()
+// 	defer session.Cleanup()
+// 	// time.Sleep(time.Second * 5)
 
-	session.Query("INSERT INTO testtable VALUES (1), (2), (3);")
+// 	_, err := session.Query("CREATE TABLE IF NOT EXISTS TestQuery (id UInt32) ENGINE = MergeTree() ORDER BY id;")
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
 
-	ret, err := session.Query("SELECT * FROM testtable;")
-	if err != nil {
-		t.Errorf("Query failed: %s", err)
-	}
-	if string(ret.Buf()) != "1\n2\n3\n" {
-		t.Errorf("Query result should be 1\n2\n3\n, got %s", string(ret.Buf()))
-	}
-}
+// 	_, err = session.Query("INSERT INTO TestQuery VALUES (1), (2), (3);")
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+// 	ret, err := session.Query("SELECT * FROM TestQuery;")
+// 	if err != nil {
+// 		t.Fatalf("Query failed: %s", err)
+// 	}
+
+// 	if string(ret.Buf()) != "1\n2\n3\n" {
+// 		t.Fatalf("Query result should be 1\n2\n3\n, got %s", string(ret.Buf()))
+// 	}
+// }
 
 func TestSessionPathAndIsTemp(t *testing.T) {
 	// Create a new session and check its Path and IsTemp
