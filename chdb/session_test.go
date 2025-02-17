@@ -53,7 +53,9 @@ func TestSessionCleanup(t *testing.T) {
 }
 
 func TestQuery(t *testing.T) {
-	session, _ := NewSession()
+	path := filepath.Join(os.TempDir(), "chdb_test")
+	defer os.RemoveAll(path)
+	session, _ := NewSession(path)
 	defer session.Cleanup()
 
 	session.Query("CREATE TABLE IF NOT EXISTS testtable (id UInt32) ENGINE = MergeTree() ORDER BY id;")
