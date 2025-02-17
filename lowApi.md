@@ -15,7 +15,7 @@ import "github.com/chdb-io/chdb-go/chdb-purego"
 
 
 <a name="ChdbConn"></a>
-## type [ChdbConn](<https://github.com/agoncear-mwb/chdb-go/blob/main/chdb-purego/types.go#L53-L60>)
+## type [ChdbConn](<https://github.com/chdb-io/chdb-go/blob/main/chdb-purego/types.go#L53-L60>)
 
 
 
@@ -31,7 +31,7 @@ type ChdbConn interface {
 ```
 
 <a name="NewConnection"></a>
-### func [NewConnection](<https://github.com/agoncear-mwb/chdb-go/blob/main/chdb-purego/chdb.go#L188>)
+### func [NewConnection](<https://github.com/chdb-io/chdb-go/blob/main/chdb-purego/chdb.go#L188>)
 
 ```go
 func NewConnection(argc int, argv []string) (ChdbConn, error)
@@ -67,7 +67,7 @@ Important:
 - Creating a new session will close the existing one.
 
 <a name="ChdbResult"></a>
-## type [ChdbResult](<https://github.com/agoncear-mwb/chdb-go/blob/main/chdb-purego/types.go#L34-L51>)
+## type [ChdbResult](<https://github.com/chdb-io/chdb-go/blob/main/chdb-purego/types.go#L34-L51>)
 
 
 
@@ -93,7 +93,7 @@ type ChdbResult interface {
 ```
 
 <a name="RawQuery"></a>
-### func [RawQuery](<https://github.com/agoncear-mwb/chdb-go/blob/main/chdb-purego/chdb.go#L145>)
+### func [RawQuery](<https://github.com/chdb-io/chdb-go/blob/main/chdb-purego/chdb.go#L145>)
 
 ```go
 func RawQuery(argc int, argv []string) (result ChdbResult, err error)
