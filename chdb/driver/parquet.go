@@ -9,7 +9,7 @@ import (
 
 	"reflect"
 
-	"github.com/chdb-io/chdb-go/chdbstable"
+	chdbpurego "github.com/chdb-io/chdb-go/chdb-purego"
 	"github.com/parquet-go/parquet-go"
 )
 
@@ -24,7 +24,7 @@ func getStringFromBytes(v parquet.Value) string {
 }
 
 type parquetRows struct {
-	localResult           *chdbstable.LocalResult     // result from clickhouse
+	localResult           chdbpurego.ChdbResult       // result from clickhouse
 	reader                *parquet.GenericReader[any] // parquet reader
 	curRecord             parquet.Row                 // TODO: delete this?
 	buffer                []parquet.Row               // record buffer
@@ -51,7 +51,9 @@ func (r *parquetRows) Close() error {
 	// ignore reader close
 	_ = r.reader.Close()
 	r.reader = nil
+	r.localResult.Free()
 	r.localResult = nil
+
 	r.buffer = nil
 	return nil
 }

@@ -10,11 +10,9 @@ import (
 	"strings"
 
 	"github.com/chdb-io/chdb-go/chdb"
-	"github.com/chdb-io/chdb-go/chdbstable"
+	chdbpurego "github.com/chdb-io/chdb-go/chdb-purego"
 	"github.com/huandu/go-sqlbuilder"
 	"github.com/parquet-go/parquet-go"
-
-	"github.com/apache/arrow/go/v15/arrow/ipc"
 )
 
 type DriverType int
@@ -46,14 +44,8 @@ func (d DriverType) String() string {
 	return ""
 }
 
-func (d DriverType) PrepareRows(result *chdbstable.LocalResult, buf []byte, bufSize int, useUnsafe bool) (driver.Rows, error) {
+func (d DriverType) PrepareRows(result chdbpurego.ChdbResult, buf []byte, bufSize int, useUnsafe bool) (driver.Rows, error) {
 	switch d {
-	case ARROW:
-		reader, err := ipc.NewFileReader(bytes.NewReader(buf))
-		if err != nil {
-			return nil, err
-		}
-		return &arrowRows{localResult: result, reader: reader}, nil
 	case PARQUET:
 		reader := parquet.NewGenericReader[any](bytes.NewReader(buf))
 		return &parquetRows{
@@ -67,8 +59,8 @@ func (d DriverType) PrepareRows(result *chdbstable.LocalResult, buf []byte, bufS
 
 func parseDriverType(s string) DriverType {
 	switch strings.ToUpper(s) {
-	case "ARROW":
-		return ARROW
+	// case "ARROW":
+	// 	return ARROW
 	case "PARQUET":
 		return PARQUET
 	}
@@ -133,7 +125,7 @@ func (e *execResult) RowsAffected() (int64, error) {
 	return -1, fmt.Errorf("does not support RowsAffected")
 }
 
-type queryHandle func(string, ...string) (*chdbstable.LocalResult, error)
+type queryHandle func(string, ...string) (chdbpurego.ChdbResult, error)
 
 type connector struct {
 	udfPath    string
@@ -190,7 +182,7 @@ func NewConnect(opts map[string]string) (ret *connector, err error) {
 	if ok {
 		ret.driverType = parseDriverType(driverType)
 	} else {
-		ret.driverType = ARROW //default to arrow
+		ret.driverType = PARQUET //default to parquet
 	}
 	bufferSize, ok := opts[driverBufferSizeKey]
 	if ok {
@@ -213,6 +205,13 @@ func NewConnect(opts map[string]string) (ret *connector, err error) {
 	udfPath, ok := opts[udfPathOptionKey]
 	if ok {
 		ret.udfPath = udfPath
+	}
+	if ret.session == nil {
+
+		ret.session, err = chdb.NewSession()
+		if err != nil {
+			return nil, err
+		}
 	}
 	return
 }
@@ -243,7 +242,8 @@ type conn struct {
 	bufferSize int
 	useUnsafe  bool
 	session    *chdb.Session
-	QueryFun   queryHandle
+
+	QueryFun queryHandle
 }
 
 func prepareValues(values []driver.Value) []driver.NamedValue {
@@ -267,6 +267,7 @@ func (c *conn) SetupQueryFun() {
 	if c.session != nil {
 		c.QueryFun = c.session.Query
 	}
+
 }
 
 func (c *conn) Query(query string, values []driver.Value) (driver.Rows, error) {
@@ -334,7 +335,7 @@ func (c *conn) QueryContext(ctx context.Context, query string, args []driver.Nam
 	}
 
 	buf := result.Buf()
-	if buf == nil {
+	if len(buf) == 0 {
 		return nil, fmt.Errorf("result is nil")
 	}
 	return c.driverType.PrepareRows(result, buf, c.bufferSize, c.useUnsafe)
