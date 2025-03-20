@@ -10,6 +10,7 @@ func Query(queryStr string, outputFormats ...string) (result chdbpurego.ChdbResu
 	if len(outputFormats) > 0 {
 		outputFormat = outputFormats[0]
 	}
+	// tempSession, err := initConnection(":memory:?verbose&log-level=test")
 	tempSession, err := initConnection(":memory:")
 	if err != nil {
 		return nil, err
@@ -19,7 +20,5 @@ func Query(queryStr string, outputFormats ...string) (result chdbpurego.ChdbResu
 }
 
 func initConnection(connStr string) (result chdbpurego.ChdbConn, err error) {
-	argv := []string{connStr}
-	// Call NewConnection with the constructed arguments
-	return chdbpurego.NewConnection(len(argv), argv)
+	return chdbpurego.NewConnectionFromConnString(connStr)
 }
