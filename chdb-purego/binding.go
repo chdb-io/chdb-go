@@ -39,7 +39,7 @@ var (
 	freeResult    func(result *local_result)
 	queryStableV2 func(argc int, argv []string) *local_result_v2
 	freeResultV2  func(result *local_result_v2)
-	connectChdb   func(argc int, argv []string) **chdb_conn
+	connectChdb   func(argc int, argv []*byte) **chdb_conn
 	closeConn     func(conn **chdb_conn)
 	queryConn     func(conn *chdb_conn, query string, format string) *local_result_v2
 )

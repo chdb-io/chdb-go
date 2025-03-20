@@ -3,7 +3,12 @@ package chdbpurego
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 	"unsafe"
+
+	"golang.org/x/sys/unix"
 )
 
 type result struct {
@@ -141,12 +146,66 @@ func (c *connection) Ready() bool {
 	return false
 }
 
+// NewConnection is the low level function to create a new connection to the chdb server.
+// using NewConnectionFromConnString is recommended.
+//
 // Session will keep the state of query.
 // If path is None, it will create a temporary directory and use it as the database path
 // and the temporary directory will be removed when the session is closed.
 // You can also pass in a path to create a database at that path where will keep your data.
+// This is a thin wrapper around the connect_chdb C API.
+// the argc and argv should be like:
+//   - argc = 1, argv = []string{"--path=/tmp/chdb"}
+//   - argc = 2, argv = []string{"--path=/tmp/chdb", "--readonly=1"}
 //
-// You can also use a connection string to pass in the path and other parameters.
+// Important:
+//   - There can be only one session at a time. If you want to create a new session, you need to close the existing one.
+//   - Creating a new session will close the existing one.
+//   - You need to ensure that the path exists before creating a new session. Or you can use NewConnectionFromConnString.
+func NewConnection(argc int, argv []string) (ChdbConn, error) {
+	var new_argv []string
+	if (argc > 0 && argv[0] != "clickhouse") || argc == 0 {
+		new_argv = make([]string, argc+1)
+		new_argv[0] = "clickhouse"
+		copy(new_argv[1:], argv)
+	} else {
+		new_argv = argv
+	}
+
+	// Convert string slice to C-style char pointers in one step
+	c_argv := make([]*byte, len(new_argv))
+	for i, str := range new_argv {
+		c_argv[i] = (*byte)(unsafe.Pointer(unsafe.StringData(str)))
+	}
+
+	// debug print new_argv
+	for _, arg := range new_argv {
+		fmt.Println("arg: ", arg)
+	}
+
+	var conn **chdb_conn
+	var err error
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				err = fmt.Errorf("C++ exception: %v", r)
+			}
+		}()
+		conn = connectChdb(len(new_argv), c_argv)
+	}()
+
+	if err != nil {
+		return nil, err
+	}
+
+	if conn == nil {
+		return nil, fmt.Errorf("could not create a chdb connection")
+	}
+	return newChdbConn(conn), nil
+}
+
+// NewConnectionFromConnString creates a new connection to the chdb server using a connection string.
+// You can use a connection string to pass in the path and other parameters.
 // Examples:
 //   - ":memory:" (for in-memory database)
 //   - "test.db" (for relative path)
@@ -169,10 +228,99 @@ func (c *connection) Ready() bool {
 // Important:
 //   - There can be only one session at a time. If you want to create a new session, you need to close the existing one.
 //   - Creating a new session will close the existing one.
-func NewConnection(argc int, argv []string) (ChdbConn, error) {
-	conn := connectChdb(argc, argv)
-	if conn == nil {
-		return nil, fmt.Errorf("could not create a chdb connection")
+func NewConnectionFromConnString(conn_string string) (ChdbConn, error) {
+	if conn_string == "" || conn_string == ":memory:" {
+		return NewConnection(0, []string{})
 	}
-	return newChdbConn(conn), nil
+
+	// Handle file: prefix
+	workingStr := conn_string
+	if strings.HasPrefix(workingStr, "file:") {
+		workingStr = workingStr[5:]
+		// Handle triple slash for absolute paths
+		if strings.HasPrefix(workingStr, "///") {
+			workingStr = workingStr[2:] // Remove two slashes, keep one
+		}
+	}
+
+	// Split path and parameters
+	var path string
+	var params []string
+	if queryPos := strings.Index(workingStr, "?"); queryPos != -1 {
+		path = workingStr[:queryPos]
+		paramStr := workingStr[queryPos+1:]
+
+		// Parse parameters
+		for _, param := range strings.Split(paramStr, "&") {
+			if param == "" {
+				continue
+			}
+			if eqPos := strings.Index(param, "="); eqPos != -1 {
+				key := param[:eqPos]
+				value := param[eqPos+1:]
+				if key == "mode" && value == "ro" {
+					params = append(params, "--readonly=1")
+				} else if key == "udf_path" && value != "" {
+					params = append(params, "--")
+					params = append(params, "--user_scripts_path="+value)
+					params = append(params, "--user_defined_executable_functions_config="+value+"/*.xml")
+				} else {
+					params = append(params, "--"+key+"="+value)
+				}
+			} else {
+				params = append(params, "--"+param)
+			}
+		}
+	} else {
+		path = workingStr
+	}
+
+	// Convert relative paths to absolute if needed
+	if path != "" && !strings.HasPrefix(path, "/") && path != ":memory:" {
+		absPath, err := filepath.Abs(path)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve path: %s", path)
+		}
+		path = absPath
+	}
+
+	// Check if path exists and handle directory creation/permissions
+	if path != "" && path != ":memory:" {
+		// Check if path exists
+		_, err := os.Stat(path)
+		if os.IsNotExist(err) {
+			// Create directory if it doesn't exist
+			if err := os.MkdirAll(path, 0755); err != nil {
+				return nil, fmt.Errorf("failed to create directory: %s", path)
+			}
+		} else if err != nil {
+			return nil, fmt.Errorf("failed to check directory: %s", path)
+		}
+
+		// Check write permissions if not in readonly mode
+		isReadOnly := false
+		for _, param := range params {
+			if param == "--readonly=1" {
+				isReadOnly = true
+				break
+			}
+		}
+
+		if !isReadOnly {
+			// Check write permissions by attempting to create a file
+			if err := unix.Access(path, unix.W_OK); err != nil {
+				return nil, fmt.Errorf("no write permission for directory: %s", path)
+			}
+		}
+	}
+
+	// Build arguments array
+	argv := make([]string, 0, len(params)+2)
+	argv = append(argv, "clickhouse")
+	if path != "" && path != ":memory:" {
+		argv = append(argv, "--path="+path)
+	}
+	argv = append(argv, params...)
+
+	return NewConnection(len(argv), argv)
 }
