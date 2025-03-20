@@ -1,6 +1,7 @@
 package chdb
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -43,6 +44,7 @@ func TestQueryToBuffer(t *testing.T) {
 			// Call queryToBuffer
 
 			result, err := Query(tc.queryStr, tc.outputFormat)
+			fmt.Println("result: ", result)
 
 			// Verify
 			if tc.expectedErrMsg != "" {
