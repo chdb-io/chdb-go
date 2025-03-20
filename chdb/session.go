@@ -1,7 +1,6 @@
 package chdb
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -40,9 +39,8 @@ func NewSession(paths ...string) (*Session, error) {
 		}
 		path = tempDir
 		isTemp = true
-
 	}
-	connStr := fmt.Sprintf("file:%s/chdb.db", path)
+	connStr := path
 
 	conn, err := initConnection(connStr)
 	if err != nil {
