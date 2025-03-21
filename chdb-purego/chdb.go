@@ -149,6 +149,8 @@ func (c *connection) Ready() bool {
 // NewConnection is the low level function to create a new connection to the chdb server.
 // using NewConnectionFromConnString is recommended.
 //
+// Deprecated: Use NewConnectionFromConnString instead. This function will be removed in a future version.
+//
 // Session will keep the state of query.
 // If path is None, it will create a temporary directory and use it as the database path
 // and the temporary directory will be removed when the session is closed.
