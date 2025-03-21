@@ -172,10 +172,18 @@ func NewConnection(argc int, argv []string) (ChdbConn, error) {
 		new_argv = argv
 	}
 
+	// Remove ":memory:" if it is the only argument
+	if len(new_argv) == 2 && (new_argv[1] == ":memory:" || new_argv[1] == "file::memory:") {
+		new_argv = new_argv[:1]
+	}
+
 	// Convert string slice to C-style char pointers in one step
 	c_argv := make([]*byte, len(new_argv))
 	for i, str := range new_argv {
-		c_argv[i] = (*byte)(unsafe.Pointer(unsafe.StringData(str)))
+		// Convert string to []byte and append null terminator
+		bytes := append([]byte(str), 0)
+		// Use &bytes[0] to get pointer to first byte
+		c_argv[i] = &bytes[0]
 	}
 
 	// debug print new_argv
