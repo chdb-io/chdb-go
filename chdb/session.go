@@ -75,6 +75,8 @@ func (s *Session) Close() {
 func (s *Session) Cleanup() {
 	// Remove the session directory, no matter if it is temporary or not
 	_ = os.RemoveAll(s.path)
+	s.conn.Close()
+	globalSession = nil
 }
 
 // Path returns the path of the session.
