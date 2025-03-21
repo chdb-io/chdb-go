@@ -189,9 +189,9 @@ func NewConnection(argc int, argv []string) (ChdbConn, error) {
 	}
 
 	// debug print new_argv
-	for _, arg := range new_argv {
-		fmt.Println("arg: ", arg)
-	}
+	// for _, arg := range new_argv {
+	// 	fmt.Println("arg: ", arg)
+	// }
 
 	var conn **chdb_conn
 	var err error
