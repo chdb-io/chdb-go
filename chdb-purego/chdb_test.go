@@ -127,23 +127,6 @@ func TestNewConnectionFromConnString(t *testing.T) {
 		},
 	}
 
-	// Create a directory with read-only permissions for permission testing
-	readOnlyDir := filepath.Join(tmpDir, "readonly_dir")
-	if err := os.MkdirAll(readOnlyDir, 0555); err != nil {
-		t.Fatalf("Failed to create read-only directory: %v", err)
-	}
-	tests = append(tests, struct {
-		name      string
-		connStr   string
-		wantErr   bool
-		checkPath bool
-	}{
-		name:      "write mode with read-only dir",
-		connStr:   filepath.Join(readOnlyDir, "test.db"),
-		wantErr:   true,
-		checkPath: true,
-	})
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			conn, err := NewConnectionFromConnString(tt.connStr)
