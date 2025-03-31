@@ -108,7 +108,8 @@ func (r *singleRow) Err() error {
 }
 
 type execResult struct {
-	err error
+	localRes chdbpurego.ChdbResult
+	err      error
 }
 
 func (e *execResult) LastInsertId() (int64, error) {
@@ -122,7 +123,8 @@ func (e *execResult) RowsAffected() (int64, error) {
 	if e.err != nil {
 		return 0, e.err
 	}
-	return -1, fmt.Errorf("does not support RowsAffected")
+	// chdb return the number of rows inserted/updated/deleted trough rows_read
+	return int64(e.localRes.RowsRead()), nil
 }
 
 type queryHandle func(string, ...string) (chdbpurego.ChdbResult, error)
@@ -283,12 +285,17 @@ func (c *conn) Exec(query string, values []driver.Value) (sql.Result, error) {
 }
 
 func (c *conn) ExecContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
-	_, err := c.QueryContext(ctx, query, args)
-	if err != nil && err.Error() != "result is nil" {
+	compiledQuery, err := c.compileArguments(query, args)
+	if err != nil {
+		return nil, err
+	}
+	result, err := c.QueryFun(compiledQuery, c.driverType.String(), c.udfPath)
+	if err != nil {
 		return nil, err
 	}
 	return &execResult{
-		err: nil,
+		err:      nil,
+		localRes: result,
 	}, nil
 }
 
