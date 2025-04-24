@@ -59,6 +59,15 @@ func (s *Session) Query(queryStr string, outputFormats ...string) (result chdbpu
 	return s.conn.Query(queryStr, outputFormat)
 }
 
+// Query calls `query_conn` function with the current connection and a default output format of "CSV" if not provided.
+func (s *Session) QueryStream(queryStr string, outputFormats ...string) (result chdbpurego.ChdbStreamResult, err error) {
+	outputFormat := "CSV" // Default value
+	if len(outputFormats) > 0 {
+		outputFormat = outputFormats[0]
+	}
+	return s.conn.QueryStreaming(queryStr, outputFormat)
+}
+
 // Close closes the session and removes the temporary directory
 //
 //	temporary directory is created when NewSession was called with an empty path.

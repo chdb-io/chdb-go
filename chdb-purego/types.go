@@ -24,6 +24,11 @@ type local_result_v2 struct {
 	error_message *byte
 }
 
+// clickhouse streaming result struct. for reference: https://github.com/chdb-io/chdb/blob/main/programs/local/chdb.h#L65
+type chdb_streaming_result struct {
+	internal_data unsafe.Pointer
+}
+
 // clickhouse background server connection.for reference: https://github.com/chdb-io/chdb/blob/main/programs/local/chdb.h#L82
 type chdb_conn struct {
 	server    unsafe.Pointer
@@ -32,7 +37,6 @@ type chdb_conn struct {
 }
 
 type ChdbResult interface {
-	// Raw bytes result buffer, used for reading the result of clickhouse query
 	Buf() []byte
 	// String rapresentation of the the buffer
 	String() string
@@ -50,9 +54,17 @@ type ChdbResult interface {
 	Free()
 }
 
+type ChdbStreamResult interface {
+	GetNext() ChdbResult
+	Error() error
+	Cancel()
+	Free()
+}
+
 type ChdbConn interface {
 	//Query executes the given queryStr in the underlying clickhouse connection, and output the result in the given formatStr
 	Query(queryStr string, formatStr string) (result ChdbResult, err error)
+	QueryStreaming(queryStr string, formatStr string) (result ChdbStreamResult, err error)
 	//Ready returns a boolean indicating if the connections is successfully established.
 	Ready() bool
 	//Close the connection and free the underlying allocated memory

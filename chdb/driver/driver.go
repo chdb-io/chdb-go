@@ -20,6 +20,7 @@ type DriverType int
 const (
 	ARROW DriverType = iota
 	PARQUET
+	PARQUET_STREAMING
 	INVALID
 )
 
@@ -53,8 +54,47 @@ func (d DriverType) PrepareRows(result chdbpurego.ChdbResult, buf []byte, bufSiz
 			bufferSize: bufSize, needNewBuffer: true,
 			useUnsafeStringReader: useUnsafe,
 		}, nil
+
 	}
-	return nil, fmt.Errorf("Unsupported driver type")
+	return nil, fmt.Errorf("unsupported driver type")
+}
+
+func (d DriverType) PrepareStreamingRows(result chdbpurego.ChdbStreamResult, bufSize int, useUnsafe bool) (driver.Rows, error) {
+	switch d {
+	case PARQUET_STREAMING:
+		nextRes := result.GetNext()
+		if nextRes == nil {
+			return nil, fmt.Errorf("result is nil")
+		}
+
+		reader := parquet.NewGenericReader[any](bytes.NewReader(nextRes.Buf()))
+		return &parquetStreamingRows{
+			stream: result, curChunk: nextRes, reader: reader,
+			bufferSize: bufSize, needNewBuffer: true,
+			useUnsafeStringReader: useUnsafe,
+		}, nil
+
+	}
+	return nil, fmt.Errorf("unsupported driver type")
+}
+
+func (d DriverType) SupportStreaming() bool {
+	switch d {
+	case PARQUET_STREAMING:
+		return true
+	}
+	return false
+}
+
+func (d DriverType) GetFormat() string {
+	switch d {
+	case PARQUET:
+		return "Parquet"
+	case PARQUET_STREAMING:
+		return "Parquet"
+	}
+	return ""
+
 }
 
 func parseDriverType(s string) DriverType {
@@ -63,6 +103,8 @@ func parseDriverType(s string) DriverType {
 	// 	return ARROW
 	case "PARQUET":
 		return PARQUET
+	case "PARQUET_STREAMING":
+		return PARQUET_STREAMING
 	}
 	return INVALID
 }
@@ -129,12 +171,15 @@ func (e *execResult) RowsAffected() (int64, error) {
 
 type queryHandle func(string, ...string) (chdbpurego.ChdbResult, error)
 
+type queryStream func(string, ...string) (chdbpurego.ChdbStreamResult, error)
+
 type connector struct {
-	udfPath    string
-	driverType DriverType
-	bufferSize int
-	useUnsafe  bool
-	session    *chdb.Session
+	udfPath     string
+	driverType  DriverType
+	bufferSize  int
+	isStreaming bool
+	useUnsafe   bool
+	session     *chdb.Session
 }
 
 // Connect returns a connection to a database.
@@ -145,7 +190,7 @@ func (c *connector) Connect(ctx context.Context) (driver.Conn, error) {
 	cc := &conn{
 		udfPath: c.udfPath, session: c.session,
 		driverType: c.driverType, bufferSize: c.bufferSize,
-		useUnsafe: c.useUnsafe,
+		useUnsafe: c.useUnsafe, isStreaming: c.isStreaming,
 	}
 	cc.SetupQueryFun()
 	return cc, nil
@@ -215,6 +260,7 @@ func NewConnect(opts map[string]string) (ret *connector, err error) {
 			return nil, err
 		}
 	}
+	ret.isStreaming = ret.driverType.SupportStreaming()
 	return
 }
 
@@ -239,13 +285,15 @@ func (d Driver) OpenConnector(name string) (driver.Connector, error) {
 }
 
 type conn struct {
-	udfPath    string
-	driverType DriverType
-	bufferSize int
-	useUnsafe  bool
-	session    *chdb.Session
+	udfPath     string
+	driverType  DriverType
+	bufferSize  int
+	useUnsafe   bool
+	isStreaming bool
+	session     *chdb.Session
 
-	QueryFun queryHandle
+	QueryFun  queryHandle
+	streamFun queryStream
 }
 
 func prepareValues(values []driver.Value) []driver.NamedValue {
@@ -265,9 +313,19 @@ func (c *conn) Close() error {
 }
 
 func (c *conn) SetupQueryFun() {
-	c.QueryFun = chdb.Query
+	if c.isStreaming {
+		c.streamFun = chdb.QueryStream
+	} else {
+		c.QueryFun = chdb.Query
+	}
+
 	if c.session != nil {
-		c.QueryFun = c.session.Query
+		if c.isStreaming {
+			c.streamFun = c.session.QueryStream
+		} else {
+			c.QueryFun = c.session.Query
+		}
+
 	}
 
 }
@@ -289,6 +347,7 @@ func (c *conn) ExecContext(ctx context.Context, query string, args []driver.Name
 	if err != nil {
 		return nil, err
 	}
+
 	result, err := c.QueryFun(compiledQuery, c.driverType.String(), c.udfPath)
 	if err != nil {
 		return nil, err
@@ -336,7 +395,14 @@ func (c *conn) QueryContext(ctx context.Context, query string, args []driver.Nam
 	if err != nil {
 		return nil, err
 	}
-	result, err := c.QueryFun(compiledQuery, c.driverType.String(), c.udfPath)
+	if c.isStreaming {
+		result, err := c.streamFun(compiledQuery, c.driverType.GetFormat(), c.udfPath)
+		if err != nil {
+			return nil, err
+		}
+		return c.driverType.PrepareStreamingRows(result, c.bufferSize, c.useUnsafe)
+	}
+	result, err := c.QueryFun(compiledQuery, c.driverType.GetFormat(), c.udfPath)
 	if err != nil {
 		return nil, err
 	}
