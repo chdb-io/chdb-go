@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -352,10 +353,16 @@ func (c *conn) ExecContext(ctx context.Context, query string, args []driver.Name
 	if err != nil {
 		return nil, err
 	}
-	return &execResult{
+	res := &execResult{
 		err:      nil,
 		localRes: result,
-	}, nil
+	}
+	runtime.SetFinalizer(res, func(r *execResult) {
+		if r.localRes != nil {
+			r.localRes.Free()
+		}
+	})
+	return res, nil
 }
 
 func (c *conn) QueryRowContext(ctx context.Context, query string, values []driver.Value) *singleRow {

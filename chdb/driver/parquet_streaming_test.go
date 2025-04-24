@@ -111,6 +111,7 @@ func TestDBWithParquetStreamingConnection(t *testing.T) {
 	if db.Ping() != nil {
 		t.Fatalf("ping db fail, err: %s", err)
 	}
+
 	rows, err := db.Query("select * from TestDBWithParquetConnectionStreaming;")
 	if err != nil {
 		t.Fatalf("exec create function fail, err: %s", err)
