@@ -59,7 +59,9 @@ func (s *Session) Query(queryStr string, outputFormats ...string) (result chdbpu
 	return s.conn.Query(queryStr, outputFormat)
 }
 
-// Query calls `query_conn` function with the current connection and a default output format of "CSV" if not provided.
+// QueryStream calls `query_conn` function with the current connection and a default output format of "CSV" if not provided.
+// The result is a stream of data that can be read in chunks.
+// This is useful for large datasets that cannot be loaded into memory all at once.
 func (s *Session) QueryStream(queryStr string, outputFormats ...string) (result chdbpurego.ChdbStreamResult, err error) {
 	outputFormat := "CSV" // Default value
 	if len(outputFormats) > 0 {

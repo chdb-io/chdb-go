@@ -10,12 +10,13 @@ import "github.com/chdb-io/chdb-go/chdb-purego"
 
 - [type ChdbConn](<#ChdbConn>)
   - [func NewConnection\(argc int, argv \[\]string\) \(ChdbConn, error\)](<#NewConnection>)
+  - [func NewConnectionFromConnString\(conn\_string string\) \(ChdbConn, error\)](<#NewConnectionFromConnString>)
 - [type ChdbResult](<#ChdbResult>)
-  - [func RawQuery\(argc int, argv \[\]string\) \(result ChdbResult, err error\)](<#RawQuery>)
+- [type ChdbStreamResult](<#ChdbStreamResult>)
 
 
 <a name="ChdbConn"></a>
-## type [ChdbConn](<https://github.com/chdb-io/chdb-go/blob/main/chdb-purego/types.go#L53-L60>)
+## type [ChdbConn](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb-purego/types.go#L70-L81>)
 
 
 
@@ -23,6 +24,10 @@ import "github.com/chdb-io/chdb-go/chdb-purego"
 type ChdbConn interface {
     //Query executes the given queryStr in the underlying clickhouse connection, and output the result in the given formatStr
     Query(queryStr string, formatStr string) (result ChdbResult, err error)
+    // QueryStreaming executes the given queryStr in the underlying clickhouse connection, and output the result in the given formatStr
+    // The result is a stream of data that can be read in chunks.
+    // This is useful for large datasets that cannot be loaded into memory all at once.
+    QueryStreaming(queryStr string, formatStr string) (result ChdbStreamResult, err error)
     //Ready returns a boolean indicating if the connections is successfully established.
     Ready() bool
     //Close the connection and free the underlying allocated memory
@@ -31,15 +36,35 @@ type ChdbConn interface {
 ```
 
 <a name="NewConnection"></a>
-### func [NewConnection](<https://github.com/chdb-io/chdb-go/blob/main/chdb-purego/chdb.go#L188>)
+### func [NewConnection](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb-purego/chdb.go#L195>)
 
 ```go
 func NewConnection(argc int, argv []string) (ChdbConn, error)
 ```
 
-Session will keep the state of query. If path is None, it will create a temporary directory and use it as the database path and the temporary directory will be removed when the session is closed. You can also pass in a path to create a database at that path where will keep your data.
+NewConnection is the low level function to create a new connection to the chdb server. using NewConnectionFromConnString is recommended.
 
-You can also use a connection string to pass in the path and other parameters. Examples:
+Deprecated: Use NewConnectionFromConnString instead. This function will be removed in a future version.
+
+Session will keep the state of query. If path is None, it will create a temporary directory and use it as the database path and the temporary directory will be removed when the session is closed. You can also pass in a path to create a database at that path where will keep your data. This is a thin wrapper around the connect\_chdb C API. the argc and argv should be like:
+
+- argc = 1, argv = \[\]string\{"\-\-path=/tmp/chdb"\}
+- argc = 2, argv = \[\]string\{"\-\-path=/tmp/chdb", "\-\-readonly=1"\}
+
+Important:
+
+- There can be only one session at a time. If you want to create a new session, you need to close the existing one.
+- Creating a new session will close the existing one.
+- You need to ensure that the path exists before creating a new session. Or you can use NewConnectionFromConnString.
+
+<a name="NewConnectionFromConnString"></a>
+### func [NewConnectionFromConnString](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb-purego/chdb.go#L269>)
+
+```go
+func NewConnectionFromConnString(conn_string string) (ChdbConn, error)
+```
+
+NewConnectionFromConnString creates a new connection to the chdb server using a connection string. You can use a connection string to pass in the path and other parameters. Examples:
 
 - ":memory:" \(for in\-memory database\)
 - "test.db" \(for relative path\)
@@ -67,13 +92,12 @@ Important:
 - Creating a new session will close the existing one.
 
 <a name="ChdbResult"></a>
-## type [ChdbResult](<https://github.com/chdb-io/chdb-go/blob/main/chdb-purego/types.go#L34-L51>)
+## type [ChdbResult](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb-purego/types.go#L39-L55>)
 
 
 
 ```go
 type ChdbResult interface {
-    // Raw bytes result buffer, used for reading the result of clickhouse query
     Buf() []byte
     // String rapresentation of the the buffer
     String() string
@@ -88,17 +112,28 @@ type ChdbResult interface {
     // If the query had any error during execution, here you can retrieve the cause.
     Error() error
     // Free the query result and all the allocated memory
-    Free() error
+    Free()
 }
 ```
 
-<a name="RawQuery"></a>
-### func [RawQuery](<https://github.com/chdb-io/chdb-go/blob/main/chdb-purego/chdb.go#L145>)
+<a name="ChdbStreamResult"></a>
+## type [ChdbStreamResult](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb-purego/types.go#L57-L68>)
+
+
 
 ```go
-func RawQuery(argc int, argv []string) (result ChdbResult, err error)
+type ChdbStreamResult interface {
+    // GetNext returns the next chunk of data from the stream.
+    // The chunk is a ChdbResult object that can be used to read the data.
+    // If there are no more chunks, it returns nil.
+    GetNext() ChdbResult
+    // Error returns the error message if there was an error during the streaming process.
+    Error() error
+    // Cancel cancels the streaming process and frees the underlying memory.
+    Cancel()
+    // Free frees the underlying memory and closes the stream.
+    Free()
+}
 ```
-
-RawQuery will execute the given clickouse query without using any session.
 
 Generated by [gomarkdoc](<https://github.com/princjef/gomarkdoc>)

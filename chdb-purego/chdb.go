@@ -141,7 +141,7 @@ func (c *connection) Query(queryStr string, formatStr string) (result ChdbResult
 	return newChdbResult(res), nil
 }
 
-// Query implements ChdbConn.
+// QueryStreaming implements ChdbConn.
 func (c *connection) QueryStreaming(queryStr string, formatStr string) (result ChdbStreamResult, err error) {
 
 	if c.conn == nil {
