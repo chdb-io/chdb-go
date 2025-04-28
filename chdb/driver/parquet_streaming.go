@@ -17,11 +17,11 @@ type parquetStreamingRows struct {
 	stream                chdbpurego.ChdbStreamResult // result from clickhouse
 	curChunk              chdbpurego.ChdbResult       // current chunk
 	reader                *parquet.GenericReader[any] // parquet reader
-	curRecord             parquet.Row                 // TODO: delete this?
-	buffer                []parquet.Row               // record buffer
-	bufferSize            int                         // amount of records to preload into buffer
-	bufferIndex           int64                       // index in the current buffer
-	curRow                int64                       // row counter
+	curRecord             parquet.Row
+	buffer                []parquet.Row // record buffer
+	bufferSize            int           // amount of records to preload into buffer
+	bufferIndex           int64         // index in the current buffer
+	curRow                int64         // row counter
 	needNewBuffer         bool
 	useUnsafeStringReader bool
 }
