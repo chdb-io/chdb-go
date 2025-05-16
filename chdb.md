@@ -9,6 +9,7 @@ import "github.com/chdb-io/chdb-go/chdb"
 ## Index
 
 - [func Query\(queryStr string, outputFormats ...string\) \(result chdbpurego.ChdbResult, err error\)](<#Query>)
+- [func QueryStream\(queryStr string, outputFormats ...string\) \(result chdbpurego.ChdbStreamResult, err error\)](<#QueryStream>)
 - [type Session](<#Session>)
   - [func NewSession\(paths ...string\) \(\*Session, error\)](<#NewSession>)
   - [func \(s \*Session\) Cleanup\(\)](<#Session.Cleanup>)
@@ -17,10 +18,11 @@ import "github.com/chdb-io/chdb-go/chdb"
   - [func \(s \*Session\) IsTemp\(\) bool](<#Session.IsTemp>)
   - [func \(s \*Session\) Path\(\) string](<#Session.Path>)
   - [func \(s \*Session\) Query\(queryStr string, outputFormats ...string\) \(result chdbpurego.ChdbResult, err error\)](<#Session.Query>)
+  - [func \(s \*Session\) QueryStream\(queryStr string, outputFormats ...string\) \(result chdbpurego.ChdbStreamResult, err error\)](<#Session.QueryStream>)
 
 
 <a name="Query"></a>
-## func [Query](<https://github.com/chdb-io/chdb-go/blob/main/chdb/wrapper.go#L8>)
+## func [Query](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb/wrapper.go#L8>)
 
 ```go
 func Query(queryStr string, outputFormats ...string) (result chdbpurego.ChdbResult, err error)
@@ -28,8 +30,17 @@ func Query(queryStr string, outputFormats ...string) (result chdbpurego.ChdbResu
 
 Query calls query\_conn with a default in\-memory session and default output format of "CSV" if not provided.
 
+<a name="QueryStream"></a>
+## func [QueryStream](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb/wrapper.go#L23>)
+
+```go
+func QueryStream(queryStr string, outputFormats ...string) (result chdbpurego.ChdbStreamResult, err error)
+```
+
+Query calls query\_conn with a default in\-memory session and default output format of "CSV" if not provided.
+
 <a name="Session"></a>
-## type [Session](<https://github.com/chdb-io/chdb-go/blob/main/chdb/session.go#L15-L20>)
+## type [Session](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb/session.go#L14-L19>)
 
 
 
@@ -40,7 +51,7 @@ type Session struct {
 ```
 
 <a name="NewSession"></a>
-### func [NewSession](<https://github.com/chdb-io/chdb-go/blob/main/chdb/session.go#L25>)
+### func [NewSession](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb/session.go#L24>)
 
 ```go
 func NewSession(paths ...string) (*Session, error)
@@ -49,7 +60,7 @@ func NewSession(paths ...string) (*Session, error)
 NewSession creates a new session with the given path. If path is empty, a temporary directory is created. Note: The temporary directory is removed when Close is called.
 
 <a name="Session.Cleanup"></a>
-### func \(\*Session\) [Cleanup](<https://github.com/chdb-io/chdb-go/blob/main/chdb/session.go#L77>)
+### func \(\*Session\) [Cleanup](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb/session.go#L86>)
 
 ```go
 func (s *Session) Cleanup()
@@ -58,7 +69,7 @@ func (s *Session) Cleanup()
 Cleanup closes the session and removes the directory.
 
 <a name="Session.Close"></a>
-### func \(\*Session\) [Close](<https://github.com/chdb-io/chdb-go/blob/main/chdb/session.go#L67>)
+### func \(\*Session\) [Close](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb/session.go#L76>)
 
 ```go
 func (s *Session) Close()
@@ -71,7 +82,7 @@ temporary directory is created when NewSession was called with an empty path.
 ```
 
 <a name="Session.ConnStr"></a>
-### func \(\*Session\) [ConnStr](<https://github.com/chdb-io/chdb-go/blob/main/chdb/session.go#L88>)
+### func \(\*Session\) [ConnStr](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb/session.go#L99>)
 
 ```go
 func (s *Session) ConnStr() string
@@ -80,7 +91,7 @@ func (s *Session) ConnStr() string
 ConnStr returns the current connection string used for the underlying connection
 
 <a name="Session.IsTemp"></a>
-### func \(\*Session\) [IsTemp](<https://github.com/chdb-io/chdb-go/blob/main/chdb/session.go#L93>)
+### func \(\*Session\) [IsTemp](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb/session.go#L104>)
 
 ```go
 func (s *Session) IsTemp() bool
@@ -89,7 +100,7 @@ func (s *Session) IsTemp() bool
 IsTemp returns whether the session is temporary.
 
 <a name="Session.Path"></a>
-### func \(\*Session\) [Path](<https://github.com/chdb-io/chdb-go/blob/main/chdb/session.go#L83>)
+### func \(\*Session\) [Path](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb/session.go#L94>)
 
 ```go
 func (s *Session) Path() string
@@ -98,12 +109,21 @@ func (s *Session) Path() string
 Path returns the path of the session.
 
 <a name="Session.Query"></a>
-### func \(\*Session\) [Query](<https://github.com/chdb-io/chdb-go/blob/main/chdb/session.go#L56>)
+### func \(\*Session\) [Query](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb/session.go#L54>)
 
 ```go
 func (s *Session) Query(queryStr string, outputFormats ...string) (result chdbpurego.ChdbResult, err error)
 ```
 
 Query calls \`query\_conn\` function with the current connection and a default output format of "CSV" if not provided.
+
+<a name="Session.QueryStream"></a>
+### func \(\*Session\) [QueryStream](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb/session.go#L65>)
+
+```go
+func (s *Session) QueryStream(queryStr string, outputFormats ...string) (result chdbpurego.ChdbStreamResult, err error)
+```
+
+QueryStream calls \`query\_conn\` function with the current connection and a default output format of "CSV" if not provided. The result is a stream of data that can be read in chunks. This is useful for large datasets that cannot be loaded into memory all at once.
 
 Generated by [gomarkdoc](<https://github.com/princjef/gomarkdoc>)

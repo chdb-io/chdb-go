@@ -98,6 +98,11 @@ type connection struct {
 	conn **chdb_conn
 }
 
+// CancelQuery implements ChdbConn.
+func (c *connection) CancelQuery(query ChdbResult) (err error) {
+	panic("unimplemented")
+}
+
 func newChdbConn(conn **chdb_conn) ChdbConn {
 	c := &connection{
 		conn: conn,
@@ -134,6 +139,29 @@ func (c *connection) Query(queryStr string, formatStr string) (result ChdbResult
 	}
 
 	return newChdbResult(res), nil
+}
+
+// QueryStreaming implements ChdbConn.
+func (c *connection) QueryStreaming(queryStr string, formatStr string) (result ChdbStreamResult, err error) {
+
+	if c.conn == nil {
+		return nil, fmt.Errorf("invalid connection")
+	}
+
+	rawConn := *c.conn
+
+	res := queryConnStreaming(rawConn, queryStr, formatStr)
+	if res == nil {
+		// According to the C ABI of chDB v1.2.0, the C function query_stable_v2
+		// returns nil if the query returns no data. This is not an error. We
+		// will change this behavior in the future.
+		return newStreamingResult(rawConn, res), nil
+	}
+	if s := streamingResultError(res); s != nil {
+		return nil, errors.New(*s)
+	}
+
+	return newStreamingResult(rawConn, res), nil
 }
 
 func (c *connection) Ready() bool {

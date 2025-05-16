@@ -35,13 +35,18 @@ func findLibrary() string {
 }
 
 var (
-	queryStable   func(argc int, argv []string) *local_result
-	freeResult    func(result *local_result)
-	queryStableV2 func(argc int, argv []string) *local_result_v2
-	freeResultV2  func(result *local_result_v2)
-	connectChdb   func(argc int, argv []*byte) **chdb_conn
-	closeConn     func(conn **chdb_conn)
-	queryConn     func(conn *chdb_conn, query string, format string) *local_result_v2
+	queryStable            func(argc int, argv []string) *local_result
+	freeResult             func(result *local_result)
+	queryStableV2          func(argc int, argv []string) *local_result_v2
+	freeResultV2           func(result *local_result_v2)
+	connectChdb            func(argc int, argv []*byte) **chdb_conn
+	closeConn              func(conn **chdb_conn)
+	queryConn              func(conn *chdb_conn, query string, format string) *local_result_v2
+	queryConnStreaming     func(conn *chdb_conn, query string, format string) *chdb_streaming_result
+	streamingResultError   func(result *chdb_streaming_result) *string
+	streamingResultNext    func(conn *chdb_conn, result *chdb_streaming_result) *local_result_v2
+	streamingResultDestroy func(result *chdb_streaming_result)
+	streamingResultCancel  func(conn *chdb_conn, result *chdb_streaming_result)
 )
 
 func init() {
@@ -58,5 +63,10 @@ func init() {
 	purego.RegisterLibFunc(&connectChdb, libchdb, "connect_chdb")
 	purego.RegisterLibFunc(&closeConn, libchdb, "close_conn")
 	purego.RegisterLibFunc(&queryConn, libchdb, "query_conn")
+	purego.RegisterLibFunc(&queryConnStreaming, libchdb, "query_conn_streaming")
+	purego.RegisterLibFunc(&streamingResultError, libchdb, "chdb_streaming_result_error")
+	purego.RegisterLibFunc(&streamingResultNext, libchdb, "chdb_streaming_fetch_result")
+	purego.RegisterLibFunc(&streamingResultCancel, libchdb, "chdb_streaming_cancel_query")
+	purego.RegisterLibFunc(&streamingResultDestroy, libchdb, "chdb_destroy_result")
 
 }
