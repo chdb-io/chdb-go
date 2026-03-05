@@ -58,6 +58,11 @@ func (r *parquetStreamingRows) readNextChunkFromBuf() error {
 		return err // no records read, should exit the loop
 	}
 	if err == io.EOF && readAmount > 0 {
+		if readAmount < r.bufferSize {
+			r.buffer = r.buffer[:readAmount]
+		}
+		r.bufferIndex = 0
+		r.needNewBuffer = false
 		return nil //here we are at EOF, but since we read at least 1 record, we should consume it
 	}
 	if readAmount == 0 {
