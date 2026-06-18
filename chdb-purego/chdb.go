@@ -112,9 +112,14 @@ func newChdbConn(conn *chdb_connection) ChdbConn {
 }
 
 // Close implements ChdbConn.
+//
+// Close is idempotent: it nils the underlying handle after freeing it so a
+// second Close (or a Close racing a Query that checks for a nil handle) does
+// not double-free the native connection.
 func (c *connection) Close() {
 	if c.conn != nil {
 		chdbCloseConn(c.conn)
+		c.conn = nil
 	}
 }
 

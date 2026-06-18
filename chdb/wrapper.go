@@ -51,8 +51,18 @@ func ephemeralSession() (*Session, error) {
 	}
 	sess, err := NewSession(":memory:")
 	if err != nil {
-		// A path-based session may have opened concurrently between the check
-		// and the connect; attach to whatever is now active.
+		// The in-memory open may have lost a race with a path-based session
+		// opened concurrently between the check above and this connect (chDB
+		// allows only one data path per process). Only in that case retry by
+		// attaching to whatever path is now active; otherwise the failure is
+		// unrelated (e.g. a native connection error) and must be surfaced
+		// rather than masked by the retry.
+		sessMu.Lock()
+		conflict := activeRefs > 0
+		sessMu.Unlock()
+		if !conflict {
+			return nil, err
+		}
 		return NewSession()
 	}
 	return sess, nil

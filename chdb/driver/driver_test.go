@@ -50,6 +50,7 @@ func TestDb(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open db fail, err:%s", err)
 	}
+	defer db.Close()
 	if db.Ping() != nil {
 		t.Fatalf("ping db fail")
 	}
@@ -88,6 +89,7 @@ func TestDbWithCompiledArgs(t *testing.T) {
 	if err != nil {
 		t.Errorf("open db fail, err:%s", err)
 	}
+	defer db.Close()
 	if db.Ping() != nil {
 		t.Errorf("ping db fail")
 	}
@@ -170,6 +172,7 @@ func TestDbWithSession(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open db fail, err: %s", err)
 	}
+	defer db.Close()
 	if db.Ping() != nil {
 		t.Fatalf("ping db fail, err: %s", err)
 	}
@@ -217,6 +220,7 @@ func TestDbWithConnection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open db fail, err: %s", err)
 	}
+	defer db.Close()
 	if db.Ping() != nil {
 		t.Fatalf("ping db fail, err: %s", err)
 	}
@@ -251,6 +255,7 @@ func TestDbWithConnectionSqlDriverOnly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open db fail, err: %s", err)
 	}
+	defer db.Close()
 	if db.Ping() != nil {
 		t.Fatalf("ping db fail, err: %s", err)
 	}
@@ -309,6 +314,7 @@ func TestQueryRow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open db fail, err: %s", err)
 	}
+	defer db.Close()
 	if db.Ping() != nil {
 		t.Fatalf("ping db fail, err: %s", err)
 	}
@@ -339,6 +345,7 @@ func TestExec(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open db fail, err: %s", err)
 	}
+	defer db.Close()
 	if db.Ping() != nil {
 		t.Fatalf("ping db fail, err: %s", err)
 	}

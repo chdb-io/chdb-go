@@ -293,7 +293,25 @@ func (d Driver) Open(name string) (driver.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	return cc.Connect(context.Background())
+	c, err := cc.Connect(context.Background())
+	if err != nil {
+		// Connect failed; release the keeper session NewConnect just opened so
+		// it does not leak (database/sql would normally own and close cc).
+		if closer, ok := cc.(*connector); ok {
+			_ = closer.Close()
+		}
+		return nil, err
+	}
+	// On the sql.Open path, database/sql keeps the connector and calls
+	// connector.Close() on db.Close(). A direct Driver.Open caller discards the
+	// connector, so tie the keeper session's lifetime to the returned
+	// connection: closing the conn also releases the keeper.
+	if cn, ok := c.(*conn); ok {
+		if cnr, ok := cc.(*connector); ok {
+			cn.connector = cnr
+		}
+	}
+	return c, nil
 }
 
 // OpenConnector expects the same format as driver.Open
@@ -312,6 +330,10 @@ type conn struct {
 	useUnsafe   bool
 	isStreaming bool
 	session     *chdb.Session
+	// connector is set only on the legacy Driver.Open path (not the sql.Open
+	// path, where database/sql owns and closes the connector). When set, Close
+	// also releases the connector's keeper session.
+	connector *connector
 
 	QueryFun  queryHandle
 	streamFun queryStream
@@ -333,6 +355,12 @@ func (c *conn) Close() error {
 	if c.session != nil {
 		c.session.Close()
 		c.session = nil
+	}
+	// Only set on the Driver.Open path; releases the keeper that pins the data
+	// path/temp dir for the connector.
+	if c.connector != nil {
+		_ = c.connector.Close()
+		c.connector = nil
 	}
 	return nil
 }

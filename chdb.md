@@ -28,7 +28,7 @@ import "github.com/chdb-io/chdb-go/chdb"
 func Query(queryStr string, outputFormats ...string) (result chdbpurego.ChdbResult, err error)
 ```
 
-Query calls query\_conn with a default in\-memory session and default output format of "CSV" if not provided.
+Query runs a one\-shot query and returns the materialized result \(default output format "CSV"\). chDB allows only one data path per process, so if a session is already open this helper attaches to that session's data path; otherwise it uses an in\-memory database.
 
 <a name="QueryStream"></a>
 ## func [QueryStream](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb/wrapper.go#L23>)
@@ -37,7 +37,7 @@ Query calls query\_conn with a default in\-memory session and default output for
 func QueryStream(queryStr string, outputFormats ...string) (result chdbpurego.ChdbStreamResult, err error)
 ```
 
-Query calls query\_conn with a default in\-memory session and default output format of "CSV" if not provided.
+QueryStream is like Query but returns a streaming result that can be read in chunks, for large datasets that should not be fully materialized in memory. Like Query, it attaches to an already\-open session's data path, or uses an in\-memory database when none is open.
 
 <a name="Session"></a>
 ## type [Session](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb/session.go#L14-L19>)
