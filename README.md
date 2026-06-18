@@ -131,6 +131,28 @@ func main() {
 }
 ```
 
+#### Concurrency
+
+chDB runs a single embedded engine per process bound to one data path, but that
+engine accepts multiple connections that execute queries concurrently. The
+`database/sql` driver opens an independent native chDB connection per pooled
+connection, so you can scale read/write parallelism with `SetMaxOpenConns`:
+
+```go
+db, err := sql.Open("chdb", "session=/path/to/data")
+if err != nil {
+        log.Fatal(err)
+}
+defer db.Close()
+
+// Each pooled connection is its own native chDB connection to the same data
+// path, so queries run in parallel instead of serializing on one connection.
+db.SetMaxOpenConns(8)
+```
+
+All connections in a process must share the same data path; opening a second,
+different data path while connections are still open returns an error.
+
 ### Golang API docs
 
 - See [lowApi.md](lowApi.md) for the low level APIs.

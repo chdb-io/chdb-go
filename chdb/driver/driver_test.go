@@ -4,7 +4,10 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"runtime"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/chdb-io/chdb-go/chdb"
 )
@@ -47,6 +50,7 @@ func TestDb(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open db fail, err:%s", err)
 	}
+	defer db.Close()
 	if db.Ping() != nil {
 		t.Fatalf("ping db fail")
 	}
@@ -85,6 +89,7 @@ func TestDbWithCompiledArgs(t *testing.T) {
 	if err != nil {
 		t.Errorf("open db fail, err:%s", err)
 	}
+	defer db.Close()
 	if db.Ping() != nil {
 		t.Errorf("ping db fail")
 	}
@@ -119,16 +124,20 @@ func TestDbWithCompiledArgs(t *testing.T) {
 }
 
 func TestDbWithOpt(t *testing.T) {
+	// chDB allows only one data path per process, so every session option must
+	// point at the same path the global test session already opened. These cases
+	// exercise connection-string parsing, not multiple data paths.
+	sp := session.ConnStr()
 	for _, kv := range []struct {
 		opt       string
 		condition bool
 	}{
 		{"", false},
 		{"udfPath=qq", false},
-		{"udfPath=qq;session=ss", false},
-		{"session=sssss", false},
-		{"session=s2;udfPath=u1", false},
-		{"session=s3;udfPath=u2;fooobar=ssss", false},
+		{fmt.Sprintf("udfPath=qq;session=%s", sp), false},
+		{fmt.Sprintf("session=%s", sp), false},
+		{fmt.Sprintf("session=%s;udfPath=u1", sp), false},
+		{fmt.Sprintf("session=%s;udfPath=u2;fooobar=ssss", sp), false},
 		{"foo;bar", true},
 	} {
 		db, err := sql.Open("chdb", kv.opt)
@@ -141,6 +150,7 @@ func TestDbWithOpt(t *testing.T) {
 		if (db.Ping() != nil) != kv.condition {
 			t.Errorf("ping db fail")
 		}
+		db.Close()
 	}
 }
 
@@ -162,6 +172,7 @@ func TestDbWithSession(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open db fail, err: %s", err)
 	}
+	defer db.Close()
 	if db.Ping() != nil {
 		t.Fatalf("ping db fail, err: %s", err)
 	}
@@ -209,6 +220,7 @@ func TestDbWithConnection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open db fail, err: %s", err)
 	}
+	defer db.Close()
 	if db.Ping() != nil {
 		t.Fatalf("ping db fail, err: %s", err)
 	}
@@ -243,6 +255,7 @@ func TestDbWithConnectionSqlDriverOnly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open db fail, err: %s", err)
 	}
+	defer db.Close()
 	if db.Ping() != nil {
 		t.Fatalf("ping db fail, err: %s", err)
 	}
@@ -301,6 +314,7 @@ func TestQueryRow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open db fail, err: %s", err)
 	}
+	defer db.Close()
 	if db.Ping() != nil {
 		t.Fatalf("ping db fail, err: %s", err)
 	}
@@ -331,6 +345,7 @@ func TestExec(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open db fail, err: %s", err)
 	}
+	defer db.Close()
 	if db.Ping() != nil {
 		t.Fatalf("ping db fail, err: %s", err)
 	}
@@ -369,4 +384,113 @@ func TestExec(t *testing.T) {
 		t.Fatalf("QueryRow method should return only one item")
 	}
 
+}
+
+// TestConcurrentQueries verifies that many goroutines can run queries in
+// parallel through a single *sql.DB with MaxOpenConns > 1. Each pooled
+// connection is an independent native chDB connection, so this exercises real
+// concurrent execution rather than serialization on one connection.
+func TestConcurrentQueries(t *testing.T) {
+	db, err := sql.Open("chdb", fmt.Sprintf("session=%s", session.ConnStr()))
+	if err != nil {
+		t.Fatalf("open db fail, err: %s", err)
+	}
+	defer db.Close()
+
+	maxConns := runtime.NumCPU()
+	if maxConns < 2 {
+		maxConns = 2
+	}
+	db.SetMaxOpenConns(maxConns)
+
+	const (
+		workers   = 8
+		perWorker = 25
+	)
+	var wg sync.WaitGroup
+	errCh := make(chan error, workers)
+	for w := 0; w < workers; w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for i := 0; i < perWorker; i++ {
+				var n int
+				if err := db.QueryRow("SELECT count() FROM numbers(1000)").Scan(&n); err != nil {
+					errCh <- fmt.Errorf("query failed: %w", err)
+					return
+				}
+				if n != 1000 {
+					errCh <- fmt.Errorf("got count %d, want 1000", n)
+					return
+				}
+			}
+		}()
+	}
+	wg.Wait()
+	close(errCh)
+	for e := range errCh {
+		t.Fatalf("concurrent query error: %v", e)
+	}
+}
+
+// TestConcurrentParallelism proves that queries on separate pooled connections
+// run in parallel rather than serialized. It uses sleep() so wall-clock time
+// reflects scheduling rather than CPU work: N concurrent sleeps should finish in
+// roughly one sleep interval, while running them serially takes ~N intervals.
+func TestConcurrentParallelism(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping timing-based parallelism test in -short mode")
+	}
+	db, err := sql.Open("chdb", fmt.Sprintf("session=%s", session.ConnStr()))
+	if err != nil {
+		t.Fatalf("open db fail, err: %s", err)
+	}
+	defer db.Close()
+
+	const (
+		n        = 4
+		sleepStr = "SELECT sleep(0.5)"
+	)
+
+	// Serial baseline: a single connection runs the queries back-to-back.
+	db.SetMaxOpenConns(1)
+	if _, err := db.Exec(sleepStr); err != nil { // warm up engine/connection
+		t.Fatalf("warmup failed: %s", err)
+	}
+	startSerial := time.Now()
+	for i := 0; i < n; i++ {
+		if _, err := db.Exec(sleepStr); err != nil {
+			t.Fatalf("serial exec failed: %s", err)
+		}
+	}
+	serial := time.Since(startSerial)
+
+	// Parallel: n connections run the queries concurrently.
+	db.SetMaxOpenConns(n)
+	var wg sync.WaitGroup
+	errCh := make(chan error, n)
+	startParallel := time.Now()
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if _, err := db.Exec(sleepStr); err != nil {
+				errCh <- err
+			}
+		}()
+	}
+	wg.Wait()
+	close(errCh)
+	for e := range errCh {
+		t.Fatalf("parallel exec failed: %v", e)
+	}
+	parallel := time.Since(startParallel)
+
+	t.Logf("serial=%s parallel=%s speedup=%.2fx (n=%d)", serial, parallel, float64(serial)/float64(parallel), n)
+
+	// True parallelism makes the concurrent run finish far faster than serial.
+	// Require a clear margin to stay robust against scheduling jitter.
+	if float64(parallel) > float64(serial)*0.6 {
+		t.Errorf("queries did not run in parallel: serial=%s parallel=%s", serial, parallel)
+	}
 }

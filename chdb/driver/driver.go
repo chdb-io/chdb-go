@@ -182,7 +182,8 @@ type connector struct {
 	bufferSize  int
 	isStreaming bool
 	useUnsafe   bool
-	session     *chdb.Session
+	connStr     string
+	keeper      *chdb.Session
 }
 
 // Connect returns a connection to a database.
@@ -190,13 +191,32 @@ func (c *connector) Connect(ctx context.Context) (driver.Conn, error) {
 	if c.driverType == INVALID {
 		return nil, fmt.Errorf("DriverType not supported")
 	}
+	// Each database/sql connection gets its own native chDB connection to the
+	// shared data path, so a pool of connections (MaxOpenConns > 1) yields real
+	// parallel query execution instead of serializing on a single connection.
+	session, err := chdb.NewSession(c.connStr)
+	if err != nil {
+		return nil, err
+	}
 	cc := &conn{
-		udfPath: c.udfPath, session: c.session,
+		udfPath: c.udfPath, session: session,
 		driverType: c.driverType, bufferSize: c.bufferSize,
 		useUnsafe: c.useUnsafe, isStreaming: c.isStreaming,
 	}
 	cc.SetupQueryFun()
 	return cc, nil
+}
+
+// Close releases the connector's keeper session. database/sql calls this from
+// DB.Close() because the connector implements io.Closer. Dropping the keeper
+// reference lets a registry-owned temp directory be removed once all pooled
+// connections are closed as well.
+func (c *connector) Close() error {
+	if c.keeper != nil {
+		c.keeper.Close()
+		c.keeper = nil
+	}
+	return nil
 }
 
 // Driver returns the underying Driver of the connector,
@@ -221,13 +241,6 @@ func parseConnectStr(str string) (ret map[string]string, err error) {
 }
 func NewConnect(opts map[string]string) (ret *connector, err error) {
 	ret = &connector{}
-	sessionPath, ok := opts[sessionOptionKey]
-	if ok {
-		ret.session, err = chdb.NewSession(sessionPath)
-		if err != nil {
-			return nil, err
-		}
-	}
 	driverType, ok := opts[driverTypeKey]
 	if ok {
 		ret.driverType = parseDriverType(driverType)
@@ -256,13 +269,18 @@ func NewConnect(opts map[string]string) (ret *connector, err error) {
 	if ok {
 		ret.udfPath = udfPath
 	}
-	if ret.session == nil {
 
-		ret.session, err = chdb.NewSession()
-		if err != nil {
-			return nil, err
-		}
+	// Open a "keeper" session that pins the data path (and any temp directory)
+	// for the lifetime of this connector. Each pooled connection then opens its
+	// own session on the same path; the keeper guarantees the engine and temp
+	// dir survive pool churn (when the live connection count briefly hits zero).
+	sessionPath := opts[sessionOptionKey] // "" when not provided
+	ret.keeper, err = chdb.NewSession(sessionPath)
+	if err != nil {
+		return nil, err
 	}
+	ret.connStr = ret.keeper.ConnStr()
+
 	ret.isStreaming = ret.driverType.SupportStreaming()
 	return
 }
@@ -275,7 +293,25 @@ func (d Driver) Open(name string) (driver.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	return cc.Connect(context.Background())
+	c, err := cc.Connect(context.Background())
+	if err != nil {
+		// Connect failed; release the keeper session NewConnect just opened so
+		// it does not leak (database/sql would normally own and close cc).
+		if closer, ok := cc.(*connector); ok {
+			_ = closer.Close()
+		}
+		return nil, err
+	}
+	// On the sql.Open path, database/sql keeps the connector and calls
+	// connector.Close() on db.Close(). A direct Driver.Open caller discards the
+	// connector, so tie the keeper session's lifetime to the returned
+	// connection: closing the conn also releases the keeper.
+	if cn, ok := c.(*conn); ok {
+		if cnr, ok := cc.(*connector); ok {
+			cn.connector = cnr
+		}
+	}
+	return c, nil
 }
 
 // OpenConnector expects the same format as driver.Open
@@ -294,6 +330,10 @@ type conn struct {
 	useUnsafe   bool
 	isStreaming bool
 	session     *chdb.Session
+	// connector is set only on the legacy Driver.Open path (not the sql.Open
+	// path, where database/sql owns and closes the connector). When set, Close
+	// also releases the connector's keeper session.
+	connector *connector
 
 	QueryFun  queryHandle
 	streamFun queryStream
@@ -312,6 +352,16 @@ func prepareValues(values []driver.Value) []driver.NamedValue {
 }
 
 func (c *conn) Close() error {
+	if c.session != nil {
+		c.session.Close()
+		c.session = nil
+	}
+	// Only set on the Driver.Open path; releases the keeper that pins the data
+	// path/temp dir for the connector.
+	if c.connector != nil {
+		_ = c.connector.Close()
+		c.connector = nil
+	}
 	return nil
 }
 

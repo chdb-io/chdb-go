@@ -1,47 +1,18 @@
 package chdb
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 )
 
-var (
-	session *Session
-)
-
-func globalSetup() error {
-	sess, err := NewSession()
-	if err != nil {
-		return err
-	}
-	session = sess
-	return nil
-}
-
-func globalTeardown() {
-	session.Cleanup()
-	session.Close()
-}
-
-func TestMain(m *testing.M) {
-	if err := globalSetup(); err != nil {
-		fmt.Println("Global setup failed:", err)
-		os.Exit(1)
-	}
-	// Run all tests.
-	exitCode := m.Run()
-
-	// Global teardown: clean up any resources here.
-	globalTeardown()
-
-	// Exit with the code returned by m.Run().
-	os.Exit(exitCode)
-}
-
 // TestNewSession tests the creation of a new session.
 func TestNewSession(t *testing.T) {
+	session, err := NewSession()
+	if err != nil {
+		t.Fatalf("NewSession failed: %s", err)
+	}
+	defer session.Cleanup()
 
 	// Check if the session directory exists
 	if _, err := os.Stat(session.Path()); os.IsNotExist(err) {
@@ -54,12 +25,14 @@ func TestNewSession(t *testing.T) {
 	}
 }
 
-// This test is currently flaky because of this: https://github.com/chdb-io/chdb/pull/299/commits/91b0aedd8c17e74a4bb213e885d89cc9a77c99ad
 func TestQuery(t *testing.T) {
+	session, err := NewSession()
+	if err != nil {
+		t.Fatalf("NewSession failed: %s", err)
+	}
+	defer session.Cleanup()
 
-	// time.Sleep(time.Second * 5)
-
-	_, err := session.Query("CREATE TABLE IF NOT EXISTS TestQuery (id UInt32) ENGINE = MergeTree() ORDER BY id;")
+	_, err = session.Query("CREATE TABLE IF NOT EXISTS TestQuery (id UInt32) ENGINE = MergeTree() ORDER BY id;")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,6 +76,59 @@ func TestSessionPathAndIsTemp(t *testing.T) {
 
 	if session.IsTemp() {
 		t.Errorf("Session should not be temporary")
+	}
+}
+
+// TestSessionConflictingPath verifies that opening a second session on a
+// different path while one is already open is rejected (chDB allows only one
+// data path per process).
+func TestSessionConflictingPath(t *testing.T) {
+	first, err := NewSession()
+	if err != nil {
+		t.Fatalf("NewSession failed: %s", err)
+	}
+	defer first.Cleanup()
+
+	other := filepath.Join(os.TempDir(), "chdb_conflict_test")
+	defer os.RemoveAll(other)
+	if _, err := NewSession(other); err == nil {
+		t.Errorf("expected an error opening a second session on a different path, got nil")
+	}
+}
+
+// TestConcurrentSessionsSamePath verifies that multiple sessions can be open
+// on the same data path at once and share state.
+func TestConcurrentSessionsSamePath(t *testing.T) {
+	s1, err := NewSession()
+	if err != nil {
+		t.Fatalf("NewSession failed: %s", err)
+	}
+	defer s1.Cleanup()
+
+	// A second session on the same (empty -> reused) path must succeed.
+	s2, err := NewSession()
+	if err != nil {
+		t.Fatalf("second NewSession on same path failed: %s", err)
+	}
+	defer s2.Close()
+
+	if s1.Path() != s2.Path() {
+		t.Fatalf("expected both sessions to share the path, got %q and %q", s1.Path(), s2.Path())
+	}
+
+	if _, err := s1.Query("CREATE TABLE IF NOT EXISTS shared (id UInt32) ENGINE = MergeTree() ORDER BY id;"); err != nil {
+		t.Fatalf("create via s1 failed: %s", err)
+	}
+	if _, err := s1.Query("INSERT INTO shared VALUES (7);"); err != nil {
+		t.Fatalf("insert via s1 failed: %s", err)
+	}
+	// s2 must see data written through s1 (shared engine instance).
+	ret, err := s2.Query("SELECT * FROM shared;")
+	if err != nil {
+		t.Fatalf("select via s2 failed: %s", err)
+	}
+	if string(ret.Buf()) != "7\n" {
+		t.Fatalf("s2 should see s1's data (7), got %q", string(ret.Buf()))
 	}
 }
 
