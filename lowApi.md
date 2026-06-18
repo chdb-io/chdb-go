@@ -53,9 +53,8 @@ Session will keep the state of query. If path is None, it will create a temporar
 
 Important:
 
-- There can be only one session at a time. If you want to create a new session, you need to close the existing one.
-- Creating a new session will close the existing one.
-- You need to ensure that the path exists before creating a new session. Or you can use NewConnectionFromConnString.
+- chDB supports only one data path per process. Multiple connections to the same path can be open at once and execute queries concurrently; connecting to a different path while connections are still open returns an error.
+- You need to ensure that the path exists before creating a new connection. Or you can use NewConnectionFromConnString.
 
 <a name="NewConnectionFromConnString"></a>
 ### func [NewConnectionFromConnString](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb-purego/chdb.go#L269>)
@@ -88,8 +87,7 @@ Some special args handling:
 
 Important:
 
-- There can be only one session at a time. If you want to create a new session, you need to close the existing one.
-- Creating a new session will close the existing one.
+- chDB supports only one data path per process. Multiple connections to the same path can be open at once and execute queries concurrently; connecting to a different path while connections are still open returns an error.
 
 <a name="ChdbResult"></a>
 ## type [ChdbResult](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb-purego/types.go#L39-L55>)

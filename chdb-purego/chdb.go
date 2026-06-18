@@ -182,9 +182,10 @@ func (c *connection) Ready() bool {
 //   - argc = 2, argv = []string{"--path=/tmp/chdb", "--readonly=1"}
 //
 // Important:
-//   - There can be only one session at a time. If you want to create a new session, you need to close the existing one.
-//   - Creating a new session will close the existing one.
-//   - You need to ensure that the path exists before creating a new session. Or you can use NewConnectionFromConnString.
+//   - chDB supports only one data path per process. Multiple connections to the
+//     same path can be open at once and execute queries concurrently; connecting
+//     to a different path while connections are still open returns an error.
+//   - You need to ensure that the path exists before creating a new connection. Or you can use NewConnectionFromConnString.
 func NewConnection(argc int, argv []string) (ChdbConn, error) {
 	var new_argv []string
 	if (argc > 0 && argv[0] != "clickhouse") || argc == 0 {
@@ -274,8 +275,9 @@ func NewConnection(argc int, argv []string) (ChdbConn, error) {
 //	- "mode=ro" would be "--readonly=1" for clickhouse (read-only mode)
 //
 // Important:
-//   - There can be only one session at a time. If you want to create a new session, you need to close the existing one.
-//   - Creating a new session will close the existing one.
+//   - chDB supports only one data path per process. Multiple connections to the
+//     same path can be open at once and execute queries concurrently; connecting
+//     to a different path while connections are still open returns an error.
 func NewConnectionFromConnString(conn_string string) (ChdbConn, error) {
 	if conn_string == "" || conn_string == ":memory:" {
 		return NewConnection(0, []string{})

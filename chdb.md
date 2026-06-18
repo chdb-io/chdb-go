@@ -57,7 +57,7 @@ type Session struct {
 func NewSession(paths ...string) (*Session, error)
 ```
 
-NewSession creates a new session with the given path. If path is empty, a temporary directory is created. Note: The temporary directory is removed when Close is called.
+NewSession creates a new session with the given path. If path is empty, the session reuses an already\-open data path, or creates a temporary directory when none is open. Multiple sessions can be open at once as long as they share the same data path \(each owns an independent native connection, so they can run queries in parallel\); opening a session on a different path while another is still open returns an error. The temporary directory is removed when the last session using it is closed.
 
 <a name="Session.Cleanup"></a>
 ### func \(\*Session\) [Cleanup](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb/session.go#L86>)

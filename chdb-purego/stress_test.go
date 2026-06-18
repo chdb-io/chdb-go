@@ -184,3 +184,60 @@ func runStress(conn ChdbConn, id, depth int, queries, failures *atomic.Uint64, s
 		queries.Add(1)
 	}
 }
+
+// TestMultiConnectionStress opens several connections to the same (in-memory)
+// data path and drives queries on all of them concurrently. It guards the
+// multi-connection path (refcounted EmbeddedServer + per-connection clients)
+// against crashes and regressions in the issue-#30 signal handling under
+// concurrent connect/query load. Skipped under `go test -short`.
+func TestMultiConnectionStress(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping stress test in -short mode")
+	}
+
+	const (
+		duration = 5 * time.Second
+		nConns   = 4
+		gPerConn = 4
+		recurse  = 16
+	)
+
+	conns := make([]ChdbConn, 0, nConns)
+	for i := 0; i < nConns; i++ {
+		c, err := NewConnectionFromConnString(":memory:")
+		if err != nil {
+			t.Fatalf("connect %d: %v", i, err)
+		}
+		defer c.Close()
+		conns = append(conns, c)
+	}
+
+	var (
+		wg       sync.WaitGroup
+		queries  atomic.Uint64
+		failures atomic.Uint64
+		stop     atomic.Bool
+	)
+
+	for i := 0; i < nConns; i++ {
+		for g := 0; g < gPerConn; g++ {
+			wg.Add(1)
+			go func(c ChdbConn) {
+				defer wg.Done()
+				runStress(c, 0, recurse, &queries, &failures, &stop)
+			}(conns[i])
+		}
+	}
+
+	time.Sleep(duration)
+	stop.Store(true)
+	wg.Wait()
+
+	t.Logf("conns=%d goroutines=%d queries=%d failures=%d (%.0f qps)",
+		nConns, nConns*gPerConn, queries.Load(), failures.Load(),
+		float64(queries.Load())/duration.Seconds())
+
+	if failures.Load() != 0 {
+		t.Fatalf("%d queries failed under multi-connection stress", failures.Load())
+	}
+}
