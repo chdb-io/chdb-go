@@ -7,11 +7,11 @@ import (
 
 	"github.com/c-bata/go-prompt"
 
-	// "github.com/chdb-io/chdb-go/cli"
-	// "github.com/chdb-io/chdb-go/cli/completer"
-	// "github.com/chdb-io/chdb-go/cli/history"
+	// "github.com/chdb-io/chdb-go/v2/cli"
+	// "github.com/chdb-io/chdb-go/v2/cli/completer"
+	// "github.com/chdb-io/chdb-go/v2/cli/history"
 
-	"github.com/chdb-io/chdb-go/chdb"
+	"github.com/chdb-io/chdb-go/v2/chdb"
 )
 
 func main() {

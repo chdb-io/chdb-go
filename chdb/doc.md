@@ -3,7 +3,7 @@
 # chdb
 
 ```go
-import "github.com/chdb-io/chdb-go/chdb"
+import "github.com/chdb-io/chdb-go/v2/chdb"
 ```
 
 ## Index

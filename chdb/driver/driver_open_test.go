@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"testing"
 
-	"github.com/chdb-io/chdb-go/chdb"
+	"github.com/chdb-io/chdb-go/v2/chdb"
 )
 
 // TestDriverOpenNoKeeperLeak verifies that the legacy Driver.Open path does not

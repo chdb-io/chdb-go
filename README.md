@@ -15,7 +15,7 @@
 
 ### Install chdb-go
 1. Install `chdb-go`
-  - `go install github.com/chdb-io/chdb-go@latest`
+  - `go install github.com/chdb-io/chdb-go/v2@latest`
 2. Run `chdb-go` with or without persistent `--path`
   - run `$GOPATH/bin/chdb-go`
 
@@ -55,7 +55,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/chdb-io/chdb-go/chdb"
+	"github.com/chdb-io/chdb-go/v2/chdb"
 )
 
 func main() {
@@ -102,7 +102,7 @@ import (
         "database/sql"
         "log"
 
-        _ "github.com/chdb-io/chdb-go/chdb/driver"
+        _ "github.com/chdb-io/chdb-go/v2/chdb/driver"
 )
 
 func main() {

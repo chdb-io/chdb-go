@@ -9,7 +9,7 @@ import (
 
 	"reflect"
 
-	chdbpurego "github.com/chdb-io/chdb-go/chdb-purego"
+	chdbpurego "github.com/chdb-io/chdb-go/v2/chdb-purego"
 	"github.com/parquet-go/parquet-go"
 )
 

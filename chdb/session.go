@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	chdbpurego "github.com/chdb-io/chdb-go/chdb-purego"
+	chdbpurego "github.com/chdb-io/chdb-go/v2/chdb-purego"
 )
 
 // chDB embeds a single ClickHouse engine (EmbeddedServer) per process: the
