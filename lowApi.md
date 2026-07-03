@@ -3,7 +3,7 @@
 # chdbpurego
 
 ```go
-import "github.com/chdb-io/chdb-go/chdb-purego"
+import "github.com/chdb-io/chdb-go/v2/chdb-purego"
 ```
 
 ## Index

@@ -1,7 +1,7 @@
 package chdb
 
 import (
-	chdbpurego "github.com/chdb-io/chdb-go/chdb-purego"
+	chdbpurego "github.com/chdb-io/chdb-go/v2/chdb-purego"
 )
 
 // Query runs a one-shot query and returns the materialized result. Output

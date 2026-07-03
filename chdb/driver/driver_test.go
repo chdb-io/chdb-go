@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/chdb-io/chdb-go/chdb"
+	"github.com/chdb-io/chdb-go/v2/chdb"
 )
 
 var (

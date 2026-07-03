@@ -1,4 +1,4 @@
-module github.com/chdb-io/chdb-go
+module github.com/chdb-io/chdb-go/v2
 
 go 1.21
 

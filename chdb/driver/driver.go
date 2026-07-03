@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/chdb-io/chdb-go/chdb"
-	chdbpurego "github.com/chdb-io/chdb-go/chdb-purego"
+	"github.com/chdb-io/chdb-go/v2/chdb"
+	chdbpurego "github.com/chdb-io/chdb-go/v2/chdb-purego"
 	"github.com/huandu/go-sqlbuilder"
 	"github.com/parquet-go/parquet-go"
 )
