@@ -189,3 +189,6 @@ Temporary Items
 *.icloud
 
 # End of https://www.toptal.com/developers/gitignore/api/go,macos,linux,goland
+
+# Headers extracted by update_libchdb.sh alongside the library
+chdb.hpp
