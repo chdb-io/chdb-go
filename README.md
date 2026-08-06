@@ -19,6 +19,27 @@
 2. Run `chdb-go` with or without persistent `--path`
   - run `$GOPATH/bin/chdb-go`
 
+### Where the engine is loaded from
+
+`chdb-go` opens `libchdb` at runtime. It is looked up in this order:
+
+1. `CHDB_LIB_PATH`, if set. This points at the library file itself, not a
+   directory. Setting it disables the rest of the search: if the file does not
+   load, that is the error, rather than a different copy of the engine being
+   used instead.
+2. The directory holding the running executable. Shipping your program and
+   `libchdb` side by side in one archive therefore works with nothing
+   installed and no environment variable set.
+3. `PATH`.
+4. `/usr/local/lib`, `/opt/homebrew/lib` and `/usr/lib`.
+
+When none of them yields a usable library, the error lists every location that
+was tried and why each one failed.
+
+`chdbpurego.LoadedLibraryPath()` returns the absolute path of the library the
+process is actually using, which is worth logging at startup if you ship
+`libchdb` yourself.
+
 ### or Build from source
 1. Build `chdb-go`
   - run `make build`
