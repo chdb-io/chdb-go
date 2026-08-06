@@ -114,29 +114,47 @@ func searchPaths() []attempt {
 	return out
 }
 
+// dlopenLibrary is the single place the loader flags are chosen. RTLD_GLOBAL is
+// required: the engine's own internal references resolve against the global
+// namespace once it is loaded.
+func dlopenLibrary(path string) (uintptr, error) {
+	return purego.Dlopen(path, purego.RTLD_NOW|purego.RTLD_GLOBAL)
+}
+
 // openLibrary loads libchdb and returns its handle and the absolute path it was
 // loaded from.
 //
-// Two rules shape this function. Every path handed to the dynamic loader is
+// Three rules shape this function. Every path handed to the dynamic loader is
 // absolute, because a program built with the macOS hardened runtime rejects
 // relative library paths outright and reports it as a path error rather than a
-// permissions one. And a location that was named explicitly is never silently
+// permissions one. A location that was named explicitly is never silently
 // replaced by a different one: if CHDB_LIB_PATH is set and does not load, that
 // is the error, because loading some other build of the engine instead is far
-// harder to diagnose than failing.
+// harder to diagnose than failing. And a binary carrying its own engine uses
+// that engine, so the version is fixed by the build rather than by whatever the
+// host happens to have installed.
 func openLibrary() (uintptr, string, error) {
 	if raw := os.Getenv(LibPathEnv); raw != "" {
 		abs, err := filepath.Abs(raw)
 		if err != nil {
 			return 0, "", fmt.Errorf("chdb: %s=%q cannot be resolved to an absolute path: %w", LibPathEnv, raw, err)
 		}
-		h, err := purego.Dlopen(abs, purego.RTLD_NOW|purego.RTLD_GLOBAL)
+		h, err := dlopenLibrary(abs)
 		if err != nil {
 			return 0, "", fmt.Errorf(
 				"chdb: %s=%q could not be loaded: %s\n\n%s is an explicit override, so no other location was tried. Unset it to use the default search",
 				LibPathEnv, abs, trimDlopenNoise(err.Error()), LibPathEnv)
 		}
 		return h, abs, nil
+	}
+
+	// A build carrying its own engine does not consult the machine at all. That
+	// is the point of embedding it: the version is decided when the binary is
+	// built, and quietly preferring some other copy found on the host would
+	// undo that guarantee in a way nobody would notice until the behaviour
+	// differed.
+	if e := registeredEngine(); e != nil {
+		return openEmbedded(e, dlopenLibrary)
 	}
 
 	candidates := searchPaths()
@@ -146,7 +164,7 @@ func openLibrary() (uintptr, string, error) {
 			c.err = fmt.Errorf("no such file")
 			continue
 		}
-		h, err := purego.Dlopen(c.path, purego.RTLD_NOW|purego.RTLD_GLOBAL)
+		h, err := dlopenLibrary(c.path)
 		if err != nil {
 			c.err = err
 			continue
