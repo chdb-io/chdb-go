@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 // fakeEngine builds a small EmbeddedEngine so the extraction machinery can be
@@ -89,11 +90,11 @@ func TestSecondStartSkipsExtraction(t *testing.T) {
 	}
 }
 
-func TestConcurrentExtractionConvergesWithoutLocking(t *testing.T) {
+func TestConcurrentColdStartsWriteThePayloadOnce(t *testing.T) {
 	root := t.TempDir()
 	t.Setenv(CacheDirEnv, root)
 	payload := bytes.Repeat([]byte("chdb"), 4096)
-	e, _ := fakeEngine(payload)
+	e, opens := fakeEngine(payload)
 
 	const racers = 12
 	paths := make([]string, racers)
@@ -128,19 +129,78 @@ func TestConcurrentExtractionConvergesWithoutLocking(t *testing.T) {
 		t.Error("the published copy is not the full payload")
 	}
 
+	// The whole point of taking a lock: one process writes the engine and the
+	// rest use what it published. Without this, twelve cold starts write twelve
+	// copies of a ~500 MiB library to publish one, which is how they ran a
+	// machine out of disk.
+	if *opens != 1 {
+		t.Errorf("payload written %d times by %d concurrent cold starts, want 1", *opens, racers)
+	}
+
 	// A racer that loses must clean up after itself, or a machine restarting
 	// many processes accumulates abandoned directories of engine-sized junk.
 	entries, err := os.ReadDir(root)
 	if err != nil {
 		t.Fatal(err)
 	}
+	published := 0
 	for _, entry := range entries {
 		if strings.HasPrefix(entry.Name(), ".tmp-") {
 			t.Errorf("leftover temporary directory %q", entry.Name())
 		}
+		if entry.IsDir() {
+			published++
+		}
 	}
-	if len(entries) != 1 {
-		t.Errorf("expected exactly one published directory, got %d", len(entries))
+	if published != 1 {
+		t.Errorf("expected exactly one published directory, got %d", published)
+	}
+}
+
+func TestUnavailableLockIsReportedAsSuchNotAsAnError(t *testing.T) {
+	// Where the lock file cannot even be created — a filesystem without flock
+	// support behaves the same way from the caller's side — locking has to
+	// report that it is unavailable so extraction carries on without it.
+	// Returning an error instead would turn an optimisation into a requirement.
+	if unlock := lockExtraction(filepath.Join(t.TempDir(), "does-not-exist"), "deadbeef"); unlock != nil {
+		unlock()
+		t.Fatal("locking succeeded in a directory that does not exist")
+	}
+}
+
+func TestLockIsExclusiveAndReleased(t *testing.T) {
+	root := t.TempDir()
+
+	unlock := lockExtraction(root, "deadbeef")
+	if unlock == nil {
+		t.Fatal("could not take the lock on a fresh directory")
+	}
+
+	// A second attempt has to give up rather than proceed, or the lock buys
+	// nothing. Waiting out lockWait here would take minutes, so the contended
+	// path is checked with a deadline of its own.
+	contended := make(chan func(), 1)
+	go func() { contended <- lockExtraction(root, "deadbeef") }()
+	select {
+	case got := <-contended:
+		if got != nil {
+			got()
+			t.Fatal("two processes held the same extraction lock at once")
+		}
+		t.Fatal("the contended waiter gave up instead of waiting for the holder")
+	case <-time.After(200 * time.Millisecond):
+		// Still waiting, which is what it should be doing.
+	}
+
+	unlock()
+	select {
+	case got := <-contended:
+		if got == nil {
+			t.Fatal("the lock was not available after the holder released it")
+		}
+		got()
+	case <-time.After(lockWait):
+		t.Fatal("the waiter did not acquire the lock after it was released")
 	}
 }
 
