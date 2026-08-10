@@ -8,12 +8,12 @@ jobs:
   build_linux:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Fetch library
       run: |
           make install
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
         go-version: "1.21"
     - name: Build
@@ -34,15 +34,24 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.ACTION }}
 
+  # macos-14 rather than macos-13: the macos-13 label has been retired, and a job
+  # asking for a label that no longer exists does not fail — it waits for a
+  # runner until the 24 hour limit and is then cancelled. That is what happened
+  # to the v2.0.0 and v2.0.1 releases, which published no macOS artifact at all.
+  #
+  # macos-14 is arm64, so what this job produces is an arm64 artifact and is
+  # named accordingly. Publishing it under the old macos-x86_64 name would ship
+  # a binary for the wrong architecture under a name users match on, which is
+  # worse than not publishing it.
   build_mac:
-    runs-on: macos-13
+    runs-on: macos-14
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Fetch library
       run: |
           make install
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
         go-version: "1.21"
     - name: Build
@@ -58,7 +67,7 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/v')
       run: |
         cp -a /usr/local/lib/libchdb.so .
-        tar -czvf macos-x86_64-chdb-go.tar.gz libchdb.so chdb-go
-        gh release upload ${{ github.ref_name }} macos-x86_64-chdb-go.tar.gz --clobber
+        tar -czvf macos-arm64-chdb-go.tar.gz libchdb.so chdb-go
+        gh release upload ${{ github.ref_name }} macos-arm64-chdb-go.tar.gz --clobber
       env:
         GITHUB_TOKEN: ${{ secrets.ACTION }}
