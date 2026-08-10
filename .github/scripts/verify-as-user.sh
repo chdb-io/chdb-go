@@ -25,6 +25,16 @@
 
 set -euo pipefail
 
+# unzip is checked here rather than where it is used, because the only use is
+# inside an `if` condition, where a missing command is a false answer instead of
+# an error and the check it guards would silently pass.
+for tool in git go curl tar unzip; do
+	command -v "$tool" >/dev/null || {
+		echo "missing required tool: $tool" >&2
+		exit 1
+	}
+done
+
 MODULE_PATH="github.com/chdb-io/chdb-go/v2"
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "$REPO_ROOT"
@@ -34,6 +44,19 @@ cd "$REPO_ROOT"
 # serves stale code and produces failures that look like compiler bugs.
 VERSION="v2.99.99-$(git rev-parse --short HEAD)"
 
+# Two runs on the same commit produce the same module version, and the module
+# cache would serve the first run's copy — including a broken one, which then
+# looks like the fix did not work. CI starts with an empty cache; this is what
+# makes a local run behave the same way. Only this module's entries are removed.
+MODCACHE="$(go env GOMODCACHE)"
+if [ -n "$MODCACHE" ]; then
+	for stale in "$MODCACHE/cache/download/$MODULE_PATH/@v" "$MODCACHE/$MODULE_PATH@$VERSION"; do
+		[ -e "$stale" ] || continue
+		chmod -R u+w "$stale" 2>/dev/null || true
+		rm -rf "$stale"
+	done
+fi
+
 WORK="$(mktemp -d)"
 trap 'chmod -R u+w "$WORK" 2>/dev/null || true; rm -rf "$WORK"' EXIT
 
@@ -41,8 +64,24 @@ PROXY="$WORK/proxy"
 CONSUMER="$WORK/consumer"
 mkdir -p "$PROXY/$MODULE_PATH/@v" "$CONSUMER"
 
+# A directory with its own go.mod belongs to a different module, and the proxy
+# leaves those out of the parent module's archive. git archive does not know
+# that, and a zip carrying lib/*/go.mod is rejected on unzip with "go.mod file
+# not in module root directory" — so the exclusion has to be reproduced here or
+# this script fails on an archive no user could ever receive.
+#
+# The list is derived rather than written out, so adding a platform module needs
+# no edit here.
+nested=()
+while IFS= read -r modfile; do
+	nested+=(":(exclude)$(dirname "$modfile")/*")
+done < <(git ls-files '*/go.mod')
+
 echo "==> Packaging $MODULE_PATH@$VERSION from committed content"
+# ${nested[@]+...} keeps an empty list from tripping set -u on bash 3.2, which
+# is what /bin/bash still is on the macOS runners.
 git archive --format=zip --prefix="$MODULE_PATH@$VERSION/" HEAD \
+	${nested[@]+"${nested[@]}"} \
 	-o "$PROXY/$MODULE_PATH/@v/$VERSION.zip"
 git show HEAD:go.mod >"$PROXY/$MODULE_PATH/@v/$VERSION.mod"
 printf '{"Version":"%s"}\n' "$VERSION" >"$PROXY/$MODULE_PATH/@v/$VERSION.info"
@@ -50,8 +89,13 @@ echo "$VERSION" >"$PROXY/$MODULE_PATH/@v/list"
 
 # The engine is a release artifact, never part of the module. If it ever shows
 # up in the archive, the module has grown a few hundred megabytes by accident.
-if unzip -l "$PROXY/$MODULE_PATH/@v/$VERSION.zip" | grep -qE 'libchdb\.(so|dylib)'; then
+if unzip -l "$PROXY/$MODULE_PATH/@v/$VERSION.zip" | grep -qE 'libchdb\.(so|dylib|zst)'; then
 	echo "FAIL: the module archive contains a libchdb binary" >&2
+	exit 1
+fi
+
+if unzip -l "$PROXY/$MODULE_PATH/@v/$VERSION.zip" | grep -qE '/lib/[^/]+/go\.mod'; then
+	echo "FAIL: the module archive contains a nested module; the proxy excludes those" >&2
 	exit 1
 fi
 
