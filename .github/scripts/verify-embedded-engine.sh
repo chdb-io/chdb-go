@@ -39,6 +39,26 @@ MODDIR="lib/$PLATFORM"
 
 ENGINE_TAG="${CHDB_CORE_TAG:-v26.5.0}"
 
+echo "==> Cross-compiling every platform module"
+# Only the runner's own module is exercised by the rest of this script, so
+# without this a mistake in one of the other three would surface whenever that
+# platform is next packaged rather than in the change that caused it. The modules
+# are pure Go, so building them for another platform costs seconds. GOWORK=off
+# because each module must build on its own, from its own go.mod.
+for dir in lib/*/; do
+	platform="$(basename "$dir")"
+	echo "    $platform"
+	(cd "$dir" && GOWORK=off GOOS="${platform%%-*}" GOARCH="${platform##*-}" go build ./...)
+done
+
+# Compression ratio is a property of a release, not of the machinery this script
+# checks: the level changes neither the extracted library nor its digest, and the
+# payload is still several times the part size, so splitting and reassembly are
+# exercised either way. At the publishing level this step costs about a minute on
+# a runner's four cores, which is most of what this job would spend and none of
+# what it is checking.
+export ZSTD_LEVEL="${ZSTD_LEVEL:-3}"
+
 echo "==> Packaging chdb-core $ENGINE_TAG for $PLATFORM"
 ./scripts/package-engine.sh "$ENGINE_TAG" "$PLATFORM"
 
@@ -172,8 +192,30 @@ if [ "$before" != "$after" ]; then
 	exit 1
 fi
 
-echo "==> Twelve concurrent cold starts converge on one copy"
+echo "==> Twelve concurrent cold starts write one copy between them"
 rm -rf "$CACHE" && mkdir -p "$CACHE"
+
+# Each in-progress extraction is a .tmp- directory holding a full copy of the
+# engine, so counting them while the twelve run is a direct measure of how much
+# disk this costs at its peak. Twelve at once is half a gigabyte each: enough to
+# fail with ENOSPC on a machine with several gigabytes free, which is how the
+# lock in extract.go came to exist. Sampling can only under-count, so a number
+# above one is a real regression and never a flake.
+peak_file="$WORK/peak-temp-dirs"
+echo 0 >"$peak_file"
+(
+	peak=0
+	while [ ! -e "$WORK/racers-done" ]; do
+		n="$(find "$CACHE" -mindepth 1 -maxdepth 1 -name '.tmp-*' 2>/dev/null | wc -l | tr -d ' ')"
+		[ "$n" -le "$peak" ] || {
+			peak="$n"
+			echo "$peak" >"$peak_file"
+		}
+		sleep 0.05
+	done
+) &
+watcher=$!
+
 pids=()
 for _ in $(seq 12); do
 	env -u CHDB_LIB_PATH CHDB_CACHE_DIR="$CACHE" ./consumer >/dev/null &
@@ -183,10 +225,20 @@ failed=0
 for pid in "${pids[@]}"; do
 	wait "$pid" || failed=1
 done
+touch "$WORK/racers-done"
+wait "$watcher" 2>/dev/null || true
+
 [ "$failed" -eq 0 ] || {
 	echo "FAIL: a concurrent cold start failed" >&2
 	exit 1
 }
+
+peak="$(cat "$peak_file")"
+echo "    peak concurrent extractions: $peak"
+if [ "$peak" -gt 1 ]; then
+	echo "FAIL: $peak processes extracted at once; each writes a full copy of the engine" >&2
+	exit 1
+fi
 
 published="$(find "$CACHE" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
 if [ "$published" != "1" ]; then
