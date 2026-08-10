@@ -104,6 +104,27 @@ func extractInto(root string, e *EmbeddedEngine) (string, error) {
 		return lib, nil
 	}
 
+	// Correctness does not need the extraction to be serialised — the digest
+	// names the destination, every process writes identical bytes and the
+	// rename is atomic — but space does. Without this, twelve processes
+	// starting cold at once each write their own ~500 MiB temporary copy before
+	// eleven of them are discarded: six gigabytes of writes to publish half a
+	// gigabyte. Measured on a machine with 4.7 GiB free, all twelve failed with
+	// ENOSPC while one would have succeeded, and a container with a small
+	// writable layer hits the same wall with far fewer processes.
+	//
+	// The lock is an optimisation and is treated as one. If it cannot be taken,
+	// because the filesystem does not support it or because the holder is
+	// wedged, extraction proceeds unsynchronised — exactly what would happen
+	// without any of this.
+	if unlock := lockExtraction(root, e.Digest); unlock != nil {
+		defer unlock()
+		// The holder may have published while we waited for it.
+		if _, err := os.Stat(lib); err == nil {
+			return lib, nil
+		}
+	}
+
 	// The temporary directory has to sit under the same root: os.Rename across
 	// filesystems fails with EXDEV rather than falling back to a copy, and a
 	// copy would not be atomic anyway.
