@@ -24,6 +24,14 @@ set -euo pipefail
 MAX_PART_MIB=64
 PLATFORMS=(linux-amd64 linux-arm64 darwin-amd64 darwin-arm64)
 
+# 19 is for publishing, where minutes of CPU here come off every user's
+# download forever. It costs about that: a 500 MiB library takes a few minutes
+# on many cores and far longer on the two or four a CI runner has. Anything that
+# only needs to exercise the machinery should set ZSTD_LEVEL low — the level
+# changes neither the extracted bytes nor the digest, so nothing but the size of
+# the payload depends on it.
+ZSTD_LEVEL="${ZSTD_LEVEL:-19}"
+
 usage() {
 	echo "usage: $0 <chdb-core-tag> [platform...]" >&2
 	echo "platforms: ${PLATFORMS[*]}" >&2
@@ -100,13 +108,13 @@ for platform in "${PLATFORMS[@]}"; do
 	size="$(wc -c <"$WORK/x/$lib" | tr -d ' ')"
 	digest="$(shasum -a 256 "$WORK/x/$lib" | cut -c1-32)"
 
-	echo "==> $platform: compressing $lib ($((size / 1048576)) MiB)"
+	echo "==> $platform: compressing $lib ($((size / 1048576)) MiB) at zstd -$ZSTD_LEVEL"
 	# Only the parts are replaced. data/README.md has to survive, because
 	# //go:embed of a directory fails when the directory holds no files, which
 	# would break the module on a revision that carries no payload.
 	mkdir -p "$moddir/data"
 	rm -f "$moddir"/data/libchdb.zst.part*
-	zstd -19 -T0 -q -c "$WORK/x/$lib" >"$WORK/payload.zst"
+	zstd "-$ZSTD_LEVEL" -T0 -q -c "$WORK/x/$lib" >"$WORK/payload.zst"
 
 	compressed="$(wc -c <"$WORK/payload.zst" | tr -d ' ')"
 	split -b "$((MAX_PART_MIB * 1048576))" -a 2 -d \
