@@ -48,8 +48,10 @@ jobs:
         with:
           go-version: "1.21"
 
+      # Same path as the regular jobs: system-wide, so the CLI finds it too.
+      # CHDB_ENGINE_VERSION is already in the environment and overrides the pin.
       - name: Fetch the published engine
-        run: ./update_libchdb.sh
+        run: make install
 
       - name: Build
         run: |
@@ -60,13 +62,76 @@ jobs:
         run: make test
 
       - name: Test with race detector
-        run: CHDB_LIB_PATH="$PWD/libchdb.so" go test -race -timeout=180s ./...
+        run: go test -race -timeout=180s ./...
 
       - name: Test main
         run: ./chdb-go "SELECT 12345"
 
-  report:
+  # Green means the engine can be adopted, not that it has been. Adoption is a
+  # one-line change to a pinned version and goes through review like any other
+  # dependency bump; this only writes the line.
+  propose_bump:
     needs: test
+    if: needs.test.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      pr: ${{ steps.bump.outputs.pr }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: bump
+        name: Open a PR moving the pin to this engine
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ENGINE_VERSION: ${{ github.event.client_payload.tag || github.event.inputs.engine_version }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+
+          current=$(grep -E '^CHDB_ENGINE_PIN=' update_libchdb.sh | cut -d= -f2)
+          if [ "$current" = "$ENGINE_VERSION" ]; then
+            echo "already pinned to $ENGINE_VERSION, nothing to propose"
+            exit 0
+          fi
+
+          branch="engine-pin-$ENGINE_VERSION"
+          if [ "$(gh pr list --head "$branch" --state open --json number --jq 'length')" != 0 ]; then
+            echo "a PR for $ENGINE_VERSION is already open"
+            exit 0
+          fi
+
+          git switch -c "$branch"
+          sed -i "s|^CHDB_ENGINE_PIN=.*|CHDB_ENGINE_PIN=$ENGINE_VERSION|" update_libchdb.sh
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -am "Move the engine pin from $current to $ENGINE_VERSION"
+          git push -u origin "$branch"
+
+          {
+            echo "The release check ran the suite against \`$ENGINE_VERSION\` on Linux and"
+            echo "macOS and it passed, so the engine can be adopted. This moves the pin"
+            echo "$current → \`$ENGINE_VERSION\`; \`make install\` and \`update_libchdb.sh\`"
+            echo "both read it."
+            echo
+            echo "$RUN_URL"
+            echo
+            echo "No checks will appear here. GitHub does not start workflow runs for"
+            echo "commits a workflow pushed with \`GITHUB_TOKEN\`, and running CI on this"
+            echo "branch would exercise the same suite against the same engine the check"
+            echo "just used."
+          } > pr-body.md
+
+          url=$(gh pr create --base "$GITHUB_REF_NAME" --head "$branch" \
+            --title "Move the engine pin to $ENGINE_VERSION" \
+            --body-file pr-body.md)
+          echo "pr=$url" >> "$GITHUB_OUTPUT"
+          echo "$url"
+
+  report:
+    needs: [test, propose_bump]
     if: always()
     runs-on: ubuntu-latest
     permissions:
@@ -76,6 +141,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RESULT: ${{ needs.test.result }}
+          BUMP_PR: ${{ needs.propose_bump.outputs.pr }}
           ENGINE_VERSION: ${{ github.event.client_payload.tag || github.event.inputs.engine_version }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
@@ -91,6 +157,10 @@ jobs:
             echo "chdb-go $verdict against chdb-core \`$ENGINE_VERSION\`."
             echo
             echo "$RUN_URL"
+            if [ -n "$BUMP_PR" ]; then
+              echo
+              echo "Adopting it: $BUMP_PR"
+            fi
             if [ "$RESULT" != success ]; then
               echo
               echo "purego binds by symbol name, so an ABI change does not show up as a"

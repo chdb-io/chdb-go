@@ -1,12 +1,18 @@
 
 #!/bin/bash
 
-# CHDB_ENGINE_VERSION pins the engine to one chdb-core release. Set it to test
-# against a specific engine; leave it unset to take whatever is newest.
-LATEST_RELEASE="${CHDB_ENGINE_VERSION:-$(curl --silent "https://api.github.com/repos/chdb-io/chdb-core/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')}"
+# The engine this repository is built and tested against. `make install` reads
+# it too, so both ways of fetching libchdb land on the same build. Keep it on
+# its own line and literal: the release check greps for it when it proposes a
+# bump, and the Makefile cuts the value out of it.
+CHDB_ENGINE_PIN=v26.5.0
+
+# CHDB_ENGINE_VERSION overrides the pin, which is how the release check runs the
+# suite against an engine this repository has not adopted yet.
+LATEST_RELEASE="${CHDB_ENGINE_VERSION:-$CHDB_ENGINE_PIN}"
 
 if [ -z "$LATEST_RELEASE" ]; then
-    echo "Could not determine a chdb-core release to download. Set CHDB_ENGINE_VERSION to pick one." >&2
+    echo "No chdb-core release to download. Set CHDB_ENGINE_VERSION or fix CHDB_ENGINE_PIN." >&2
     exit 1
 fi
 
