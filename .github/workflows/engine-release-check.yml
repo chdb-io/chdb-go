@@ -113,7 +113,17 @@ jobs:
           git -c user.name="github-actions[bot]" \
               -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
               commit -am "Move the engine pin from $current to $ENGINE_VERSION"
-          git push -u origin "$branch"
+          # The branch can already exist on the remote: a bump PR closed without
+          # merging leaves it behind, and a plain push is then rejected as a
+          # non-fast-forward, silently costing the adoption PR. No open PR uses it
+          # — that was checked above — and its only content is one generated line,
+          # so replacing it is safe.
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+            echo "$branch is left over from an earlier attempt, replacing it"
+            git push --force -u origin "$branch"
+          else
+            git push -u origin "$branch"
+          fi
 
           {
             echo "The release check ran the suite against \`$ENGINE_VERSION\` on Linux and"
