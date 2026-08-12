@@ -41,6 +41,15 @@ jobs:
             echo "::error::no engine version in the dispatch payload or the manual input"
             exit 1
           fi
+          # The version arrives from a dispatch payload or a typed input, then flows
+          # into a URL, a branch name, a commit message and a sed replacement. Any
+          # character outside this set belongs to no chdb-core release tag, and an
+          # & or | reaching sed would quietly rewrite the wrong thing.
+          case "$ENGINE_VERSION" in
+            *[!A-Za-z0-9._+-]*)
+              echo "::error::refusing engine version '$ENGINE_VERSION': letters, digits and . _ + - only"
+              exit 1 ;;
+          esac
           echo "CHDB_ENGINE_VERSION=$ENGINE_VERSION" >> "$GITHUB_ENV"
           echo "Testing against chdb-core $ENGINE_VERSION"
 
@@ -95,6 +104,14 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
+
+          # test rejects these too, but this is the step that interpolates the
+          # version into sed replacements and a branch name.
+          case "$ENGINE_VERSION" in
+            *[!A-Za-z0-9._+-]*)
+              echo "::error::refusing engine version '$ENGINE_VERSION'"
+              exit 1 ;;
+          esac
 
           current=$(grep -E '^CHDB_ENGINE_PIN=' update_libchdb.sh | cut -d= -f2)
           if [ "$current" = "$ENGINE_VERSION" ]; then
