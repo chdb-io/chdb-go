@@ -1,0 +1,267 @@
+name: Engine release check
+
+# chdb-core publishes an engine and dispatches here; this runs the suite against
+# that engine and records the verdict in an issue. It gates nothing — the engine
+# has already shipped by the time this starts.
+#
+# It exists because nothing else notices a C-ABI change. purego resolves symbols
+# by name at runtime and the Go-side signatures in chdb-purego are written by
+# hand, so a struct that loses a field or a function that gains an argument
+# builds and links exactly as before and misreads memory instead. The regular CI
+# jobs only ever see the engine this repository already pinned, so they stay
+# green until someone bumps it, which can be months after the break landed.
+
+on:
+  repository_dispatch:
+    types: [chdb-core-release]
+  workflow_dispatch:
+    inputs:
+      engine_version:
+        description: "chdb-core release tag, e.g. v26.5.0"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-14]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve the engine version
+        env:
+          ENGINE_VERSION: ${{ github.event.client_payload.tag || github.event.inputs.engine_version }}
+        run: |
+          if [ -z "$ENGINE_VERSION" ]; then
+            echo "::error::no engine version in the dispatch payload or the manual input"
+            exit 1
+          fi
+          # The version arrives from a dispatch payload or a typed input, then flows
+          # into a URL, a branch name, a commit message and a sed replacement. Any
+          # character outside this set belongs to no chdb-core release tag, and an
+          # & or | reaching sed would quietly rewrite the wrong thing.
+          case "$ENGINE_VERSION" in
+            *[!A-Za-z0-9._+-]*)
+              echo "::error::refusing engine version '$ENGINE_VERSION': letters, digits and . _ + - only"
+              exit 1 ;;
+          esac
+          echo "CHDB_ENGINE_VERSION=$ENGINE_VERSION" >> "$GITHUB_ENV"
+          echo "Testing against chdb-core $ENGINE_VERSION"
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+
+      # Same path as the regular jobs: system-wide, so the CLI finds it too.
+      # CHDB_ENGINE_VERSION is already in the environment and overrides the pin.
+      - name: Fetch the published engine
+        run: make install
+
+      - name: Build
+        run: |
+          go mod tidy
+          make build
+
+      - name: Test
+        run: make test
+
+      - name: Test with race detector
+        run: go test -race -timeout=180s ./...
+
+      - name: Test main
+        run: ./chdb-go "SELECT 12345"
+
+  # Green means the engine can be adopted, not that it has been. Adoption is a
+  # one-line change to a pinned version and goes through review like any other
+  # dependency bump; this only writes the line.
+  propose_bump:
+    needs: test
+    if: needs.test.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      pr: ${{ steps.bump.outputs.pr }}
+      unproposed: ${{ steps.bump.outputs.unproposed }}
+    steps:
+      # The commit the suite actually ran against, not whatever the default branch
+      # has become since. github.sha is fixed for the whole run, so this is the
+      # same tree the test job exercised; a default branch that moved during a
+      # long matrix would otherwise put the new pin on untested code while the
+      # pull request claims the suite passed.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - id: bump
+        name: Open a PR moving the pin to this engine
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          ENGINE_VERSION: ${{ github.event.client_payload.tag || github.event.inputs.engine_version }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+
+          # test rejects these too, but this is the step that interpolates the
+          # version into sed replacements and a branch name.
+          case "$ENGINE_VERSION" in
+            *[!A-Za-z0-9._+-]*)
+              echo "::error::refusing engine version '$ENGINE_VERSION'"
+              exit 1 ;;
+          esac
+
+          # Only when the tested commit is still the tip of the default branch.
+          # Anything else means merging the bump would adopt commits no run
+          # exercised against this engine, and the bump carries no CI to catch it.
+          # Declining and saying why beats a pull request claiming more than the
+          # run established.
+          rel=$(gh api "repos/$GITHUB_REPOSITORY/compare/$DEFAULT_BRANCH...$GITHUB_SHA" --jq .status)
+          if [ "$rel" != identical ]; then
+            echo "unproposed=The tested commit $GITHUB_SHA is $rel relative to $DEFAULT_BRANCH, so nothing was proposed" >> "$GITHUB_OUTPUT"
+            echo "declining to propose a bump: $rel"
+            exit 0
+          fi
+
+          current=$(grep -E '^CHDB_ENGINE_PIN=' update_libchdb.sh | cut -d= -f2)
+          if [ "$current" = "$ENGINE_VERSION" ]; then
+            echo "already pinned to $ENGINE_VERSION, nothing to propose"
+            exit 0
+          fi
+
+          branch="engine-pin-$ENGINE_VERSION"
+          if [ "$(gh pr list --head "$branch" --state open --json number --jq 'length')" != 0 ]; then
+            echo "a PR for $ENGINE_VERSION is already open"
+            exit 0
+          fi
+
+          git switch -c "$branch"
+          sed -i "s|^CHDB_ENGINE_PIN=.*|CHDB_ENGINE_PIN=$ENGINE_VERSION|" update_libchdb.sh
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -am "Move the engine pin from $current to $ENGINE_VERSION"
+          # The branch can already exist on the remote: a bump PR closed without
+          # merging leaves it behind, and a plain push is then rejected as a
+          # non-fast-forward, silently costing the adoption PR. No open PR uses it
+          # — that was checked above — and its only content is one generated line,
+          # so replacing it is safe.
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+            echo "$branch is left over from an earlier attempt, replacing it"
+            git push --force -u origin "$branch"
+          else
+            git push -u origin "$branch"
+          fi
+
+          {
+            echo "The release check ran the suite against \`$ENGINE_VERSION\` on Linux and"
+            echo "macOS and it passed, so the engine can be adopted. This moves the pin"
+            echo "$current → \`$ENGINE_VERSION\`; \`make install\` and \`update_libchdb.sh\`"
+            echo "both read it."
+            echo
+            echo "$RUN_URL"
+            echo
+            echo "Based on $GITHUB_SHA, the commit that run tested."
+            echo
+            echo "No checks will appear here. GitHub does not start workflow runs for"
+            echo "commits a workflow pushed with \`GITHUB_TOKEN\`, and running CI on this"
+            echo "branch would exercise the same suite against the same engine the check"
+            echo "just used."
+          } > pr-body.md
+
+          url=$(gh pr create --base "$DEFAULT_BRANCH" --head "$branch" \
+            --title "Move the engine pin to $ENGINE_VERSION" \
+            --body-file pr-body.md)
+          echo "pr=$url" >> "$GITHUB_OUTPUT"
+          echo "$url"
+
+  report:
+    needs: [test, propose_bump]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Open an issue with the verdict
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # This job has nothing checked out, and gh does not read
+          # GITHUB_REPOSITORY. Without this it cannot tell which repository to
+          # open the issue in and every run reports nothing.
+          GH_REPO: ${{ github.repository }}
+          RESULT: ${{ needs.test.result }}
+          BUMP_PR: ${{ needs.propose_bump.outputs.pr }}
+          BUMP_RESULT: ${{ needs.propose_bump.result }}
+          BUMP_UNPROPOSED: ${{ needs.propose_bump.outputs.unproposed }}
+          ENGINE_VERSION: ${{ github.event.client_payload.tag || github.event.inputs.engine_version }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+
+          # A green suite whose bump could not be opened is not a green run. Closing
+          # on needs.test.result alone would file it as "nothing to adopt" and leave
+          # the broken automation with no signal at all.
+          bump_broke=0
+          if [ "$RESULT" != success ]; then
+            verdict="FAILS"
+            keep=1
+          elif [ "$BUMP_RESULT" = failure ] || [ "$BUMP_RESULT" = cancelled ]; then
+            verdict="passes, bump PR did not open"
+            keep=1
+            bump_broke=1
+          elif [ -n "$BUMP_UNPROPOSED" ]; then
+            verdict="passes, no bump proposed"
+            keep=1
+          else
+            verdict="passes"
+            keep=0
+          fi
+
+          {
+            if [ "$bump_broke" = 1 ]; then
+              echo "chdb-go passes against chdb-core \`$ENGINE_VERSION\`, but the bump PR did not open."
+            elif [ -n "$BUMP_UNPROPOSED" ]; then
+              echo "chdb-go passes against chdb-core \`$ENGINE_VERSION\`, but no bump was proposed."
+            else
+              echo "chdb-go $verdict against chdb-core \`$ENGINE_VERSION\`."
+            fi
+            echo
+            echo "$RUN_URL"
+            if [ -n "$BUMP_PR" ]; then
+              echo
+              echo "Adopting it: $BUMP_PR"
+            elif [ -n "$BUMP_UNPROPOSED" ]; then
+              echo
+              echo "$BUMP_UNPROPOSED. The engine is fine and the pin is unchanged; rerun"
+              echo "the check once the default branch stops moving, or move the pin by hand."
+            elif [ "$bump_broke" = 1 ]; then
+              echo
+              echo "The engine is fine; the automation is not. The pull request moving the"
+              echo "pin could not be opened, so this issue stays open. The usual cause is"
+              echo "this repository having \"Allow GitHub Actions to create and approve pull"
+              echo "requests\" turned off; the other is the branch push being rejected. The"
+              echo "pin is unchanged either way, and moving it by hand is one line."
+            fi
+            if [ "$RESULT" != success ]; then
+              echo
+              echo "purego binds by symbol name, so an ABI change does not show up as a"
+              echo "build error. Compare \`chdb-purego/types.go\` and \`chdb-purego/binding.go\`"
+              echo "against \`programs/local/chdb.h\` at this tag before looking anywhere else."
+            fi
+            echo
+            echo "cc @auxten @wudidapaopao @ShawnChen-Sirius"
+          } > body.md
+
+          url=$(gh issue create \
+            --title "Engine check: chdb-core $ENGINE_VERSION — $verdict" \
+            --body-file body.md)
+          echo "$url"
+
+          if [ "$keep" = 0 ]; then
+            gh issue close "$url" --comment "Green, closing. The run is linked above."
+          fi
