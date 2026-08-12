@@ -80,12 +80,17 @@ jobs:
     outputs:
       pr: ${{ steps.bump.outputs.pr }}
     steps:
+      # Explicitly the default branch. A manual run from some other branch would
+      # otherwise root the bump there and open the pull request against it.
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
 
       - id: bump
         name: Open a PR moving the pin to this engine
         env:
           GH_TOKEN: ${{ github.token }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           ENGINE_VERSION: ${{ github.event.client_payload.tag || github.event.inputs.engine_version }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
@@ -124,7 +129,7 @@ jobs:
             echo "just used."
           } > pr-body.md
 
-          url=$(gh pr create --base "$GITHUB_REF_NAME" --head "$branch" \
+          url=$(gh pr create --base "$DEFAULT_BRANCH" --head "$branch" \
             --title "Move the engine pin to $ENGINE_VERSION" \
             --body-file pr-body.md)
           echo "pr=$url" >> "$GITHUB_OUTPUT"
