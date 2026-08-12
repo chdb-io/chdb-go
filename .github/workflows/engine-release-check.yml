@@ -178,24 +178,46 @@ jobs:
           GH_REPO: ${{ github.repository }}
           RESULT: ${{ needs.test.result }}
           BUMP_PR: ${{ needs.propose_bump.outputs.pr }}
+          BUMP_RESULT: ${{ needs.propose_bump.result }}
           ENGINE_VERSION: ${{ github.event.client_payload.tag || github.event.inputs.engine_version }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
 
-          if [ "$RESULT" = success ]; then
-            verdict="passes"
-          else
+          # A green suite whose bump could not be opened is not a green run. Closing
+          # on needs.test.result alone would file it as "nothing to adopt" and leave
+          # the broken automation with no signal at all.
+          bump_broke=0
+          if [ "$RESULT" != success ]; then
             verdict="FAILS"
+            keep=1
+          elif [ "$BUMP_RESULT" = failure ] || [ "$BUMP_RESULT" = cancelled ]; then
+            verdict="passes, bump PR did not open"
+            keep=1
+            bump_broke=1
+          else
+            verdict="passes"
+            keep=0
           fi
 
           {
-            echo "chdb-go $verdict against chdb-core \`$ENGINE_VERSION\`."
+            if [ "$bump_broke" = 1 ]; then
+              echo "chdb-go passes against chdb-core \`$ENGINE_VERSION\`, but the bump PR did not open."
+            else
+              echo "chdb-go $verdict against chdb-core \`$ENGINE_VERSION\`."
+            fi
             echo
             echo "$RUN_URL"
             if [ -n "$BUMP_PR" ]; then
               echo
               echo "Adopting it: $BUMP_PR"
+            elif [ "$bump_broke" = 1 ]; then
+              echo
+              echo "The engine is fine; the automation is not. The pull request moving the"
+              echo "pin could not be opened, so this issue stays open. The usual cause is"
+              echo "this repository having \"Allow GitHub Actions to create and approve pull"
+              echo "requests\" turned off; the other is the branch push being rejected. The"
+              echo "pin is unchanged either way, and moving it by hand is one line."
             fi
             if [ "$RESULT" != success ]; then
               echo
@@ -212,6 +234,6 @@ jobs:
             --body-file body.md)
           echo "$url"
 
-          if [ "$RESULT" = success ]; then
+          if [ "$keep" = 0 ]; then
             gh issue close "$url" --comment "Green, closing. The run is linked above."
           fi
