@@ -140,6 +140,10 @@ jobs:
       - name: Open an issue with the verdict
         env:
           GH_TOKEN: ${{ github.token }}
+          # This job has nothing checked out, and gh does not read
+          # GITHUB_REPOSITORY. Without this it cannot tell which repository to
+          # open the issue in and every run reports nothing.
+          GH_REPO: ${{ github.repository }}
           RESULT: ${{ needs.test.result }}
           BUMP_PR: ${{ needs.propose_bump.outputs.pr }}
           ENGINE_VERSION: ${{ github.event.client_payload.tag || github.event.inputs.engine_version }}
