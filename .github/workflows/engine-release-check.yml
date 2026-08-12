@@ -88,6 +88,7 @@ jobs:
       pull-requests: write
     outputs:
       pr: ${{ steps.bump.outputs.pr }}
+      unproposed: ${{ steps.bump.outputs.unproposed }}
     steps:
       # The commit the suite actually ran against, not whatever the default branch
       # has become since. github.sha is fixed for the whole run, so this is the
@@ -116,16 +117,17 @@ jobs:
               exit 1 ;;
           esac
 
-          # A manual run from a branch that is not the default one would carry that
-          # branch's other changes into the bump. "behind" means the tested commit
-          # is an ancestor of the default branch; "identical" means it is the tip.
+          # Only when the tested commit is still the tip of the default branch.
+          # Anything else means merging the bump would adopt commits no run
+          # exercised against this engine, and the bump carries no CI to catch it.
+          # Declining and saying why beats a pull request claiming more than the
+          # run established.
           rel=$(gh api "repos/$GITHUB_REPOSITORY/compare/$DEFAULT_BRANCH...$GITHUB_SHA" --jq .status)
-          case "$rel" in
-            identical|behind) ;;
-            *)
-              echo "tested commit $GITHUB_SHA is $rel relative to $DEFAULT_BRANCH; not proposing a bump"
-              exit 0 ;;
-          esac
+          if [ "$rel" != identical ]; then
+            echo "unproposed=The tested commit $GITHUB_SHA is $rel relative to $DEFAULT_BRANCH, so nothing was proposed" >> "$GITHUB_OUTPUT"
+            echo "declining to propose a bump: $rel"
+            exit 0
+          fi
 
           current=$(grep -E '^CHDB_ENGINE_PIN=' update_libchdb.sh | cut -d= -f2)
           if [ "$current" = "$ENGINE_VERSION" ]; then
@@ -195,6 +197,7 @@ jobs:
           RESULT: ${{ needs.test.result }}
           BUMP_PR: ${{ needs.propose_bump.outputs.pr }}
           BUMP_RESULT: ${{ needs.propose_bump.result }}
+          BUMP_UNPROPOSED: ${{ needs.propose_bump.outputs.unproposed }}
           ENGINE_VERSION: ${{ github.event.client_payload.tag || github.event.inputs.engine_version }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
@@ -211,6 +214,9 @@ jobs:
             verdict="passes, bump PR did not open"
             keep=1
             bump_broke=1
+          elif [ -n "$BUMP_UNPROPOSED" ]; then
+            verdict="passes, no bump proposed"
+            keep=1
           else
             verdict="passes"
             keep=0
@@ -219,6 +225,8 @@ jobs:
           {
             if [ "$bump_broke" = 1 ]; then
               echo "chdb-go passes against chdb-core \`$ENGINE_VERSION\`, but the bump PR did not open."
+            elif [ -n "$BUMP_UNPROPOSED" ]; then
+              echo "chdb-go passes against chdb-core \`$ENGINE_VERSION\`, but no bump was proposed."
             else
               echo "chdb-go $verdict against chdb-core \`$ENGINE_VERSION\`."
             fi
@@ -227,6 +235,10 @@ jobs:
             if [ -n "$BUMP_PR" ]; then
               echo
               echo "Adopting it: $BUMP_PR"
+            elif [ -n "$BUMP_UNPROPOSED" ]; then
+              echo
+              echo "$BUMP_UNPROPOSED. The engine is fine and the pin is unchanged; rerun"
+              echo "the check once the default branch stops moving, or move the pin by hand."
             elif [ "$bump_broke" = 1 ]; then
               echo
               echo "The engine is fine; the automation is not. The pull request moving the"
