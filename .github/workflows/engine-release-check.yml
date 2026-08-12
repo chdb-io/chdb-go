@@ -1,0 +1,111 @@
+name: Engine release check
+
+# chdb-core publishes an engine and dispatches here; this runs the suite against
+# that engine and records the verdict in an issue. It gates nothing — the engine
+# has already shipped by the time this starts.
+#
+# It exists because nothing else notices a C-ABI change. purego resolves symbols
+# by name at runtime and the Go-side signatures in chdb-purego are written by
+# hand, so a struct that loses a field or a function that gains an argument
+# builds and links exactly as before and misreads memory instead. The regular CI
+# jobs only ever see the engine this repository already pinned, so they stay
+# green until someone bumps it, which can be months after the break landed.
+
+on:
+  repository_dispatch:
+    types: [chdb-core-release]
+  workflow_dispatch:
+    inputs:
+      engine_version:
+        description: "chdb-core release tag, e.g. v26.5.0"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-14]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve the engine version
+        env:
+          ENGINE_VERSION: ${{ github.event.client_payload.tag || github.event.inputs.engine_version }}
+        run: |
+          if [ -z "$ENGINE_VERSION" ]; then
+            echo "::error::no engine version in the dispatch payload or the manual input"
+            exit 1
+          fi
+          echo "CHDB_ENGINE_VERSION=$ENGINE_VERSION" >> "$GITHUB_ENV"
+          echo "Testing against chdb-core $ENGINE_VERSION"
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+
+      - name: Fetch the published engine
+        run: ./update_libchdb.sh
+
+      - name: Build
+        run: |
+          go mod tidy
+          make build
+
+      - name: Test
+        run: make test
+
+      - name: Test with race detector
+        run: CHDB_LIB_PATH="$PWD/libchdb.so" go test -race -timeout=180s ./...
+
+      - name: Test main
+        run: ./chdb-go "SELECT 12345"
+
+  report:
+    needs: test
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Open an issue with the verdict
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULT: ${{ needs.test.result }}
+          ENGINE_VERSION: ${{ github.event.client_payload.tag || github.event.inputs.engine_version }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+
+          if [ "$RESULT" = success ]; then
+            verdict="passes"
+          else
+            verdict="FAILS"
+          fi
+
+          {
+            echo "chdb-go $verdict against chdb-core \`$ENGINE_VERSION\`."
+            echo
+            echo "$RUN_URL"
+            if [ "$RESULT" != success ]; then
+              echo
+              echo "purego binds by symbol name, so an ABI change does not show up as a"
+              echo "build error. Compare \`chdb-purego/types.go\` and \`chdb-purego/binding.go\`"
+              echo "against \`programs/local/chdb.h\` at this tag before looking anywhere else."
+            fi
+            echo
+            echo "cc @auxten @wudidapaopao @ShawnChen-Sirius"
+          } > body.md
+
+          url=$(gh issue create \
+            --title "Engine check: chdb-core $ENGINE_VERSION — $verdict" \
+            --body-file body.md)
+          echo "$url"
+
+          if [ "$RESULT" = success ]; then
+            gh issue close "$url" --comment "Green, closing. The run is linked above."
+          fi

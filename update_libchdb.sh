@@ -1,8 +1,14 @@
 
 #!/bin/bash
 
-# Get the newest release version
-LATEST_RELEASE=$(curl --silent "https://api.github.com/repos/chdb-io/chdb-core/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+# CHDB_ENGINE_VERSION pins the engine to one chdb-core release. Set it to test
+# against a specific engine; leave it unset to take whatever is newest.
+LATEST_RELEASE="${CHDB_ENGINE_VERSION:-$(curl --silent "https://api.github.com/repos/chdb-io/chdb-core/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')}"
+
+if [ -z "$LATEST_RELEASE" ]; then
+    echo "Could not determine a chdb-core release to download. Set CHDB_ENGINE_VERSION to pick one." >&2
+    exit 1
+fi
 
 # Download the correct version based on the platform
 case "$(uname -s)" in
