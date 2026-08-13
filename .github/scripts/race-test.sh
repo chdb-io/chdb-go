@@ -42,13 +42,28 @@ if grep -qE "^panic:|^fatal error:" "$LOG"; then
     exit 1
 fi
 
+# A fault the Go runtime handled itself, i.e. one that hit a thread it owns while
+# a test was running. It prints its own header and a goroutine dump; the exit-time
+# crash never does, because there the signal lands on a libchdb thread and Go's
+# badsignal path re-raises without a dump. The distinction is what keeps the
+# exemption below from covering a crash during a test — a real one landed here
+# once already, chdb-io/chdb-go#46.
+if grep -qE "^(SIGSEGV|SIGBUS|SIGFPE|SIGILL|SIGABRT|SIGTRAP):" "$LOG"; then
+    echo "::error::the runtime reported a fatal signal during a test, not at exit"
+    exit 1
+fi
+
 if [ "$status" -ne 0 ]; then
-    if grep -q "signal: segmentation fault" "$LOG"; then
+    # Positive evidence, not just the presence of the word: the package has to have
+    # reported PASS and then died on the very next line. "Contains a segfault
+    # somewhere" would exempt far more than the one crash this is about.
+    if grep -A1 '^PASS$' "$LOG" | grep -q '^signal: segmentation fault'; then
         echo "::warning::tests passed; the binary segfaulted at exit, which is the" \
              "known libchdb thread-shutdown issue and not a test result"
         exit 0
     fi
     echo "::error::race step failed for a reason this wrapper does not recognise" \
-         "(exit $status, no data race, no failing test, no panic)"
+         "(exit $status; no data race, failing test, panic, or in-test signal, and" \
+         "no PASS immediately followed by a segfault)"
     exit "$status"
 fi
