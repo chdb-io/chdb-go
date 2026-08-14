@@ -37,7 +37,20 @@ MODDIR="lib/$PLATFORM"
 	exit 0
 }
 
-ENGINE_TAG="${CHDB_CORE_TAG:-v26.5.0}"
+ENGINE_TAG="${CHDB_CORE_TAG:-v26.7.0}"
+
+# Any lib/<platform> tag sitting on this commit has to name the engine the module
+# was generated from. Publishing is the one step with no undo — the module proxy
+# serves a tag's bytes forever — so the check runs before the tag is pushed. It
+# finds nothing in a normal CI run, where the checkout carries no tags, and that
+# is the point: this is for the machine doing the publishing.
+tags="$(git tag --points-at HEAD --list 'lib/*' 2>/dev/null || true)"
+if [ -n "$tags" ]; then
+	echo "==> Checking the engine tags on this commit"
+	for tag in $tags; do
+		go run ./scripts/enginetag -verify "$tag"
+	done
+fi
 
 echo "==> Cross-compiling every platform module"
 # Only the runner's own module is exercised by the rest of this script, so

@@ -2,8 +2,13 @@
 #
 # Fill the per-platform engine modules under lib/ from a chdb-core release.
 #
-#   scripts/package-engine.sh v26.5.0            # every platform
-#   scripts/package-engine.sh v26.5.0 linux-amd64
+#   scripts/package-engine.sh v26.7.0            # every platform
+#   scripts/package-engine.sh v26.7.0 linux-amd64
+#
+# CHDB_PACKAGING is which packaging of that engine this is, and defaults to 1.
+# Raise it to republish the same engine after a change to the module's own code:
+#
+#   CHDB_PACKAGING=2 scripts/package-engine.sh v26.7.0
 #
 # For each platform this downloads the published archive, recompresses the
 # library with zstd, splits it into parts, and writes the generated metadata
@@ -35,6 +40,8 @@ PLATFORMS=(linux-amd64 linux-arm64 darwin-amd64 darwin-arm64)
 # low, because a minute per platform is a minute the job did not need to spend.
 ZSTD_LEVEL="${ZSTD_LEVEL:-19}"
 
+PACKAGING="${CHDB_PACKAGING:-1}"
+
 usage() {
 	echo "usage: $0 <chdb-core-tag> [platform...]" >&2
 	echo "platforms: ${PLATFORMS[*]}" >&2
@@ -48,7 +55,7 @@ if [ $# -gt 0 ]; then
 	PLATFORMS=("$@")
 fi
 
-for tool in curl tar zstd shasum split; do
+for tool in curl tar zstd shasum split go; do
 	command -v "$tool" >/dev/null || {
 		echo "missing required tool: $tool" >&2
 		exit 1
@@ -76,8 +83,17 @@ archive_for() {
 goos_of() { echo "${1%%-*}"; }
 goarch_of() { echo "${1##*-}"; }
 
+# Derive the module version before downloading anything. It is the same for
+# every platform — the engine and the packaging are what it names — and deriving
+# it here means an engine tag this scheme cannot express is refused in a second,
+# rather than after several hundred megabytes and a few minutes of zstd.
+MODULE_VERSION="$(go run ./scripts/enginetag "$TAG" "$PACKAGING")"
+echo "==> chdb-core $TAG, packaging $PACKAGING -> module version $MODULE_VERSION"
+
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
+
+platform_paths=""
 
 for platform in "${PLATFORMS[@]}"; do
 	archive="$(archive_for "$platform")"
@@ -159,20 +175,28 @@ const (
 EOF
 	gofmt -w "$moddir/engine_data.go"
 	echo "==> $platform: wrote $moddir/engine_data.go"
+
+	platform_paths="$platform_paths $moddir/data $moddir/engine_data.go"
 done
 
-cat <<'EOF'
+cat <<EOF
 
 ==> Done. The payload parts are ignored by git on purpose, so a normal commit
     cannot accidentally carry a few hundred megabytes. To publish, add them
-    explicitly and tag the module:
+    explicitly and tag each module — these are the exact commands, because the
+    module proxy caches a tag permanently and will not serve different bytes for
+    it later, so a tag worked out by hand and got wrong cannot be corrected:
 
-      git add -f lib/<platform>/data lib/<platform>/engine_data.go
-      git commit -m "Package chdb-core <tag> for <platform>"
-      git tag lib/<platform>/v0.<encoded engine version>.0
+      git add -f${platform_paths}
+      git commit -m "Package chdb-core $TAG"
+$(for platform in "${PLATFORMS[@]}"; do echo "      git tag lib/$platform/$MODULE_VERSION"; done)
 
-    The tag version cannot be the engine version itself: Go requires a /vN path
-    suffix for major versions of two or greater, so the engine version is
-    encoded into the minor field with a major of zero. For engine 26.5.0 that is
-    v0.260500.0.
+    $MODULE_VERSION says which engine is inside and which packaging of it this
+    is, the way chdb-node's @chdb/lib-<platform> subpackages do. It cannot be the
+    engine version itself: Go requires a /vN path suffix for major versions of
+    two or greater, and the engine's major is 26, so tagging $TAG would demand
+    the module path lib/<platform>/v26 and a new path on every ClickHouse major.
+    Keeping the major at zero and encoding the engine into the minor leaves the
+    path alone. internal/enginetag defines and tests the rule; nothing here or
+    in your shell history reimplements it.
 EOF
