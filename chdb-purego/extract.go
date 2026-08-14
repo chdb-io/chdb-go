@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 )
 
 // CacheDirEnv names the environment variable that chooses where the embedded
@@ -39,8 +40,59 @@ func cacheCandidates() []cacheCandidate {
 	if dir, err := os.UserCacheDir(); err == nil {
 		out = append(out, cacheCandidate{origin: "user cache dir", dir: filepath.Join(dir, "chdb-go")})
 	}
-	out = append(out, cacheCandidate{origin: "temp dir", dir: filepath.Join(os.TempDir(), "chdb-go")})
+	// Absolute for the same reason CHDB_CACHE_DIR is: the extracted library's
+	// path goes to the dynamic loader, and a program built with the macOS
+	// hardened runtime rejects a relative library path outright. TMPDIR is a
+	// user-supplied string and can be relative.
+	if dir, err := filepath.Abs(filepath.Join(os.TempDir(), "chdb-go")); err == nil {
+		out = append(out, cacheCandidate{origin: "temp dir", dir: dir})
+	}
 	return out
+}
+
+// requirePrivateRoot rejects a cache root that someone other than this user could
+// have put a file into.
+//
+// The extraction is content-addressed, and the fast path on every start after the
+// first is a single stat of <root>/<digest>/<name> followed by handing that path
+// to dlopen. Neither the digest nor the layout is secret — the digest ships in the
+// module — so on a shared root such as /tmp, another user can create that exact
+// path first and have this process load their library instead. Nothing later in
+// the extraction notices: there is nothing to overwrite, so the file that is
+// already there is the one that gets used.
+//
+// Verifying the payload's SHA-256 on every start would also close it, and would
+// cost a few hundred milliseconds of hashing per process for a threat that only
+// exists when the directory is writable by someone else. Requiring the directory
+// to be private instead costs one stat and rules the case out rather than
+// detecting it: if only this user can write there, only this user's bytes can be
+// found there.
+//
+// A root that already exists and is owned by this user is accepted even if it is
+// group- or world-readable, because 0755 is what a previous version created and
+// readable is not writable.
+func requirePrivateRoot(root string) error {
+	fi, err := os.Stat(root)
+	if err != nil {
+		return err
+	}
+	if !fi.IsDir() {
+		return fmt.Errorf("%s is not a directory", root)
+	}
+	if perm := fi.Mode().Perm(); perm&0o022 != 0 {
+		return fmt.Errorf("%s is writable by other users (mode %#o), so a library placed "+
+			"there could not be trusted to be the one this build carries", root, perm)
+	}
+	st, ok := fi.Sys().(*syscall.Stat_t)
+	if !ok {
+		return nil
+	}
+	if uid := os.Getuid(); uint64(st.Uid) != uint64(uid) {
+		return fmt.Errorf("%s belongs to uid %d rather than to this user (uid %d), so a "+
+			"library placed there could not be trusted to be the one this build carries",
+			root, st.Uid, uid)
+	}
+	return nil
 }
 
 // openEmbedded extracts the embedded engine and loads it, returning the library
@@ -91,7 +143,16 @@ func openEmbedded(e *EmbeddedEngine, load func(string) (uintptr, error)) (uintpt
 
 // extractInto performs the extraction under one root.
 func extractInto(root string, e *EmbeddedEngine) (string, error) {
-	if err := os.MkdirAll(root, 0o755); err != nil {
+	// 0o700 rather than 0o755: nothing outside this process needs to read the
+	// cache, and a root only this user can write to is what makes the stat below
+	// enough on its own. The check runs after the create, not instead of it,
+	// because a root this process did not create is exactly the case that
+	// matters — MkdirAll succeeds on a directory that already exists whoever
+	// owns it.
+	if err := os.MkdirAll(root, 0o700); err != nil {
+		return "", err
+	}
+	if err := requirePrivateRoot(root); err != nil {
 		return "", err
 	}
 
@@ -188,9 +249,10 @@ func syncDir(dir string) error {
 	}
 	defer d.Close()
 	// Directory sync is not supported on every filesystem; the rename is still
-	// atomic, so a refusal here is not fatal.
+	// atomic, so a refusal here is not fatal. Anything else is: the caller is
+	// about to report the extraction as durable.
 	if err := d.Sync(); err != nil && !errors.Is(err, os.ErrInvalid) {
-		return nil
+		return err
 	}
 	return nil
 }

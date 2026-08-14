@@ -87,14 +87,23 @@ git show HEAD:go.mod >"$PROXY/$MODULE_PATH/@v/$VERSION.mod"
 printf '{"Version":"%s"}\n' "$VERSION" >"$PROXY/$MODULE_PATH/@v/$VERSION.info"
 echo "$VERSION" >"$PROXY/$MODULE_PATH/@v/list"
 
+# Listed once, into a variable, because both checks below are the kind that must
+# not be able to answer "no" by accident. Under pipefail, `unzip -l | grep -q`
+# reports the status of a pipeline in which grep closes the pipe on its first
+# match: unzip can then be killed by SIGPIPE, the pipeline is non-zero, and the
+# `if` reads as "nothing found" precisely when something was. It needs a listing
+# larger than a pipe buffer to happen, which this archive is not yet, so this is
+# closing it before it can rather than after it did.
+ARCHIVE_LISTING="$(unzip -l "$PROXY/$MODULE_PATH/@v/$VERSION.zip")"
+
 # The engine is a release artifact, never part of the module. If it ever shows
 # up in the archive, the module has grown a few hundred megabytes by accident.
-if unzip -l "$PROXY/$MODULE_PATH/@v/$VERSION.zip" | grep -qE 'libchdb\.(so|dylib|zst)'; then
+if echo "$ARCHIVE_LISTING" | grep -qE 'libchdb\.(so|dylib|zst)'; then
 	echo "FAIL: the module archive contains a libchdb binary" >&2
 	exit 1
 fi
 
-if unzip -l "$PROXY/$MODULE_PATH/@v/$VERSION.zip" | grep -qE '/lib/[^/]+/go\.mod'; then
+if echo "$ARCHIVE_LISTING" | grep -qE '/lib/[^/]+/go\.mod'; then
 	echo "FAIL: the module archive contains a nested module; the proxy excludes those" >&2
 	exit 1
 fi

@@ -33,6 +33,12 @@ type attempt struct {
 	origin string // where the path came from, for the error message
 	path   string
 	err    error // nil once a candidate loaded successfully
+
+	// byLoader means path is a bare library name to hand to the dynamic loader
+	// rather than a file to check for first. Its search — ld.so.cache, the
+	// distribution's architecture directories, DT_RUNPATH — cannot be
+	// enumerated from here, so it is delegated instead of reimplemented.
+	byLoader bool
 }
 
 // notFoundError reports every location that was tried, so a failed load can be
@@ -111,6 +117,37 @@ func searchPaths() []attempt {
 			out = append(out, attempt{origin: "system path", path: filepath.Join(dir, n)})
 		}
 	}
+
+	// The library-path environment variables are named explicitly so that a
+	// directory a user pointed at appears in the diagnostic as itself, rather
+	// than disappearing into "the loader looked and did not find it".
+	for _, env := range []string{"LD_LIBRARY_PATH", "DYLD_LIBRARY_PATH", "DYLD_FALLBACK_LIBRARY_PATH"} {
+		for _, dir := range filepath.SplitList(os.Getenv(env)) {
+			if dir == "" {
+				continue
+			}
+			abs, err := filepath.Abs(dir)
+			if err != nil {
+				continue
+			}
+			for _, n := range names {
+				out = append(out, attempt{origin: env, path: filepath.Join(abs, n)})
+			}
+		}
+	}
+
+	// Last, and by name rather than by path: whatever the dynamic loader itself
+	// can find. Before this package resolved paths of its own, a bare name was
+	// all it ever passed to dlopen, so every install the loader knows about —
+	// registered with ldconfig, in /usr/lib/<triple> on a multiarch
+	// distribution, reached through a RUNPATH — worked. Enumerating those here
+	// would mean reimplementing the loader's search and getting it wrong on some
+	// distribution, so the name is handed over instead. It comes last because
+	// every location this package can name is preferable: a caller can be told
+	// which file it got.
+	for _, n := range names {
+		out = append(out, attempt{origin: "dynamic loader", path: n, byLoader: true})
+	}
 	return out
 }
 
@@ -127,7 +164,9 @@ func dlopenLibrary(path string) (uintptr, error) {
 // Three rules shape this function. Every path handed to the dynamic loader is
 // absolute, because a program built with the macOS hardened runtime rejects
 // relative library paths outright and reports it as a path error rather than a
-// permissions one. A location that was named explicitly is never silently
+// permissions one — the one thing passed by name instead of by path is the final
+// candidate, which exists to delegate to the loader's own search and is a name
+// rather than a relative path. A location that was named explicitly is never silently
 // replaced by a different one: if CHDB_LIB_PATH is set and does not load, that
 // is the error, because loading some other build of the engine instead is far
 // harder to diagnose than failing. And a binary carrying its own engine uses
@@ -160,9 +199,13 @@ func openLibrary() (uintptr, string, error) {
 	candidates := searchPaths()
 	for i := range candidates {
 		c := &candidates[i]
-		if _, err := os.Stat(c.path); err != nil {
-			c.err = fmt.Errorf("no such file")
-			continue
+		// A name for the loader has no file to check: the point of it is that
+		// where the file lives is the loader's business.
+		if !c.byLoader {
+			if _, err := os.Stat(c.path); err != nil {
+				c.err = fmt.Errorf("no such file")
+				continue
+			}
 		}
 		h, err := dlopenLibrary(c.path)
 		if err != nil {

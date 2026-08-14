@@ -70,8 +70,18 @@ func TestSearchPathsPrefersExecutableDirectory(t *testing.T) {
 func TestSearchPathsAreAbsolute(t *testing.T) {
 	// A binary built with the macOS hardened runtime refuses relative library
 	// paths and reports it as a path error, which sends debugging in the wrong
-	// direction. Every candidate must therefore already be absolute.
+	// direction. Every candidate that is a path must therefore already be
+	// absolute. The exception is the candidate handed to the dynamic loader by
+	// name, which is not a path at all — dlopen searching for "libchdb.so" is how
+	// an ldconfig-registered install is reached, and is not the relative-path case
+	// the hardened runtime objects to.
 	for _, p := range searchPaths() {
+		if p.byLoader {
+			if filepath.Base(p.path) != p.path {
+				t.Errorf("%s candidate is a path rather than a name: %q", p.origin, p.path)
+			}
+			continue
+		}
 		if !filepath.IsAbs(p.path) {
 			t.Errorf("%s candidate is not absolute: %q", p.origin, p.path)
 		}

@@ -137,12 +137,16 @@ func ensureLoaded() error {
 	return loadErr
 }
 
-// LoadedLibraryPath returns the absolute path of the libchdb this process
-// loaded, loading it if that has not happened yet.
+// LoadedLibraryPath returns the path of the libchdb this process loaded, loading
+// it if that has not happened yet.
 //
 // It exists so a caller — or a build-verification job checking that a binary
 // resolves the engine it was meant to — can report the file actually in use
 // instead of inferring it from the search order.
+//
+// The path is absolute for every location this package resolves itself. It is a
+// bare library name in the one case where the dynamic loader was asked to find
+// the library instead, since what it settled on is not reported back.
 func LoadedLibraryPath() (string, error) {
 	if err := ensureLoaded(); err != nil {
 		return "", err
