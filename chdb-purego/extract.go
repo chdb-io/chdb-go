@@ -71,13 +71,32 @@ func cacheCandidates() []cacheCandidate {
 // A root that already exists and is owned by this user is accepted even if it is
 // group- or world-readable, because 0755 is what a previous version created and
 // readable is not writable.
+//
+// Owning the root is not sufficient on its own: whoever can write to a directory
+// on the way to it can rename the whole root aside and leave a private-looking one
+// of their own in its place, between this check and the load. So every ancestor is
+// checked too, and has to be either not writable by other users or sticky — the
+// combination that means an entry can only be replaced by whoever owns it. That is
+// what makes /tmp usable at all: it is world-writable, and sticky, so a root this
+// user owns there cannot be swapped out by anyone else. A world-writable ancestor
+// without the sticky bit is refused rather than worked around, because there is no
+// way to hold the path still afterwards.
 func requirePrivateRoot(root string) error {
+	// Resolved first, so that a symlink planted as any component is judged by what
+	// it actually points at rather than by the name it was reached under.
+	if resolved, err := filepath.EvalSymlinks(root); err == nil {
+		root = resolved
+	}
+
 	fi, err := os.Stat(root)
 	if err != nil {
 		return err
 	}
 	if !fi.IsDir() {
 		return fmt.Errorf("%s is not a directory", root)
+	}
+	if err := requireUnswappableAncestors(root); err != nil {
+		return err
 	}
 	if perm := fi.Mode().Perm(); perm&0o022 != 0 {
 		return fmt.Errorf("%s is writable by other users (mode %#o), so a library placed "+
@@ -93,6 +112,43 @@ func requirePrivateRoot(root string) error {
 			root, st.Uid, uid)
 	}
 	return nil
+}
+
+// requireUnswappableAncestors walks from dir up to the filesystem root and refuses
+// any component another user could replace.
+//
+// A directory writable by group or others lets anyone in that set rename its
+// entries — including the cache root, which they can substitute with a directory
+// of their own that passes every check made on the root itself, since they own it
+// and can set it to 0700. The sticky bit removes exactly that: with it set, only an
+// entry's owner may rename or unlink it. So each ancestor has to be one or the
+// other, not writable or sticky, and /tmp being 1777 is the case this permits on
+// purpose.
+//
+// This checks the same thing a directory descriptor would hold still, and it does
+// it without one: syscall exposes openat on Linux and not on Darwin, so an
+// fd-relative walk would need golang.org/x/sys, and a dependency to avoid a few
+// stats is a poor trade. The stats race in principle, but only where an ancestor is
+// writable by others without being sticky — which is what this refuses.
+func requireUnswappableAncestors(dir string) error {
+	for {
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return nil
+		}
+		fi, err := os.Stat(parent)
+		if err != nil {
+			return err
+		}
+		mode := fi.Mode()
+		if mode.Perm()&0o022 != 0 && mode&os.ModeSticky == 0 {
+			return fmt.Errorf("%s is writable by other users and not sticky (mode %v), so "+
+				"anyone able to write there could replace the cache directory beneath it; "+
+				"point %s somewhere only this user can write",
+				parent, mode, CacheDirEnv)
+		}
+		dir = parent
+	}
 }
 
 // openEmbedded extracts the embedded engine and loads it, returning the library

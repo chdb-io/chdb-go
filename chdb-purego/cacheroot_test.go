@@ -86,6 +86,54 @@ func TestExtractIntoRefusesRootWritableByOthers(t *testing.T) {
 	}
 }
 
+// Owning the root is not enough: whoever can write to a directory on the way to it
+// can rename it aside and leave a private-looking one of their own in its place.
+func TestRequirePrivateRootRejectsSwappableAncestor(t *testing.T) {
+	parent := filepath.Join(t.TempDir(), "shared")
+	if err := os.Mkdir(parent, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	root := filepath.Join(parent, "chdb-go")
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := requirePrivateRoot(root); err != nil {
+		t.Fatalf("a private chain was rejected: %v", err)
+	}
+
+	// World-writable and not sticky: anyone can rename chdb-go aside.
+	if err := os.Chmod(parent, 0o777); err != nil {
+		t.Fatal(err)
+	}
+	err := requirePrivateRoot(root)
+	if err == nil {
+		t.Fatal("a world-writable non-sticky ancestor was accepted")
+	}
+	if !strings.Contains(err.Error(), "not sticky") {
+		t.Errorf("rejected for the wrong reason: %v", err)
+	}
+
+	// Sticky is what makes /tmp usable: only an entry's owner may rename it.
+	if err := os.Chmod(parent, 0o777|os.ModeSticky); err != nil {
+		t.Fatal(err)
+	}
+	if err := requirePrivateRoot(root); err != nil {
+		t.Errorf("a world-writable sticky ancestor was rejected: %v", err)
+	}
+}
+
+// The check is only worth having if it leaves the roots real users get. Rejecting
+// those would be worse than the attack it prevents.
+func TestRequireUnswappableAncestorsAcceptsTheRealCandidates(t *testing.T) {
+	t.Setenv(CacheDirEnv, "")
+	for _, c := range cacheCandidates() {
+		if err := requireUnswappableAncestors(c.dir); err != nil {
+			t.Errorf("the %s candidate %s would be refused: %v", c.origin, c.dir, err)
+		}
+	}
+}
+
 func TestCacheCandidatesAreAbsolute(t *testing.T) {
 	// A relative TMPDIR would otherwise produce a relative library path, which a
 	// binary built with the macOS hardened runtime refuses to load.
