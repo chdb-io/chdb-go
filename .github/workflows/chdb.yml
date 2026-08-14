@@ -14,12 +14,12 @@ jobs:
   build_linux:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Fetch library
       run: |
           make install
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
         go-version: "1.21"
     - name: Build
@@ -36,12 +36,12 @@ jobs:
   build_mac:
     runs-on: macos-14
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Fetch library
       run: |
           make install
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
         go-version: "1.21"
     - name: Build
@@ -55,3 +55,41 @@ jobs:
     - name: Test main
       run: ./chdb-go "SELECT 12345"
 
+  # Building and testing inside the repository does not prove that what users
+  # download works. This job packages the commit the way the module proxy does
+  # and consumes it from outside the repository, which catches a build that
+  # needs an uncommitted file or that embeds a path from the build machine.
+  consume_as_published_module:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-14]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-go@v5
+      with:
+        go-version: "1.21"
+    - name: Consume as a published module
+      run: .github/scripts/verify-as-user.sh
+
+  # Verifies the path users get once the per-platform engine modules are
+  # published: package the engine, build a program that carries it, and run it
+  # with nothing installed on the machine.
+  #
+  # Only two of the four published platforms are covered here, because these are
+  # the runner labels that are reliably available. linux-arm64 and darwin-amd64
+  # are packaged by the same script and checked at release time.
+  embedded_engine:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-14]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-go@v5
+      with:
+        go-version: "1.21"
+    - name: Carry the engine in the binary
+      run: .github/scripts/verify-embedded-engine.sh

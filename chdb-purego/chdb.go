@@ -192,6 +192,10 @@ func (c *connection) Ready() bool {
 //     to a different path while connections are still open returns an error.
 //   - You need to ensure that the path exists before creating a new connection. Or you can use NewConnectionFromConnString.
 func NewConnection(argc int, argv []string) (ChdbConn, error) {
+	if err := ensureLoaded(); err != nil {
+		return nil, err
+	}
+
 	var new_argv []string
 	if (argc > 0 && argv[0] != "clickhouse") || argc == 0 {
 		new_argv = make([]string, argc+1)

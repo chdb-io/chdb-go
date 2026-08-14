@@ -1,8 +1,7 @@
 package chdbpurego
 
 import (
-	"os"
-	"os/exec"
+	"sync"
 	"syscall"
 	"unsafe"
 
@@ -72,33 +71,6 @@ func restoreSignalHandlers(saved [][sigactionBufSize]byte) {
 	}
 }
 
-func findLibrary() string {
-	// Env var
-	if envPath := os.Getenv("CHDB_LIB_PATH"); envPath != "" {
-		return envPath
-	}
-
-	// ldconfig with Linux
-	if path, err := exec.LookPath("libchdb.so"); err == nil {
-		return path
-	}
-
-	// default path
-	commonPaths := []string{
-		"/usr/local/lib/libchdb.so",
-		"/opt/homebrew/lib/libchdb.dylib",
-	}
-
-	for _, p := range commonPaths {
-		if _, err := os.Stat(p); err == nil {
-			return p
-		}
-	}
-
-	//should be an error ?
-	return "libchdb.so"
-}
-
 var (
 	// old API
 	queryStable            func(argc int, argv []string) *local_result
@@ -139,12 +111,50 @@ var (
 	chdbResetSignalHandlers      func()
 )
 
-func init() {
-	path := findLibrary()
-	libchdb, err := purego.Dlopen(path, purego.RTLD_NOW|purego.RTLD_GLOBAL)
-	if err != nil {
-		panic(err)
+var (
+	loadOnce   sync.Once
+	loadedPath string
+	loadErr    error
+)
+
+// ensureLoaded resolves and loads libchdb, binding its symbols, at most once
+// per process. Every entry point that needs the engine calls this first.
+//
+// Loading deliberately does not happen in init(). A program that imports this
+// package but never opens a connection should not pay for it, and a panic
+// during package initialisation gives the caller nowhere to handle a missing
+// engine — the process is dead before main runs.
+func ensureLoaded() error {
+	loadOnce.Do(func() {
+		handle, path, err := openLibrary()
+		if err != nil {
+			loadErr = err
+			return
+		}
+		loadedPath = path
+		bindSymbols(handle)
+	})
+	return loadErr
+}
+
+// LoadedLibraryPath returns the path of the libchdb this process loaded, loading
+// it if that has not happened yet.
+//
+// It exists so a caller — or a build-verification job checking that a binary
+// resolves the engine it was meant to — can report the file actually in use
+// instead of inferring it from the search order.
+//
+// The path is absolute for every location this package resolves itself. It is a
+// bare library name in the one case where the dynamic loader was asked to find
+// the library instead, since what it settled on is not reported back.
+func LoadedLibraryPath() (string, error) {
+	if err := ensureLoaded(); err != nil {
+		return "", err
 	}
+	return loadedPath, nil
+}
+
+func bindSymbols(libchdb uintptr) {
 	purego.RegisterLibFunc(&queryStable, libchdb, "query_stable")
 	purego.RegisterLibFunc(&freeResult, libchdb, "free_result")
 	purego.RegisterLibFunc(&queryStableV2, libchdb, "query_stable_v2")

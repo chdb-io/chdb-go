@@ -1,0 +1,202 @@
+#!/usr/bin/env bash
+#
+# Fill the per-platform engine modules under lib/ from a chdb-core release.
+#
+#   scripts/package-engine.sh v26.7.0            # every platform
+#   scripts/package-engine.sh v26.7.0 linux-amd64
+#
+# CHDB_PACKAGING is which packaging of that engine this is, and defaults to 1.
+# Raise it to republish the same engine after a change to the module's own code:
+#
+#   CHDB_PACKAGING=2 scripts/package-engine.sh v26.7.0
+#
+# For each platform this downloads the published archive, recompresses the
+# library with zstd, splits it into parts, and writes the generated metadata
+# next to it. Recompressing is worth the step: the published archives use gzip,
+# and zstd is roughly a third smaller, which comes straight off what every user
+# downloads.
+#
+# The library bytes are copied through untouched. On macOS the published library
+# carries an ad-hoc code signature, and arm64 refuses to load a library with no
+# signature at all, so stripping or re-signing it here would produce a module
+# that cannot load anywhere.
+#
+# Parts exist because GitHub rejects any file over 100 MiB, and the largest
+# platform is already within a couple of megabytes of that.
+
+set -euo pipefail
+
+MAX_PART_MIB=64
+PLATFORMS=(linux-amd64 linux-arm64 darwin-amd64 darwin-arm64)
+
+# 19 is for publishing, where CPU spent once here comes off every user's download
+# forever: the v26.7.0 library is 326 MiB, and 63 MiB compressed at 19 against
+# 79 MiB at 3 is a fifth off what everyone downloads, permanently. It is not
+# expensive — 12 seconds on eighteen cores, 25 on four, 75 on one — and it costs
+# a user nothing, since the level barely moves decompression (about 1 GiB/s
+# either way) and does not change the extracted bytes or the digest at all.
+#
+# Anything that only needs to exercise the machinery should still set ZSTD_LEVEL
+# low, because a minute per platform is a minute the job did not need to spend.
+ZSTD_LEVEL="${ZSTD_LEVEL:-19}"
+
+PACKAGING="${CHDB_PACKAGING:-1}"
+
+usage() {
+	echo "usage: $0 <chdb-core-tag> [platform...]" >&2
+	echo "platforms: ${PLATFORMS[*]}" >&2
+	exit 2
+}
+
+[ $# -ge 1 ] || usage
+TAG="$1"
+shift
+if [ $# -gt 0 ]; then
+	PLATFORMS=("$@")
+fi
+
+for tool in curl tar zstd shasum split go; do
+	command -v "$tool" >/dev/null || {
+		echo "missing required tool: $tool" >&2
+		exit 1
+	}
+done
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+# The published archives are named by the platform triple chdb-core uses, which
+# is not identical to GOOS-GOARCH.
+archive_for() {
+	case "$1" in
+	linux-amd64) echo "linux-x86_64-libchdb.tar.gz" ;;
+	linux-arm64) echo "linux-aarch64-libchdb.tar.gz" ;;
+	darwin-amd64) echo "macos-x86_64-libchdb.tar.gz" ;;
+	darwin-arm64) echo "macos-arm64-libchdb.tar.gz" ;;
+	*)
+		echo "unknown platform: $1" >&2
+		exit 1
+		;;
+	esac
+}
+
+goos_of() { echo "${1%%-*}"; }
+goarch_of() { echo "${1##*-}"; }
+
+# Derive the module version before downloading anything. It is the same for
+# every platform — the engine and the packaging are what it names — and deriving
+# it here means an engine tag this scheme cannot express is refused in a second,
+# rather than after several hundred megabytes and a few minutes of zstd.
+MODULE_VERSION="$(go run ./scripts/enginetag "$TAG" "$PACKAGING")"
+echo "==> chdb-core $TAG, packaging $PACKAGING -> module version $MODULE_VERSION"
+
+WORK="$(mktemp -d)"
+trap 'rm -rf "$WORK"' EXIT
+
+platform_paths=""
+
+for platform in "${PLATFORMS[@]}"; do
+	archive="$(archive_for "$platform")"
+	moddir="lib/$platform"
+	[ -d "$moddir" ] || {
+		echo "no module directory $moddir" >&2
+		exit 1
+	}
+
+	echo "==> $platform: downloading $archive from chdb-core $TAG"
+	curl -fsSL -o "$WORK/$archive" \
+		"https://github.com/chdb-io/chdb-core/releases/download/$TAG/$archive"
+
+	rm -rf "$WORK/x" && mkdir "$WORK/x"
+	tar xzf "$WORK/$archive" -C "$WORK/x"
+
+	# The macOS archive names its Mach-O library libchdb.so, so the name is
+	# taken from the archive rather than derived from the platform.
+	lib=""
+	for candidate in libchdb.so libchdb.dylib; do
+		if [ -f "$WORK/x/$candidate" ]; then
+			lib="$candidate"
+			break
+		fi
+	done
+	[ -n "$lib" ] || {
+		echo "FAIL: no libchdb.so or libchdb.dylib inside $archive" >&2
+		exit 1
+	}
+
+	size="$(wc -c <"$WORK/x/$lib" | tr -d ' ')"
+	digest="$(shasum -a 256 "$WORK/x/$lib" | cut -c1-32)"
+
+	echo "==> $platform: compressing $lib ($((size / 1048576)) MiB) at zstd -$ZSTD_LEVEL"
+	# Only the parts are replaced. data/README.md has to survive, because
+	# //go:embed of a directory fails when the directory holds no files, which
+	# would break the module on a revision that carries no payload.
+	mkdir -p "$moddir/data"
+	rm -f "$moddir"/data/libchdb.zst.part*
+	zstd "-$ZSTD_LEVEL" -T0 -q -c "$WORK/x/$lib" >"$WORK/payload.zst"
+
+	compressed="$(wc -c <"$WORK/payload.zst" | tr -d ' ')"
+	split -b "$((MAX_PART_MIB * 1048576))" -a 2 -d \
+		"$WORK/payload.zst" "$moddir/data/libchdb.zst.part"
+
+	parts=$(find "$moddir/data" -name 'libchdb.zst.part*' | wc -l | tr -d ' ')
+	echo "==> $platform: $((compressed / 1048576)) MiB compressed in $parts part(s)"
+
+	# A part over 100 MiB cannot be pushed to GitHub at all. Fail here rather
+	# than at push time, when the payload has already been generated.
+	for part in "$moddir"/data/libchdb.zst.part*; do
+		part_mib=$(($(wc -c <"$part" | tr -d ' ') / 1048576))
+		if [ "$part_mib" -ge 100 ]; then
+			echo "FAIL: $part is ${part_mib} MiB; GitHub rejects files over 100 MiB" >&2
+			exit 1
+		fi
+	done
+
+	cat >"$moddir/engine_data.go" <<EOF
+// Code generated by scripts/package-engine.sh. DO NOT EDIT.
+
+//go:build $(goos_of "$platform") && $(goarch_of "$platform")
+
+package engine
+
+// Values describing the payload in data/, taken from the chdb-core release it
+// was built from.
+const (
+	// Version is the chdb-core release this engine came from.
+	Version = "$TAG"
+	// FileName is the name the library must be written under.
+	FileName = "$lib"
+	// Digest is the SHA-256 prefix of the extracted library. It names the
+	// extraction directory, so equal digests mean identical bytes.
+	Digest = "$digest"
+	// Size is the extracted size in bytes.
+	Size = $size
+)
+EOF
+	gofmt -w "$moddir/engine_data.go"
+	echo "==> $platform: wrote $moddir/engine_data.go"
+
+	platform_paths="$platform_paths $moddir/data $moddir/engine_data.go"
+done
+
+cat <<EOF
+
+==> Done. The payload parts are ignored by git on purpose, so a normal commit
+    cannot accidentally carry a few hundred megabytes. To publish, add them
+    explicitly and tag each module — these are the exact commands, because the
+    module proxy caches a tag permanently and will not serve different bytes for
+    it later, so a tag worked out by hand and got wrong cannot be corrected:
+
+      git add -f${platform_paths}
+      git commit -m "Package chdb-core $TAG"
+$(for platform in "${PLATFORMS[@]}"; do echo "      git tag lib/$platform/$MODULE_VERSION"; done)
+
+    $MODULE_VERSION says which engine is inside and which packaging of it this
+    is, the way chdb-node's @chdb/lib-<platform> subpackages do. It cannot be the
+    engine version itself: Go requires a /vN path suffix for major versions of
+    two or greater, and the engine's major is 26, so tagging $TAG would demand
+    the module path lib/<platform>/v26 and a new path on every ClickHouse major.
+    Keeping the major at zero and encoding the engine into the minor leaves the
+    path alone. internal/enginetag defines and tests the rule; nothing here or
+    in your shell history reimplements it.
+EOF
