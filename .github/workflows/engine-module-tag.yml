@@ -1,0 +1,35 @@
+name: Engine module tag
+
+# Publishing a platform engine module is one command: push a lib/<platform>/vX tag.
+# There is no build to fail and no registry to reject it — the module proxy simply
+# serves whatever that tag points at, forever, and will not serve different bytes
+# for it afterwards. A tag that names the wrong engine cannot be corrected, only
+# superseded by a version that no longer means what it says.
+#
+# verify-embedded-engine.sh already checks any lib/* tag sitting on the commit, but
+# a CI checkout carries no tags, so in practice that check only ever runs on the
+# machine doing the publishing — which is the machine that just typed the tag. This
+# runs on the push itself, so the tag is checked whether or not whoever pushed it
+# ran anything locally.
+#
+# It cannot refuse the push. What it can do is fail loudly within a minute, while
+# deleting and re-pushing the tag is still cheap: the proxy caches on first fetch,
+# so a wrong tag nobody has fetched yet can still be taken back.
+
+on:
+  push:
+    tags: ['lib/**']
+
+permissions:
+  contents: read
+
+jobs:
+  tag_names_its_engine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+      - name: The tag has to name the engine the module was built from
+        run: go run ./scripts/enginetag -verify "${{ github.ref_name }}"
