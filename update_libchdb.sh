@@ -5,7 +5,7 @@
 # it too, so both ways of fetching libchdb land on the same build. Keep it on
 # its own line and literal: the release check greps for it when it proposes a
 # bump, and the Makefile cuts the value out of it.
-CHDB_ENGINE_PIN=v26.7.0
+CHDB_ENGINE_PIN=v26.7.1-rc.1
 
 # CHDB_ENGINE_VERSION overrides the pin, which is how the release check runs the
 # suite against an engine this repository has not adopted yet.
