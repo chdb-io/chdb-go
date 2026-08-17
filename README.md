@@ -28,10 +28,16 @@ engine, so re-run the installer, or `update_libchdb.sh`, to move both together.
 
 ### From the build
 
-Import an [engine module](#engine-modules) and nothing needs installing: the engine
-travels inside the binary and is extracted to a cache directory on first run. This
-is what you want for a self-contained binary, a `FROM scratch` image, or anywhere
-you cannot ask for an install step.
+One blank import and nothing needs installing — the engine travels inside the binary
+and is extracted to a cache directory on first run:
+
+```go
+import _ "github.com/chdb-io/chdb-go/lib/embedded"
+```
+
+This is what you want for a self-contained binary, a `FROM scratch` image, or
+anywhere you cannot ask for an install step. See [engine
+modules](#engine-modules).
 
 ### The CLI
 
@@ -76,8 +82,24 @@ process is actually using, which is worth logging at startup if you ship
 ## Engine modules
 
 `lib/<platform>` are four Go modules, one per platform, each carrying a compressed
-`libchdb`. Importing one makes the engine part of the build: on first run it is
-extracted to a cache directory named after its digest, and reused after that.
+`libchdb`. Bringing one into the build makes the engine part of it: on first run
+the engine is extracted to a cache directory named after its digest, and reused
+after that.
+
+One blank import does it, with no platform in the path and no engine version in
+your `go.mod`:
+
+```go
+import _ "github.com/chdb-io/chdb-go/lib/embedded"
+```
+
+`lib/embedded` is a dispatch module: its `go.mod` names the four platform modules
+and which version of each, and the build takes the one that matches. On a platform
+none of them covers it registers nothing and the build still succeeds, leaving the
+engine to be looked up on the machine as usual.
+
+Import a platform module directly instead when you want to choose the engine
+version yourself:
 
 ```go
 import (
