@@ -9,15 +9,38 @@
 
 ## Install
 
-### Install libchdb.so
-1. Install [`libchdb`](https://github.com/chdb-io/chdb/releases)
-  - curl -sL https://lib.chdb.io | bash
+The engine can either come from the machine or from the build. Both are supported;
+which one you want depends on whether you would rather install something or carry
+it.
 
-### Install chdb-go
-1. Install `chdb-go`
-  - `go install github.com/chdb-io/chdb-go/v2@latest`
-2. Run `chdb-go` with or without persistent `--path`
-  - run `$GOPATH/bin/chdb-go`
+### From the machine
+
+Install `libchdb` once, then use `chdb-go` against it:
+
+```
+curl -sL https://lib.chdb.io | bash
+go get github.com/chdb-io/chdb-go/v2
+```
+
+The engine is looked up at runtime — see [where the engine is loaded
+from](#where-the-engine-is-loaded-from). Upgrading `chdb-go` does not upgrade the
+engine, so re-run the installer, or `update_libchdb.sh`, to move both together.
+
+### From the build
+
+Import an [engine module](#engine-modules) and nothing needs installing: the engine
+travels inside the binary and is extracted to a cache directory on first run. This
+is what you want for a self-contained binary, a `FROM scratch` image, or anywhere
+you cannot ask for an install step.
+
+### The CLI
+
+```
+go install github.com/chdb-io/chdb-go/v2@latest
+$GOPATH/bin/chdb-go            # with or without a persistent --path
+```
+
+The CLI resolves the engine the same way, so it needs one installed on the machine.
 
 ### Where the engine is loaded from
 
@@ -77,29 +100,31 @@ func init() {
 directory and then the temporary directory. It must be a directory no other user
 can write to or substitute, or extraction refuses it.
 
-### Versioning
+### Reading the version
 
-A module version names the chdb-core release its engine came from, then counts
-packagings of that same engine:
+The middle field is the chdb-core release, six digits, two per field. The last is
+which packaging of that same engine this is, counting from 1.
 
-| chdb-core release | packaging | module version |
+```
+v0.260700.1
+   ▲▲▲▲▲▲ ▲
+   26 07 00 — chdb-core v26.7.0, on the ClickHouse 26.7 line
+            1 — first packaging of it
+```
+
+| module version | chdb-core release | ClickHouse line |
 | --- | --- | --- |
-| `v26.7.0` | first | `v0.260700.1` |
-| `v26.7.0` | second | `v0.260700.2` |
-| `v26.7.2-rc.1` | first | `v0.260702.0-rc.1.1` |
+| `v0.260700.1` | `v26.7.0` | 26.7 |
+| `v0.260700.2` | `v26.7.0`, repackaged | 26.7 |
+| `v0.260702.0-rc.1.1` | `v26.7.2-rc.1` | 26.7 |
 
-The engine goes in the minor field with a major of zero because Go requires a
-`/vN` path suffix from major 2 up, and the engine's major is 26. The counter
-starts at 1 and rises when the module's own code changes but the engine has not.
-This is the same scheme chdb-node publishes `@chdb/lib-<platform>` under
-(`26.7.0-stable.1`, `26.7.2-rc.1.1`).
+The first two fields of a chdb-core release are the ClickHouse line it carries; its
+third is chdb-core's own counter, so `v26.7.0` is some ClickHouse 26.7 and not a
+ClickHouse 26.7.0. `chdbpurego.EmbeddedEngineVersion()` returns the chdb-core
+release at runtime, and `SELECT version()` returns the exact ClickHouse build.
 
 Candidates sort below every release of the same engine, so
-`go get lib/<platform>@latest` never picks one:
-
-```
-v0.260700.1  <  v0.260702.0-rc.1.1  <  v0.260702.0-rc.2.1  <  v0.260702.1
-```
+`go get lib/<platform>@latest` never picks one.
 
 ### Publishing
 
