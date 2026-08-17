@@ -59,10 +59,27 @@ echo "==> Cross-compiling every platform module"
 # are pure Go, so building them for another platform costs seconds. GOWORK=off
 # because each module must build on its own, from its own go.mod.
 for dir in lib/*/; do
-	platform="$(basename "$dir")"
-	echo "    $platform"
-	(cd "$dir" && GOWORK=off GOOS="${platform%%-*}" GOARCH="${platform##*-}" go build ./...)
+	name="$(basename "$dir")"
+	case "$name" in
+	*-*) ;;
+	# lib/embedded is not a platform: its name carries no GOOS-GOARCH to build
+	# for, and it covers all four through build tags. Built separately below.
+	*)
+		continue
+		;;
+	esac
+	echo "    $name"
+	(cd "$dir" && GOWORK=off GOOS="${name%%-*}" GOARCH="${name##*-}" go build ./...)
 done
+
+# The dispatch module, once per platform it dispatches to, plus one it does not:
+# on an uncovered platform it must still build and simply register nothing.
+if [ -d lib/embedded ]; then
+	echo "    embedded"
+	for pair in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64; do
+		(cd lib/embedded && GOWORK=off GOOS="${pair%/*}" GOARCH="${pair#*/}" go build ./...)
+	done
+fi
 
 # Compression ratio is a property of a release, not of the machinery this script
 # checks: the level changes neither the extracted library nor its digest, and the
