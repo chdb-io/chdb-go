@@ -190,6 +190,13 @@ cat <<EOF
       git add -f${platform_paths}
       git commit -m "Package chdb-core $TAG"
 $(for platform in "${PLATFORMS[@]}"; do echo "      git tag lib/$platform/$MODULE_VERSION"; done)
+$(for platform in "${PLATFORMS[@]}"; do echo "      git push origin lib/$platform/$MODULE_VERSION"; done)
+
+    One push per tag, and not 'git push --tags'. GitHub creates no event at all
+    when more than three tags arrive in a single push, and there are four here —
+    so a single push would publish all four without .github/workflows/
+    engine-module-tag.yml ever running on any of them. Pushed one at a time, each
+    is checked. A scheduled sweep re-checks every published tag in any case.
 
     $MODULE_VERSION says which engine is inside and which packaging of it this
     is, the way chdb-node's @chdb/lib-<platform> subpackages do. It cannot be the

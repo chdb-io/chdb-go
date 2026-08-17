@@ -19,12 +19,22 @@ name: Engine module tag
 on:
   push:
     tags: ['lib/**']
+  # A push carrying more than three tags creates no event at all — not a partial
+  # one — and a release is four platform tags. package-engine.sh prints one push
+  # per tag for that reason, but an instruction is not a guarantee, and this check
+  # is worthless if the one release that skips it is the one that was wrong. So
+  # every published tag is re-checked on a schedule regardless of how it arrived,
+  # including tags that predate this workflow.
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
   tag_names_its_engine:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,3 +43,42 @@ jobs:
           go-version: "1.21"
       - name: The tag has to name the engine the module was built from
         run: go run ./scripts/enginetag -verify "${{ github.ref_name }}"
+
+  every_published_tag:
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    steps:
+      # blob:none because the tags carry the engine payloads: a full clone would
+      # pull every version ever published to read one small generated file from
+      # each. The blobs actually needed are fetched on demand below.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          filter: blob:none
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+      - name: Every lib/* tag has to name the engine its module was built from
+        run: |
+          set -uo pipefail
+
+          tags=$(git tag --list 'lib/*')
+          if [ -z "$tags" ]; then
+            echo "no engine module tags published yet"
+            exit 0
+          fi
+
+          failed=0
+          for tag in $tags; do
+            moddir=${tag%/*}
+            # The metadata as it is at that tag, not as it is on the default
+            # branch, which carries placeholders.
+            if ! git checkout -q "$tag" -- "$moddir/engine_data.go" 2>/dev/null; then
+              echo "::error::$tag has no $moddir/engine_data.go"
+              failed=1
+              continue
+            fi
+            go run ./scripts/enginetag -verify "$tag" || failed=1
+            git checkout -q HEAD -- "$moddir/engine_data.go"
+          done
+          exit "$failed"
