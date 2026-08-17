@@ -4,17 +4,16 @@
 
 package engine
 
-// Placeholder values. scripts/package-engine.sh overwrites this file with the
-// metadata of a real chdb-core release; an empty Version means this revision
-// carries no engine.
+// Values describing the payload in data/, taken from the chdb-core release it
+// was built from.
 const (
 	// Version is the chdb-core release this engine came from.
-	Version = ""
+	Version = "v26.7.0"
 	// FileName is the name the library must be written under.
 	FileName = "libchdb.so"
 	// Digest is the SHA-256 prefix of the extracted library. It names the
 	// extraction directory, so equal digests mean identical bytes.
-	Digest = ""
+	Digest = "524f1e378e2c78bb4b811def2011e999"
 	// Size is the extracted size in bytes.
-	Size = 0
+	Size = 383793760
 )
