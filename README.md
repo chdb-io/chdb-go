@@ -28,10 +28,16 @@ engine, so re-run the installer, or `update_libchdb.sh`, to move both together.
 
 ### From the build
 
-Import an [engine module](#engine-modules) and nothing needs installing: the engine
-travels inside the binary and is extracted to a cache directory on first run. This
-is what you want for a self-contained binary, a `FROM scratch` image, or anywhere
-you cannot ask for an install step.
+One blank import and nothing needs installing — the engine travels inside the binary
+and is extracted to a cache directory on first run:
+
+```go
+import _ "github.com/chdb-io/chdb-go/lib/embedded"
+```
+
+This is what you want for a self-contained binary, a `FROM scratch` image, or
+anywhere you cannot ask for an install step. See [engine
+modules](#engine-modules).
 
 ### The CLI
 
