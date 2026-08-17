@@ -23,11 +23,12 @@
 
 `chdb-go` opens `libchdb` at runtime. It is looked up in this order:
 
-1. An engine compiled into the binary, if the build imports one of the
-   [engine modules](#engine-modules). Nothing below is tried.
-2. `CHDB_LIB_PATH`, if set — the library file, not a directory. Setting it
+1. `CHDB_LIB_PATH`, if set — the library file, not a directory. Setting it
    disables the rest of the search, so a copy that does not load is an error
-   rather than a reason to use a different one.
+   rather than a reason to use a different one. It outranks a carried engine,
+   which is how a build that has one can still be pointed at another.
+2. An engine compiled into the binary, if the build imports one of the
+   [engine modules](#engine-modules). Nothing below is tried.
 3. The directory holding the running executable.
 4. `PATH`.
 5. `/usr/local/lib`, `/opt/homebrew/lib` and `/usr/lib`.

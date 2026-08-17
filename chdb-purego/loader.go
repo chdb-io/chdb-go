@@ -187,11 +187,11 @@ func openLibrary() (uintptr, string, error) {
 		return h, abs, nil
 	}
 
-	// A build carrying its own engine does not consult the machine at all. That
-	// is the point of embedding it: the version is decided when the binary is
-	// built, and quietly preferring some other copy found on the host would
-	// undo that guarantee in a way nobody would notice until the behaviour
-	// differed.
+	// Past the explicit override above, a build carrying its own engine does not
+	// consult the machine at all. That is the point of embedding it: the version
+	// is decided when the binary is built, and quietly preferring some other copy
+	// found on the host would undo that guarantee in a way nobody would notice
+	// until the behaviour differed.
 	if e := registeredEngine(); e != nil {
 		return openEmbedded(e, dlopenLibrary)
 	}
