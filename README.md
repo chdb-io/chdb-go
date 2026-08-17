@@ -23,15 +23,18 @@
 
 `chdb-go` opens `libchdb` at runtime. It is looked up in this order:
 
-1. `CHDB_LIB_PATH`, if set. This points at the library file itself, not a
-   directory. Setting it disables the rest of the search: if the file does not
-   load, that is the error, rather than a different copy of the engine being
-   used instead.
-2. The directory holding the running executable. Shipping your program and
-   `libchdb` side by side in one archive therefore works with nothing
-   installed and no environment variable set.
-3. `PATH`.
-4. `/usr/local/lib`, `/opt/homebrew/lib` and `/usr/lib`.
+1. An engine compiled into the binary, if the build imports one of the
+   [engine modules](#engine-modules). Nothing below is tried.
+2. `CHDB_LIB_PATH`, if set — the library file, not a directory. Setting it
+   disables the rest of the search, so a copy that does not load is an error
+   rather than a reason to use a different one.
+3. The directory holding the running executable.
+4. `PATH`.
+5. `/usr/local/lib`, `/opt/homebrew/lib` and `/usr/lib`.
+6. The directories in `LD_LIBRARY_PATH`, `DYLD_LIBRARY_PATH` and
+   `DYLD_FALLBACK_LIBRARY_PATH`.
+7. The dynamic loader, by name — this is what reaches an `ldconfig`-registered
+   install, `/usr/lib/<triple>` on a multiarch distribution, or a `RUNPATH`.
 
 When none of them yields a usable library, the error lists every location that
 was tried and why each one failed.
@@ -45,6 +48,73 @@ process is actually using, which is worth logging at startup if you ship
   - run `make build`
 2. Run `chdb-go` with or without persistent `--path`
   - run `./chdb-go`
+
+## Engine modules
+
+`lib/<platform>` are four Go modules, one per platform, each carrying a compressed
+`libchdb`. Importing one makes the engine part of the build: on first run it is
+extracted to a cache directory named after its digest, and reused after that.
+
+```go
+import (
+    chdbpurego "github.com/chdb-io/chdb-go/v2/chdb-purego"
+    engine "github.com/chdb-io/chdb-go/lib/linux-amd64"
+)
+
+func init() {
+    chdbpurego.RegisterEmbeddedEngine(chdbpurego.EmbeddedEngine{
+        Version:  engine.Version,
+        FileName: engine.FileName,
+        Digest:   engine.Digest,
+        Size:     engine.Size,
+        Open:     engine.Open,
+    })
+}
+```
+
+`CHDB_CACHE_DIR` chooses where it is extracted, defaulting to the user cache
+directory and then the temporary directory. It must be a directory no other user
+can write to or substitute, or extraction refuses it.
+
+### Versioning
+
+A module version names the chdb-core release its engine came from, then counts
+packagings of that same engine:
+
+| chdb-core release | packaging | module version |
+| --- | --- | --- |
+| `v26.7.0` | first | `v0.260700.1` |
+| `v26.7.0` | second | `v0.260700.2` |
+| `v26.7.2-rc.1` | first | `v0.260702.0-rc.1.1` |
+
+The engine goes in the minor field with a major of zero because Go requires a
+`/vN` path suffix from major 2 up, and the engine's major is 26. The counter
+starts at 1 and rises when the module's own code changes but the engine has not.
+This is the same scheme chdb-node publishes `@chdb/lib-<platform>` under
+(`26.7.0-stable.1`, `26.7.2-rc.1.1`).
+
+Candidates sort below every release of the same engine, so
+`go get lib/<platform>@latest` never picks one:
+
+```
+v0.260700.1  <  v0.260702.0-rc.1.1  <  v0.260702.0-rc.2.1  <  v0.260702.1
+```
+
+### Publishing
+
+```
+scripts/package-engine.sh v26.7.0                    # every platform
+CHDB_PACKAGING=2 scripts/package-engine.sh v26.7.0   # repackage the same engine
+```
+
+The script prints the exact `git tag` commands. Use those — the module proxy
+serves a tag's bytes permanently, so a wrong tag can only be superseded, never
+fixed. `internal/enginetag` defines the rule, `go run ./scripts/enginetag -verify
+lib/<platform>/<version>` checks a tag against the module it names, and CI runs
+that check on every `lib/**` tag pushed.
+
+Payloads are added with `git add -f` at publish time and are not on the default
+branch, so a clone does not carry every engine version ever shipped.
 
 ## chdb-go CLI
 
