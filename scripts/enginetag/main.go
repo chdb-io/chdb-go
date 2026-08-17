@@ -78,6 +78,10 @@ func verify(tag string) error {
 		return fmt.Errorf("tag %s: %w", tag, err)
 	}
 
+	if path.Base(moddir) == "embedded" {
+		return verifyDispatch(tag, moddir, version)
+	}
+
 	file := path.Join(moddir, "engine_data.go")
 	data, err := os.ReadFile(file)
 	if err != nil {
@@ -99,5 +103,41 @@ func verify(tag string) error {
 	}
 
 	fmt.Printf("%s: engine %s, packaging %d\n", tag, gotEngine, counter)
+	return nil
+}
+
+var requireRe = regexp.MustCompile(`(?m)^\s*(github\.com/chdb-io/chdb-go/lib/[a-z0-9-]+)\s+(\S+)`)
+
+// verifyDispatch checks lib/embedded, which carries no engine of its own — it only
+// says which version of the platform modules to use. So the thing to check is that
+// its tag and those versions agree: tagging it v0.260700.2 while its go.mod still
+// points at v0.260700.1 would publish a version claiming an engine packaging it
+// does not bring.
+func verifyDispatch(tag, moddir, version string) error {
+	file := path.Join(moddir, "go.mod")
+	data, err := os.ReadFile(file)
+	if err != nil {
+		return err
+	}
+
+	found := 0
+	for _, m := range requireRe.FindAllStringSubmatch(string(data), -1) {
+		mod, got := m[1], m[2]
+		if path.Base(mod) == "embedded" {
+			continue
+		}
+		found++
+		if got != version {
+			return fmt.Errorf("tag %s does not match what %s requires:\n  %s %s\n\n"+
+				"the dispatch module's version says which platform modules it brings, so the "+
+				"two have to be the same", tag, file, mod, got)
+		}
+	}
+	if found != 4 {
+		return fmt.Errorf("%s requires %d platform modules, expected 4 — a platform that is "+
+			"missing here is one this module silently does not cover", file, found)
+	}
+
+	fmt.Printf("%s: dispatches to 4 platform modules, all at %s\n", tag, version)
 	return nil
 }
