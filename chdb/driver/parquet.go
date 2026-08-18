@@ -99,6 +99,17 @@ func (r *parquetRows) Next(dest []driver.Value) error {
 	var scanError error
 	r.curRecord.Range(func(columnIndex int, columnValues []parquet.Value) bool {
 		if len(columnValues) != 1 {
+			// A repeated column — a ClickHouse Array is the common one — carries a
+			// value per element, and this driver has no mapping for it. Returning
+			// false without an error left this column and every column after it as
+			// NULL, so the row read as data rather than as unsupported.
+			scanError = fmt.Errorf("could not read column %s: %d values in the row, want 1", r.columnDesc(columnIndex), len(columnValues))
+			return false
+		}
+		if columnIndex >= len(dest) {
+			// A single SQL column can span several parquet leaves; the row has more
+			// of them than database/sql gave slots for.
+			scanError = fmt.Errorf("could not read column %s: the row has more columns than the query reported", r.columnDesc(columnIndex))
 			return false
 		}
 		curVal := columnValues[0]
@@ -153,7 +164,7 @@ func (r *parquetRows) Next(dest []driver.Value) error {
 		case "TIMESTAMP(isAdjustedToUTC=false,unit=NANOS)", "TIME(isAdjustedToUTC=false,unit=NANOS)":
 			dest[columnIndex] = time.Unix(0, curVal.Int64())
 		default:
-			scanError = fmt.Errorf("could not cast to type: %s", r.ColumnTypeDatabaseTypeName(columnIndex))
+			scanError = fmt.Errorf("could not read column %s: unsupported type", r.columnDesc(columnIndex))
 			return false
 
 		}
@@ -181,7 +192,22 @@ func (r *parquetRows) ColumnTypePrecisionScale(index int) (precision, scale int6
 }
 
 func (r *parquetRows) ColumnTypeScanType(index int) reflect.Type {
-	switch r.schemaFields[index].Type().Kind() {
+	return parquetScanType(r.schemaFields[index])
+}
+
+// parquetScanType maps a column to the Go type this driver produces for it.
+//
+// Kind() panics on anything that is not a leaf — a ClickHouse Array, Map or Tuple
+// arrives as a parquet group — and database/sql calls ColumnTypeScanType for every
+// column of every query from Rows.ColumnTypes(), which is what ORMs and generic
+// row scanners use. So group columns are answered instead of asked about, and
+// anything without a mapping reports the empty interface: callers build a scan
+// destination out of this type, and a nil one panics in reflect.New.
+func parquetScanType(field parquet.Field) reflect.Type {
+	if !field.Leaf() {
+		return anyType
+	}
+	switch field.Type().Kind() {
 	case parquet.Boolean:
 		return reflect.TypeOf(false)
 	case parquet.Int32:
@@ -195,5 +221,17 @@ func (r *parquetRows) ColumnTypeScanType(index int) reflect.Type {
 	case parquet.ByteArray, parquet.FixedLenByteArray:
 		return reflect.TypeOf("")
 	}
-	return nil
+	return anyType
+}
+
+var anyType = reflect.TypeOf((*any)(nil)).Elem()
+
+// columnDesc names a column for an error message: by name and parquet type when
+// the index is one of the query's columns, by position when it is a leaf
+// underneath one (a single SQL column can span several).
+func (r *parquetRows) columnDesc(index int) string {
+	if index >= 0 && index < len(r.schemaFields) {
+		return fmt.Sprintf("%q (%s)", r.schemaFields[index].Name(), r.schemaFields[index].Type())
+	}
+	return fmt.Sprintf("at index %d", index)
 }
