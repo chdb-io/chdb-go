@@ -3,7 +3,10 @@ package chdbpurego
 import "errors"
 
 type streamingResult struct {
-	curConn  *chdb_connection
+	// conn is the connection the query was started on, not just its handle:
+	// every chunk is fetched through it, so the stream goes through the
+	// connection's own guards instead of dereferencing a handle it does not own.
+	conn     *connection
 	stream   *chdb_result
 	curChunk ChdbResult
 	// Set once the engine has signalled end of data, so Free() knows there is
@@ -11,7 +14,7 @@ type streamingResult struct {
 	finished bool
 }
 
-func newStreamingResult(conn *chdb_connection, cRes *chdb_result) ChdbStreamResult {
+func newStreamingResult(conn *connection, cRes *chdb_result) ChdbStreamResult {
 
 	// nextChunk := streamingResultNext(conn, cRes)
 	// if nextChunk == nil {
@@ -19,8 +22,8 @@ func newStreamingResult(conn *chdb_connection, cRes *chdb_result) ChdbStreamResu
 	// }
 
 	res := &streamingResult{
-		curConn: conn,
-		stream:  cRes,
+		conn:   conn,
+		stream: cRes,
 		// curChunk: newChdbResult(nextChunk),
 	}
 
@@ -31,7 +34,7 @@ func newStreamingResult(conn *chdb_connection, cRes *chdb_result) ChdbStreamResu
 
 // Error implements ChdbStreamResult.
 func (c *streamingResult) Error() error {
-	if s := chdbResultError(c.stream); s != "" {
+	if s := c.conn.streamError(c.stream); s != "" {
 		return errors.New(s)
 	}
 	return nil
@@ -39,7 +42,7 @@ func (c *streamingResult) Error() error {
 
 // Free implements ChdbStreamResult.
 func (c *streamingResult) Free() {
-	if c.curConn != nil && c.stream != nil {
+	if c.stream != nil {
 		// Cancel only while the engine still has a stream to stop. Once it has
 		// signalled end of data it has retired the query's state, and cancelling a
 		// retired stream walks into it: chdb_stream_cancel_query takes the handle as
@@ -50,11 +53,9 @@ func (c *streamingResult) Free() {
 		//
 		// Destroying is still correct and still required — the engine's own note on
 		// cancel says the handle is released by chdb_destroy_query_result, not by
-		// cancel — so only the cancel is conditional.
-		if !c.finished {
-			chdbStreamCancelQuery(c.curConn, c.stream)
-		}
-		chdbDestroyQueryResult(c.stream)
+		// cancel — so only the cancel is conditional. releaseStream skips both when
+		// the connection is already closed, which retires the query anyway.
+		c.conn.releaseStream(c.stream, !c.finished)
 	}
 
 	c.stream = nil
@@ -76,7 +77,13 @@ func (c *streamingResult) GetNext() ChdbResult {
 		c.curChunk.Free()
 		c.curChunk = nil
 	}
-	nextChunk := chdbStreamFetchResult(c.curConn.internal_data, c.stream)
+	if c.finished {
+		// The engine does not stop at end of data: asked again it keeps handing
+		// out empty chunks, so a caller reading until GetNext returns nil would
+		// never leave the loop. Report the end once and stay there.
+		return nil
+	}
+	nextChunk := c.conn.fetchStream(c.stream)
 	if nextChunk == nil {
 		c.finished = true
 		return nil

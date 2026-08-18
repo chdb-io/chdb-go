@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"unsafe"
 
 	"golang.org/x/sys/unix"
@@ -100,6 +101,11 @@ func (c *result) String() string {
 }
 
 type connection struct {
+	// mu guards conn so that Close cannot free the native connection while a
+	// query or a streaming fetch is still running against it. Queries take the
+	// read lock and keep running concurrently; Close takes the write lock and
+	// therefore waits for the in-flight ones to finish.
+	mu   sync.RWMutex
 	conn *chdb_connection
 }
 
@@ -117,6 +123,8 @@ func newChdbConn(conn *chdb_connection) ChdbConn {
 // second Close (or a Close racing a Query that checks for a nil handle) does
 // not double-free the native connection.
 func (c *connection) Close() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if c.conn != nil {
 		chdbCloseConn(c.conn)
 		c.conn = nil
@@ -125,6 +133,8 @@ func (c *connection) Close() {
 
 // Query implements ChdbConn.
 func (c *connection) Query(queryStr string, formatStr string) (result ChdbResult, err error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	if c.conn == nil {
 		return nil, fmt.Errorf("invalid connection")
 	}
@@ -146,7 +156,8 @@ func (c *connection) Query(queryStr string, formatStr string) (result ChdbResult
 
 // QueryStreaming implements ChdbConn.
 func (c *connection) QueryStreaming(queryStr string, formatStr string) (result ChdbStreamResult, err error) {
-
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	if c.conn == nil {
 		return nil, fmt.Errorf("invalid connection")
 	}
@@ -156,20 +167,65 @@ func (c *connection) QueryStreaming(queryStr string, formatStr string) (result C
 		// According to the C ABI of chDB v1.2.0, the C function query_stable_v2
 		// returns nil if the query returns no data. This is not an error. We
 		// will change this behavior in the future.
-		return newStreamingResult(c.conn, res), nil
+		return newStreamingResult(c, res), nil
 	}
 	if s := chdbResultError(res); s != "" {
 		return nil, errors.New(s)
 	}
 
-	return newStreamingResult(c.conn, res), nil
+	return newStreamingResult(c, res), nil
 }
 
 func (c *connection) Ready() bool {
-	if c.conn != nil {
-		return true
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.conn != nil
+}
+
+// A streaming result is not a materialized buffer: libchdb computes it lazily
+// and every call below takes the connection that started the query, because the
+// stream handle is only a cursor into state that connection owns. The three
+// helpers therefore hold the read lock for the whole native call, so a Close
+// racing them waits instead of pulling the connection out from under the engine,
+// and they turn "the connection is already gone" into an end-of-data/no-op
+// answer instead of a read of freed memory.
+
+// fetchStream pulls the next chunk of a streaming query, reporting end of data
+// when the connection has been closed.
+func (c *connection) fetchStream(stream *chdb_result) *chdb_result {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if c.conn == nil || stream == nil {
+		return nil
 	}
-	return false
+	return chdbStreamFetchResult(c.conn.internal_data, stream)
+}
+
+// streamError reads the error a streaming query recorded on its handle.
+func (c *connection) streamError(stream *chdb_result) string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if c.conn == nil || stream == nil {
+		return ""
+	}
+	return chdbResultError(stream)
+}
+
+// releaseStream cancels (when the stream is still running) and destroys a
+// streaming query handle. Once the connection is closed the engine has already
+// retired the query along with it, so there is nothing safe left to call on the
+// handle and it is dropped instead — that only happens when a caller closes a
+// connection while still holding one of its streams.
+func (c *connection) releaseStream(stream *chdb_result, cancel bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if c.conn == nil || stream == nil {
+		return
+	}
+	if cancel {
+		chdbStreamCancelQuery(c.conn, stream)
+	}
+	chdbDestroyQueryResult(stream)
 }
 
 // NewConnection is the low level function to create a new connection to the chdb server.
