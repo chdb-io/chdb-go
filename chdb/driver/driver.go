@@ -459,7 +459,15 @@ func (c *conn) QueryContext(ctx context.Context, query string, args []driver.Nam
 		if err != nil {
 			return nil, err
 		}
-		return c.driverType.PrepareStreamingRows(result, c.bufferSize, c.useUnsafe)
+		rows, err := c.driverType.PrepareStreamingRows(result, c.bufferSize, c.useUnsafe)
+		if err != nil {
+			// There is no Rows to close the stream from, and the stream holds the
+			// connection it was started on open — a sessionless query keeps a whole
+			// session for it — so release it here instead of at the next GC.
+			result.Free()
+			return nil, err
+		}
+		return rows, nil
 	}
 	result, err := c.QueryFun(compiledQuery, c.driverType.GetFormat(), c.udfPath)
 	if err != nil {

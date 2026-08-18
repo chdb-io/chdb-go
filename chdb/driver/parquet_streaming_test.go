@@ -31,6 +31,11 @@ func TestDbWithParquetStreaming(t *testing.T) {
 		foo int
 	)
 	defer rows.Close()
+	// Counted, because this sessionless path streams through chdb.QueryStream:
+	// when that helper closed its session too early the engine answered with no
+	// rows at all (or crashed), and a loop that only checks the rows it does see
+	// stayed green.
+	scanned := 0
 	for rows.Next() {
 		err := rows.Scan(&bar, &foo)
 		if err != nil {
@@ -39,7 +44,13 @@ func TestDbWithParquetStreaming(t *testing.T) {
 		if bar != 1 {
 			t.Errorf("expected error")
 		}
-
+		scanned++
+	}
+	if err := rows.Err(); err != nil {
+		t.Errorf("iterate rows fail, err: %s", err)
+	}
+	if scanned != 100000 {
+		t.Errorf("scanned %d rows, want 100000", scanned)
 	}
 
 }
