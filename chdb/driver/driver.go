@@ -365,22 +365,18 @@ func (c *conn) Close() error {
 	return nil
 }
 
+// SetupQueryFun wires both entry points, streaming or not. Exec never streams —
+// it throws the result away — so it goes through QueryFun even on a streaming
+// connection, where QueryFun used to be left nil and turned every db.Exec into a
+// nil-func call.
 func (c *conn) SetupQueryFun() {
-	if c.isStreaming {
-		c.streamFun = chdb.QueryStream
-	} else {
-		c.QueryFun = chdb.Query
-	}
+	c.QueryFun = chdb.Query
+	c.streamFun = chdb.QueryStream
 
 	if c.session != nil {
-		if c.isStreaming {
-			c.streamFun = c.session.QueryStream
-		} else {
-			c.QueryFun = c.session.Query
-		}
-
+		c.QueryFun = c.session.Query
+		c.streamFun = c.session.QueryStream
 	}
-
 }
 
 func (c *conn) Query(query string, values []driver.Value) (driver.Rows, error) {
@@ -401,7 +397,7 @@ func (c *conn) ExecContext(ctx context.Context, query string, args []driver.Name
 		return nil, err
 	}
 
-	result, err := c.QueryFun(compiledQuery, c.driverType.String(), c.udfPath)
+	result, err := c.QueryFun(compiledQuery, c.driverType.GetFormat(), c.udfPath)
 	if err != nil {
 		return nil, err
 	}
@@ -476,9 +472,17 @@ func (c *conn) QueryContext(ctx context.Context, query string, args []driver.Nam
 
 	buf := result.Buf()
 	if len(buf) == 0 {
+		// Statements with no result set (DDL, SET, INSERT) land here. Nothing will
+		// read the result, so free it instead of leaving it to no one.
+		result.Free()
 		return nil, fmt.Errorf("result is nil")
 	}
-	return c.driverType.PrepareRows(result, buf, c.bufferSize, c.useUnsafe)
+	rows, err := c.driverType.PrepareRows(result, buf, c.bufferSize, c.useUnsafe)
+	if err != nil {
+		result.Free()
+		return nil, err
+	}
+	return rows, nil
 
 }
 

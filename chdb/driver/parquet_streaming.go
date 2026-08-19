@@ -121,6 +121,17 @@ func (r *parquetStreamingRows) Next(dest []driver.Value) error {
 	var scanError error
 	r.curRecord.Range(func(columnIndex int, columnValues []parquet.Value) bool {
 		if len(columnValues) != 1 {
+			// A repeated column — a ClickHouse Array is the common one — carries a
+			// value per element, and this driver has no mapping for it. Returning
+			// false without an error left this column and every column after it as
+			// NULL, so the row read as data rather than as unsupported.
+			scanError = fmt.Errorf("could not read column %s: %d values in the row, want 1", r.columnDesc(columnIndex), len(columnValues))
+			return false
+		}
+		if columnIndex >= len(dest) {
+			// A single SQL column can span several parquet leaves; the row has more
+			// of them than database/sql gave slots for.
+			scanError = fmt.Errorf("could not read column %s: the row has more columns than the query reported", r.columnDesc(columnIndex))
 			return false
 		}
 		curVal := columnValues[0]
@@ -175,7 +186,7 @@ func (r *parquetStreamingRows) Next(dest []driver.Value) error {
 		case "TIMESTAMP(isAdjustedToUTC=false,unit=NANOS)", "TIME(isAdjustedToUTC=false,unit=NANOS)":
 			dest[columnIndex] = time.Unix(0, curVal.Int64())
 		default:
-			scanError = fmt.Errorf("could not cast to type: %s", r.ColumnTypeDatabaseTypeName(columnIndex))
+			scanError = fmt.Errorf("could not read column %s: unsupported type", r.columnDesc(columnIndex))
 			return false
 
 		}
@@ -203,19 +214,15 @@ func (r *parquetStreamingRows) ColumnTypePrecisionScale(index int) (precision, s
 }
 
 func (r *parquetStreamingRows) ColumnTypeScanType(index int) reflect.Type {
-	switch r.schemaFields[index].Type().Kind() {
-	case parquet.Boolean:
-		return reflect.TypeOf(false)
-	case parquet.Int32:
-		return reflect.TypeOf(int32(0))
-	case parquet.Int64:
-		return reflect.TypeOf(int64(0))
-	case parquet.Float:
-		return reflect.TypeOf(float32(0))
-	case parquet.Double:
-		return reflect.TypeOf(float64(0))
-	case parquet.ByteArray, parquet.FixedLenByteArray:
-		return reflect.TypeOf("")
+	return parquetScanType(r.schemaFields[index])
+}
+
+// columnDesc names a column for an error message: by name and parquet type when
+// the index is one of the query's columns, by position when it is a leaf
+// underneath one (a single SQL column can span several).
+func (r *parquetStreamingRows) columnDesc(index int) string {
+	if index >= 0 && index < len(r.schemaFields) {
+		return fmt.Sprintf("%q (%s)", r.schemaFields[index].Name(), r.schemaFields[index].Type())
 	}
-	return nil
+	return fmt.Sprintf("at index %d", index)
 }

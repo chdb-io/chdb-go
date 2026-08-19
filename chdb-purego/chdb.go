@@ -148,6 +148,10 @@ func (c *connection) Query(queryStr string, formatStr string) (result ChdbResult
 	}
 	errMsg := chdbResultError(res)
 	if errMsg != "" {
+		// The message is already copied into Go memory, and a failed query has no
+		// result for the caller to free — so free it here rather than keeping a
+		// result per failed query for the life of the process.
+		chdbDestroyQueryResult(res)
 		return nil, errors.New(errMsg)
 	}
 
@@ -170,6 +174,9 @@ func (c *connection) QueryStreaming(queryStr string, formatStr string) (result C
 		return newStreamingResult(c, res), nil
 	}
 	if s := chdbResultError(res); s != "" {
+		// Same as in Query: nobody is going to free a handle that never became a
+		// stream.
+		chdbDestroyQueryResult(res)
 		return nil, errors.New(s)
 	}
 
