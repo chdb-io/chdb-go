@@ -71,14 +71,18 @@ jobs:
           failed=0
           for tag in $tags; do
             moddir=${tag%/*}
+            metadata="$moddir/engine_data.go"
+            if [ "${moddir##*/}" = "embedded" ]; then
+              metadata="$moddir/go.mod"
+            fi
             # The metadata as it is at that tag, not as it is on the default
             # branch, which carries placeholders.
-            if ! git checkout -q "$tag" -- "$moddir/engine_data.go" 2>/dev/null; then
-              echo "::error::$tag has no $moddir/engine_data.go"
+            if ! git checkout -q "$tag" -- "$metadata" 2>/dev/null; then
+              echo "::error::$tag has no $metadata"
               failed=1
               continue
             fi
             go run ./scripts/enginetag -verify "$tag" || failed=1
-            git checkout -q HEAD -- "$moddir/engine_data.go"
+            git checkout -q HEAD -- "$metadata"
           done
           exit "$failed"
