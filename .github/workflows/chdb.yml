@@ -13,6 +13,15 @@ on:
 jobs:
   build_linux:
     runs-on: ubuntu-latest
+    # The durable suite's end-to-end tests need the management ABI, which
+    # arrived in the pinned engine. They skip without it, so that a developer
+    # on an older libchdb is not shown failures for it — but here the version
+    # is pinned, and a skip would mean lib.chdb.io fell back to
+    # releases/latest, which for a pre-release pin is an older engine. This
+    # turns that fallback into a failed job instead of a green one that tested
+    # nothing.
+    env:
+      CHDB_REQUIRE_DURABLE_ABI: "1"
     steps:
     - uses: actions/checkout@v4
     - name: Fetch library
@@ -35,6 +44,15 @@ jobs:
 
   build_mac:
     runs-on: macos-14
+    # The durable suite's end-to-end tests need the management ABI, which
+    # arrived in the pinned engine. They skip without it, so that a developer
+    # on an older libchdb is not shown failures for it — but here the version
+    # is pinned, and a skip would mean lib.chdb.io fell back to
+    # releases/latest, which for a pre-release pin is an older engine. This
+    # turns that fallback into a failed job instead of a green one that tested
+    # nothing.
+    env:
+      CHDB_REQUIRE_DURABLE_ABI: "1"
     steps:
     - uses: actions/checkout@v4
     - name: Fetch library
