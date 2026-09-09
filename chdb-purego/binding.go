@@ -103,6 +103,13 @@ var (
 	chdbResultStorageBytesRead func(result *chdb_result) uint64
 	chdbResultError            func(result *chdb_result) string
 
+	// Management ABI, added in chdb-core v26.7.2-rc.2. Bound only when the
+	// loaded engine exports it; see admin.go and bindAdminSymbols.
+	chdbVersion          func() string
+	chdbBackupDatabaseN  func(conn unsafe.Pointer, database *byte, databaseLen uint, filePath *byte, filePathLen uint, baseFilePath *byte, baseFilePathLen uint) *chdb_result
+	chdbRestoreDatabaseN func(conn unsafe.Pointer, database *byte, databaseLen uint, filePath *byte, filePathLen uint) *chdb_result
+	chdbClassifyQueryN   func(conn unsafe.Pointer, sql *byte, sqlLen uint, targetDatabase *byte, targetDatabaseLen uint, out *queryAnalysisV1) int32
+
 	// Process-wide signal handler control. See issue #30: by default libchdb
 	// installs its own SIGSEGV/SIGABRT/SIGBUS/SIGILL handlers when a
 	// connection is opened, which overwrites the Go runtime's handlers and
@@ -186,6 +193,8 @@ func bindSymbols(libchdb uintptr) {
 	purego.RegisterLibFunc(&chdbResultStorageBytesRead, libchdb, "chdb_result_storage_bytes_read")
 	purego.RegisterLibFunc(&chdbResultError, libchdb, "chdb_result_error")
 
+	bindAdminSymbols(libchdb)
+
 	// Signal handler protection (issue #30). The required API was added in
 	// libchdb v26.x via chdb-core#11. Pre-check the symbol with Dlsym so
 	// that older libchdb builds — which don't export
@@ -241,4 +250,40 @@ func guardSignalHandlers() func() {
 	}
 	saved := snapshotSignalHandlers()
 	return func() { restoreSignalHandlers(saved) }
+}
+
+// bindAdminSymbols binds the backup, restore and query-analysis entry points
+// when the loaded engine has them.
+//
+// Each symbol is probed with Dlsym first, the way the signal-handler API is,
+// because RegisterLibFunc panics on a missing symbol — and a panic here fires
+// during the first call that needs the engine at all, leaving a caller who
+// only wanted to run a SELECT on an older libchdb with a dead process and no
+// way to handle it. Probing turns "engine too old" into an error the one
+// caller who needs these symbols receives, which is what admin.go returns.
+//
+// chdb_version is probed alongside them even though it has been exported for
+// much longer, so that one code path covers every symbol this file resolves
+// by name rather than by declaration.
+func bindAdminSymbols(libchdb uintptr) {
+	if has(libchdb, "chdb_version") {
+		purego.RegisterLibFunc(&chdbVersion, libchdb, "chdb_version")
+	}
+	// All three or none: the durable control plane needs analysis to decide
+	// what it may run and backup/restore to move state, so an engine with a
+	// subset is no more usable than one with none, and binding a subset would
+	// only move the failure to a less obvious place.
+	if has(libchdb, "chdb_backup_database_n") &&
+		has(libchdb, "chdb_restore_database_n") &&
+		has(libchdb, "chdb_classify_query_n") {
+		purego.RegisterLibFunc(&chdbBackupDatabaseN, libchdb, "chdb_backup_database_n")
+		purego.RegisterLibFunc(&chdbRestoreDatabaseN, libchdb, "chdb_restore_database_n")
+		purego.RegisterLibFunc(&chdbClassifyQueryN, libchdb, "chdb_classify_query_n")
+	}
+}
+
+// has reports whether libchdb exports name.
+func has(libchdb uintptr, name string) bool {
+	sym, err := purego.Dlsym(libchdb, name)
+	return err == nil && sym != 0
 }
