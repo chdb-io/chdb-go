@@ -14,13 +14,7 @@ import (
 func adminConn(t *testing.T) (ChdbAdminConn, string) {
 	t.Helper()
 
-	available, err := AdminABIAvailable()
-	if err != nil {
-		t.Skipf("libchdb did not load: %v", err)
-	}
-	if !available {
-		t.Skip("libchdb predates the backup/restore/classify ABI (chdb-core v26.7.2-rc.2)")
-	}
+	requireAdminABI(t)
 
 	root := t.TempDir()
 	backups := filepath.Join(root, "backups")
@@ -54,9 +48,10 @@ func run(t *testing.T, conn ChdbAdminConn, sql string) {
 }
 
 func TestVersionIsAChdbRelease(t *testing.T) {
+	requireAdminABI(t)
 	version, err := Version()
 	if err != nil {
-		t.Skipf("libchdb did not load: %v", err)
+		t.Fatalf("libchdb did not load: %v", err)
 	}
 	// Not compared against a pin: the point is that the engine answers with
 	// something version-shaped, since it is what a durable object records as
@@ -221,4 +216,37 @@ func TestBackupQuotesTheDatabaseName(t *testing.T) {
 	if got := strings.TrimSpace(res.String()); got != "7" {
 		t.Fatalf("restored %q, want 7", got)
 	}
+}
+
+// requireAdminABI reports whether the loaded engine has the management ABI,
+// and decides what a missing one means.
+//
+// Absent, it is a skip: this package still works on an older libchdb and a
+// developer who has one installed should not see failures for it. Under
+// CHDB_REQUIRE_DURABLE_ABI it is a failure instead, which is what CI sets —
+// there the engine version is pinned, so a skip would mean the installer
+// quietly fell back to a release without the ABI. lib.chdb.io does exactly
+// that on a failed download: it retries against releases/latest, and the
+// pinned engine is a pre-release, so "latest" is an older one. A suite that is
+// green whether or not it ran is not a check.
+func requireAdminABI(t *testing.T) {
+	t.Helper()
+	available, err := AdminABIAvailable()
+	required := os.Getenv("CHDB_REQUIRE_DURABLE_ABI") != ""
+	if err != nil {
+		if required {
+			t.Fatalf("libchdb did not load: %v", err)
+		}
+		t.Skipf("libchdb did not load: %v", err)
+	}
+	if available {
+		return
+	}
+	version, _ := Version()
+	message := "the loaded libchdb predates the backup/restore/classify ABI " +
+		"(added in chdb-core v26.7.2-rc.2); it reports " + version
+	if required {
+		t.Fatal("CHDB_REQUIRE_DURABLE_ABI is set but " + message)
+	}
+	t.Skip(message)
 }

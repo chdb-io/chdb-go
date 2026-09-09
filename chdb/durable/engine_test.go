@@ -3,6 +3,8 @@ package durable
 import (
 	"context"
 	"errors"
+	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -23,15 +25,36 @@ import (
 // limitation of the tests, and chdb.Session refuses a second path with an
 // error naming both — which is why nothing needs to guard against it here.
 
+// requireEngine skips when the loaded engine predates the management ABI, and
+// fails instead when CHDB_REQUIRE_DURABLE_ABI is set.
+//
+// The env var is what CI sets. There the engine version is pinned, so a skip
+// would not mean "this developer has an older libchdb" — it would mean the
+// installer quietly fell back to a release without the ABI, which lib.chdb.io
+// does on a failed download: it retries against releases/latest, and the
+// pinned engine is a pre-release, so "latest" is an older one. These are the
+// only tests that touch a real archive and a real parser, so a green run that
+// skipped all of them would report nothing while looking like coverage.
 func requireEngine(t *testing.T) {
 	t.Helper()
 	available, err := chdbpurego.AdminABIAvailable()
+	required := os.Getenv("CHDB_REQUIRE_DURABLE_ABI") != ""
 	if err != nil {
+		if required {
+			t.Fatalf("libchdb did not load: %v", err)
+		}
 		t.Skipf("libchdb did not load: %v", err)
 	}
-	if !available {
-		t.Skip("libchdb predates the backup/restore/classify ABI (chdb-core v26.7.2-rc.2)")
+	if available {
+		return
 	}
+	version, _ := chdbpurego.Version()
+	message := fmt.Sprintf("the loaded libchdb predates the backup/restore/classify ABI "+
+		"(added in chdb-core v26.7.2-rc.2); it reports %s", version)
+	if required {
+		t.Fatalf("CHDB_REQUIRE_DURABLE_ABI is set but %s", message)
+	}
+	t.Skip(message)
 }
 
 // realNamespace binds a namespace to a directory on disk with the real engine.
