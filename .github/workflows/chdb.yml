@@ -38,7 +38,7 @@ jobs:
     - name: Test
       run: make test
     - name: Test with race detector
-      run: ./.github/scripts/race-test.sh
+      run: go test -race -timeout=180s ./...
     - name: Test main
       run: ./chdb-go "SELECT 12345"
 
@@ -69,7 +69,7 @@ jobs:
     - name: Test
       run: make test
     - name: Test with race detector
-      run: ./.github/scripts/race-test.sh
+      run: go test -race -timeout=180s ./...
     - name: Test main
       run: ./chdb-go "SELECT 12345"
 

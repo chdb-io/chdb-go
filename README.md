@@ -369,3 +369,37 @@ for all bindings.
 
 - See [lowApi.md](lowApi.md) for the low level APIs.
 - See [chdb.md](chdb.md) for high level APIs.
+
+## Stopping the engine
+
+Closing your last `chdb.Session` does not stop the thread pools the engine
+started. Measured on chdb-core v26.7.3, linux/arm64: a process sitting at 6
+threads reaches 19 once a session runs a query, and is still at 19 after that
+session is closed. Exiting is fine — the kernel reaps them. Running something
+*after* that is not, and a process with a sanitizer, C++ global destructors, or
+a host runtime's finalizers does exactly that.
+
+`chdb.Shutdown()` joins them — 19 down to 10 in that same measurement:
+
+```go
+defer func() {
+        if err := chdb.Shutdown(); err != nil {
+                log.Println("chdb:", err)
+        }
+}()
+```
+
+Close every session first; it refuses otherwise, with an error wrapping
+`chdb.ErrSessionsOpen` that names how many are still open. It is terminal —
+after it, this process cannot open another session — so it belongs at the end
+of `main`, not between two units of work. A program that never opened a session
+can call it anyway: it loads nothing and returns nil.
+
+Not calling it is as safe as it has always been for a process that simply
+exits.
+
+It needs an engine from chdb-core v26.7.2-rc.2 or later; on an older one it
+returns `chdbpurego.ErrShutdownUnavailable`. And its reach is currently
+narrower than that: as of v26.7.3 a process that has created a `MergeTree`
+table gets an error back and no teardown at all — 27 threads before the call
+and 27 after. Nothing a caller can do about that one; it belongs in chdb-core.

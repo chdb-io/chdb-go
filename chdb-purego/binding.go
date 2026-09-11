@@ -110,6 +110,10 @@ var (
 	chdbRestoreDatabaseN func(conn unsafe.Pointer, database *byte, databaseLen uint, filePath *byte, filePathLen uint) *chdb_result
 	chdbClassifyQueryN   func(conn unsafe.Pointer, sql *byte, sqlLen uint, targetDatabase *byte, targetDatabaseLen uint, out *queryAnalysisV1) int32
 
+	// Engine shutdown, added in chdb-core v26.7.2-rc.2. Bound only when the
+	// loaded engine exports it; see shutdown.go.
+	chdbShutdown func() int32
+
 	// Process-wide signal handler control. See issue #30: by default libchdb
 	// installs its own SIGSEGV/SIGABRT/SIGBUS/SIGILL handlers when a
 	// connection is opened, which overwrites the Go runtime's handlers and
@@ -140,6 +144,8 @@ func ensureLoaded() error {
 		}
 		loadedPath = path
 		bindSymbols(handle)
+		// Last, so that Shutdown only ever sees a fully bound engine.
+		engineLoaded.Store(true)
 	})
 	return loadErr
 }
@@ -194,6 +200,15 @@ func bindSymbols(libchdb uintptr) {
 	purego.RegisterLibFunc(&chdbResultError, libchdb, "chdb_result_error")
 
 	bindAdminSymbols(libchdb)
+
+	// Probed rather than declared, for the same reason the admin symbols are:
+	// an engine older than v26.7.2-rc.2 does not export it, and panicking
+	// inside RegisterLibFunc here would kill a process whose only crime was
+	// running a SELECT on an old libchdb. Shutdown() reports the absence as
+	// ErrShutdownUnavailable instead.
+	if has(libchdb, "chdb_shutdown") {
+		purego.RegisterLibFunc(&chdbShutdown, libchdb, "chdb_shutdown")
+	}
 
 	// Signal handler protection (issue #30). The required API was added in
 	// libchdb v26.x via chdb-core#11. Pre-check the symbol with Dlsym so
