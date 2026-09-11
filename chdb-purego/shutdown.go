@@ -42,11 +42,24 @@ var ErrShutdownUnavailable = errors.New(
 	"chdb: the loaded libchdb does not export chdb_shutdown; it was added in " +
 		"chdb-core v26.7.2-rc.2, so install or point CHDB_LIB_PATH at that release or later")
 
-// engineLoaded records that bindSymbols has run, so Shutdown can tell "the
-// engine was never started" from "the engine is running". Reading loadedPath
-// instead would be a data race: it is written inside loadOnce.Do, and a
-// Shutdown that does not go through ensureLoaded never synchronizes with it.
+// engineLoaded records that bindSymbols has run: the library is mapped and its
+// symbols are bound. Reading loadedPath instead would be a data race, since it
+// is written inside loadOnce.Do and a caller that never goes through
+// ensureLoaded never synchronizes with it.
 var engineLoaded atomic.Bool
+
+// engineStarted records that a connection was opened, which is a different
+// question and the one Shutdown has to ask.
+//
+// Loading the library starts nothing. Version() and LoadedLibraryPath() map
+// libchdb and read a compile-time constant; no engine exists afterwards and no
+// thread has been created. Gating Shutdown on engineLoaded therefore let a
+// program that only asked for the version put the process into the terminal
+// state anyway: chdb_shutdown() succeeded, and every later NewConnection
+// failed for the rest of the process, over an engine that had never run. A
+// program that probes the version at startup and calls Shutdown from a
+// defensive cleanup path would break itself that way.
+var engineStarted atomic.Bool
 
 // Shutdown stops the engine, joining the threads chDB started. Call it once,
 // when the program is finished with chDB and before it starts tearing itself
@@ -72,7 +85,9 @@ var engineLoaded atomic.Bool
 // something runs after main: a sanitizer's exit handler, a C++ global
 // destructor, a host runtime's finalizers.
 func Shutdown() error {
-	if !engineLoaded.Load() {
+	// Nothing was ever connected, so there is nothing to join and nothing to
+	// gain from making the process terminal.
+	if !engineStarted.Load() {
 		return nil
 	}
 	if chdbShutdown == nil {

@@ -322,6 +322,9 @@ func NewConnection(argc int, argv []string) (ChdbConn, error) {
 	if conn == nil {
 		return nil, fmt.Errorf("could not create a chdb connection")
 	}
+	// From here on an engine exists, so Shutdown has something to stop. Set
+	// after the nil check: a refused connect starts nothing.
+	engineStarted.Store(true)
 	return newChdbConn(conn), nil
 }
 

@@ -44,7 +44,10 @@ var ErrSessionsOpen = errors.New("chdb: a session is still open")
 // next one permanently.
 //
 // A process that never opened a Session has no engine to stop, and Shutdown
-// returns nil without loading the library.
+// returns nil. Asking for the engine's version counts as never opening one:
+// that maps the library and reads a constant, it starts no engine, and
+// shutting one down that was never running would make the process terminal
+// for nothing.
 //
 // Not calling it is as safe as it has always been for a process that simply
 // exits: the threads are reaped by process exit.
