@@ -12,6 +12,17 @@ import (
 // TestMain fails the whole package with the loader's diagnostic instead of
 // letting individual tests skip on a confusing precondition. A test run that
 // cannot load the engine is a broken environment, not a skipped feature.
+//
+// It also stops the engine on the way out, so it is not still running when Go
+// tears itself down — what made `go test -race` segfault after every test had
+// reported PASS. Shutdown is terminal, so this has to be the last thing the
+// process does with chDB; it is.
+//
+// The result is reported, not acted on. This package has no session registry
+// to consult, so an error here does not distinguish a connection a test forgot
+// to close from a thread the engine could not join, and failing a run that
+// otherwise passed on an ambiguous signal would be worse than saying what
+// happened.
 func TestMain(m *testing.M) {
 	if os.Getenv("CHDB_LOADER_CHILD") == "" {
 		if err := ensureLoaded(); err != nil {
@@ -19,7 +30,11 @@ func TestMain(m *testing.M) {
 			os.Exit(1)
 		}
 	}
-	os.Exit(m.Run())
+	code := m.Run()
+	if err := Shutdown(); err != nil {
+		os.Stderr.WriteString("engine shutdown incomplete: " + err.Error() + "\n")
+	}
+	os.Exit(code)
 }
 
 func TestLibFileNamesCoversPublishedNaming(t *testing.T) {

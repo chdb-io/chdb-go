@@ -12,6 +12,7 @@ func TestDbWithParquetStreaming(t *testing.T) {
 	if err != nil {
 		t.Errorf("open db fail, err:%s", err)
 	}
+	defer db.Close()
 	if db.Ping() != nil {
 		t.Errorf("ping db fail")
 	}
@@ -73,6 +74,7 @@ func TestDBWithParquetStreamingSession(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open db fail, err: %s", err)
 	}
+	defer db.Close()
 	if db.Ping() != nil {
 		t.Fatalf("ping db fail, err: %s", err)
 	}
@@ -120,6 +122,7 @@ func TestDBWithParquetStreamingConnection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open db fail, err: %s", err)
 	}
+	defer db.Close()
 	if db.Ping() != nil {
 		t.Fatalf("ping db fail, err: %s", err)
 	}

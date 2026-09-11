@@ -2,6 +2,7 @@ package chdbdriver
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"runtime"
@@ -28,6 +29,33 @@ func globalSetup() error {
 func globalTeardown() {
 	session.Cleanup()
 	session.Close()
+
+	// Stop the engine before the binary exits, rather than leaving it running
+	// while Go tears itself down. Under -race that mattered: this package used
+	// to report PASS for every test and then segfault on the way out, because
+	// __tsan_fini ran while engine threads were still live and one of them woke
+	// into instrumented code.
+	//
+	// A session left open is a leak in this package's tests and fails the run
+	// — that is how the six *Parquet* tests were found holding twelve sessions
+	// between them, each an *sql.DB nobody closed. Closing those is what fixed
+	// the crash; this check is what keeps them closed.
+	//
+	// The engine refusing for its own reasons is not a test failure: chdb-core
+	// v26.7.3 stops joining threads entirely once a MergeTree table has been
+	// created, and several tests here create one. Report it and carry on —
+	// there is nothing this package can do about it, and the exit is clean
+	// regardless once no connection is left open.
+	//
+	// Nothing may open a session after this point; shutdown is terminal and
+	// TestMain is about to exit.
+	if err := chdb.Shutdown(); err != nil {
+		if errors.Is(err, chdb.ErrSessionsOpen) {
+			fmt.Println("Engine shutdown failed:", err)
+			os.Exit(1)
+		}
+		fmt.Println("Engine shutdown incomplete:", err)
+	}
 }
 
 func TestMain(m *testing.M) {
