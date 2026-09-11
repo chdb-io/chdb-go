@@ -12,7 +12,7 @@ extern "C" {
 
 #define CHDB_EXPORT __attribute__((visibility("default")))
 
-#define CHDB_VERSION "26.7.2-rc.2"
+#define CHDB_VERSION "26.7.3"
 
 /**
  * Returns the version of the linked chDB library.
@@ -207,9 +207,21 @@ CHDB_EXPORT void free_result_v2(struct local_result_v2 * result);
 
 /**
  * Creates a new chDB connection.
+ *
  * The engine uses one storage path per process: multiple connections to that
  * same path may be open at once. Connecting with a different path requires
- * closing all existing connections first.
+ * closing all existing connections first, which shuts the engine down and
+ * boots a new one.
+ *
+ * Keep at least one connection open for as long as the host needs chDB. The
+ * engine is meant to start once per process: repeatedly closing the last
+ * connection and reconnecting puts it through a full shutdown and boot each
+ * time, and doing that many times in one process is known to corrupt the
+ * process allocator on macOS and abort -- either in the engine's own teardown
+ * or at some unrelated allocation afterwards. A host that pools connections
+ * should hold one outside the pool rather than let the pool empty and
+ * reconnect on the next request: an idle timeout or a maximum-lifetime policy
+ * that retires the last connection puts it on that path with no indication.
  *
  * Arguments naming a ClickHouse query-level setting (--<setting>=<value>,
  * e.g. --max_threads=4 or --output_format_json_quote_denormals=1) apply to
@@ -229,6 +241,9 @@ CHDB_EXPORT struct chdb_conn ** connect_chdb(int argc, char ** argv);
 /**
  * Closes an existing chDB connection and cleans up resources.
  * Thread-safe function that handles connection shutdown and cleanup.
+ *
+ * Closing the last open connection shuts the engine down. See chdb_connect()
+ * for why a host should not do that until it is finished with chDB.
  *
  * @param conn Pointer to connection pointer to close
  */
@@ -334,9 +349,21 @@ CHDB_EXPORT void chdb_streaming_cancel_query(struct chdb_conn * conn, chdb_strea
 
 /**
  * Creates a new chDB connection.
+ *
  * The engine uses one storage path per process: multiple connections to that
  * same path may be open at once. Connecting with a different path requires
- * closing all existing connections first.
+ * closing all existing connections first, which shuts the engine down and
+ * boots a new one.
+ *
+ * Keep at least one connection open for as long as the host needs chDB. The
+ * engine is meant to start once per process: repeatedly closing the last
+ * connection and reconnecting puts it through a full shutdown and boot each
+ * time, and doing that many times in one process is known to corrupt the
+ * process allocator on macOS and abort -- either in the engine's own teardown
+ * or at some unrelated allocation afterwards. A host that pools connections
+ * should hold one outside the pool rather than let the pool empty and
+ * reconnect on the next request: an idle timeout or a maximum-lifetime policy
+ * that retires the last connection puts it on that path with no indication.
  *
  * Arguments naming a ClickHouse query-level setting (--<setting>=<value>,
  * e.g. --max_threads=4 or --output_format_json_quote_denormals=1) apply to
@@ -356,6 +383,9 @@ CHDB_EXPORT chdb_connection * chdb_connect(int argc, char ** argv);
 /**
  * Closes an existing chDB connection and cleans up resources.
  * Thread-safe function that handles connection shutdown and cleanup.
+ *
+ * Closing the last open connection shuts the engine down. See chdb_connect()
+ * for why a host should not do that until it is finished with chDB.
  *
  * @param conn Pointer to connection pointer to close
  */
@@ -1045,14 +1075,26 @@ CHDB_EXPORT chdb_state chdb_classify_query_n(
  * Call BEFORE chdb_connect() or query_stable() to prevent chDB
  * from installing process-wide signal handlers.
  *
+ * While disabled, no chDB entry point changes the disposition of any signal,
+ * so a host that handles deadly signals itself -- a JVM recovering from SIGSEGV
+ * as a NullPointerException, for instance -- keeps its handlers across every
+ * call. Switching to 0 also takes back the handlers chDB installed while it was
+ * enabled, as chdb_reset_signal_handlers() does.
+ *
+ * The flag is process-wide and sticky; one call per process is enough.
+ *
  * @param enabled 1 to enable signal handlers (default), 0 to disable them
  */
 CHDB_EXPORT void chdb_set_signal_handlers_enabled(int enabled);
 
 /**
- * Resets all signal handlers installed by chDB back to SIG_DFL.
+ * Resets the signal handlers installed by chDB back to SIG_DFL.
  * Useful when signal handlers were already installed and need to be removed,
  * e.g. to let the embedding process manage its own signal handling.
+ *
+ * Only signals chDB installed a handler for are touched; a handler owned by the
+ * embedding process is left in place. When chDB installed nothing, this is a
+ * no-op.
  */
 CHDB_EXPORT void chdb_reset_signal_handlers(void);
 
