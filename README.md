@@ -331,9 +331,9 @@ what class, does every write land in the object's own database, does the text
 embed a credential — and the answer is the gate. `BACKUP` and `RESTORE` are
 never assembled as text either. That needs **chdb-core v26.7.2-rc.2 or later**,
 where those three entry points were added; an older engine is refused at open
-rather than working partially. Note that the published [engine
-modules](#engine-modules) still carry v26.7.0, so a build using one needs
-`CHDB_LIB_PATH` or a machine install until they are repackaged.
+rather than working partially. The published [engine
+modules](#engine-modules) carry v26.7.3, so a build using one needs nothing
+installed.
 
 Two constraints are worth knowing before you design around it:
 
