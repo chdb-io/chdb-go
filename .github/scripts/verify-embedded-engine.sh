@@ -37,7 +37,14 @@ MODDIR="lib/$PLATFORM"
 	exit 0
 }
 
-ENGINE_TAG="${CHDB_CORE_TAG:-v26.7.0}"
+# The engine this repository pins, so the packaging path is exercised against
+# the build everything else here is tested against. A hardcoded default drifts:
+# this one said v26.7.0 for two engine bumps.
+ENGINE_TAG="${CHDB_CORE_TAG:-$(grep -E '^CHDB_ENGINE_PIN=' update_libchdb.sh | cut -d= -f2)}"
+[ -n "$ENGINE_TAG" ] || {
+	echo "no CHDB_CORE_TAG and no CHDB_ENGINE_PIN in update_libchdb.sh" >&2
+	exit 1
+}
 
 # Any lib/<platform> tag sitting on this commit has to name the engine the module
 # was generated from. Publishing is the one step with no undo — the module proxy
