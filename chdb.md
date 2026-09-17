@@ -8,10 +8,16 @@ import "github.com/chdb-io/chdb-go/v2/chdb"
 
 ## Index
 
+- [Variables](<#variables>)
+- [func ActiveSessionRefs\(\) int](<#ActiveSessionRefs>)
+- [func EngineVersion\(\) \(string, error\)](<#EngineVersion>)
 - [func Query\(queryStr string, outputFormats ...string\) \(result chdbpurego.ChdbResult, err error\)](<#Query>)
 - [func QueryStream\(queryStr string, outputFormats ...string\) \(result chdbpurego.ChdbStreamResult, err error\)](<#QueryStream>)
+- [func Shutdown\(\) error](<#Shutdown>)
 - [type Session](<#Session>)
   - [func NewSession\(paths ...string\) \(\*Session, error\)](<#NewSession>)
+  - [func \(s \*Session\) BackupDatabase\(database, filePath string\) error](<#Session.BackupDatabase>)
+  - [func \(s \*Session\) ClassifyQuery\(sql, targetDatabase string\) \(chdbpurego.QueryAnalysis, error\)](<#Session.ClassifyQuery>)
   - [func \(s \*Session\) Cleanup\(\)](<#Session.Cleanup>)
   - [func \(s \*Session\) Close\(\)](<#Session.Close>)
   - [func \(s \*Session\) ConnStr\(\) string](<#Session.ConnStr>)
@@ -19,28 +25,80 @@ import "github.com/chdb-io/chdb-go/v2/chdb"
   - [func \(s \*Session\) Path\(\) string](<#Session.Path>)
   - [func \(s \*Session\) Query\(queryStr string, outputFormats ...string\) \(result chdbpurego.ChdbResult, err error\)](<#Session.Query>)
   - [func \(s \*Session\) QueryStream\(queryStr string, outputFormats ...string\) \(result chdbpurego.ChdbStreamResult, err error\)](<#Session.QueryStream>)
+  - [func \(s \*Session\) RestoreDatabase\(database, filePath string\) error](<#Session.RestoreDatabase>)
 
+
+## Variables
+
+<a name="ErrSessionsOpen"></a>ErrSessionsOpen reports that Shutdown was called while a Session was still open. It is separate from every other shutdown failure because it is the one the caller caused and the one the caller can fix: a Session that was never closed, or a \*sql.DB still holding pooled connections. The engine's own refusals say nothing about which.
+
+```go
+var ErrSessionsOpen = errors.New("chdb: a session is still open")
+```
+
+<a name="ActiveSessionRefs"></a>
+## func [ActiveSessionRefs](<https://github.com/chdb-io/chdb-go/blob/main/chdb/session.go#L305>)
+
+```go
+func ActiveSessionRefs() int
+```
+
+ActiveSessionRefs returns the number of currently\-open sessions sharing the process\-wide data path \(0 when no session is open\). It is primarily useful for diagnostics and tests that assert sessions and their native connections are released correctly.
+
+<a name="EngineVersion"></a>
+## func [EngineVersion](<https://github.com/chdb-io/chdb-go/blob/main/chdb/admin.go#L26>)
+
+```go
+func EngineVersion() (string, error)
+```
+
+EngineVersion returns the exact chdb\_version\(\) of the loaded engine, loading libchdb if that has not happened yet. It needs no session, because the version belongs to the library rather than to a connection.
 
 <a name="Query"></a>
-## func [Query](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb/wrapper.go#L8>)
+## func [Query](<https://github.com/chdb-io/chdb-go/blob/main/chdb/wrapper.go#L16>)
 
 ```go
 func Query(queryStr string, outputFormats ...string) (result chdbpurego.ChdbResult, err error)
 ```
 
-Query runs a one\-shot query and returns the materialized result \(default output format "CSV"\). chDB allows only one data path per process, so if a session is already open this helper attaches to that session's data path; otherwise it uses an in\-memory database.
+Query runs a one\-shot query and returns the materialized result. Output format defaults to "CSV" when not provided.
+
+chDB allows only one data path per process, so if a session is already open this helper attaches to that session's data path; otherwise it uses an in\-memory database.
 
 <a name="QueryStream"></a>
-## func [QueryStream](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb/wrapper.go#L23>)
+## func [QueryStream](<https://github.com/chdb-io/chdb-go/blob/main/chdb/wrapper.go#L37>)
 
 ```go
 func QueryStream(queryStr string, outputFormats ...string) (result chdbpurego.ChdbStreamResult, err error)
 ```
 
-QueryStream is like Query but returns a streaming result that can be read in chunks, for large datasets that should not be fully materialized in memory. Like Query, it attaches to an already\-open session's data path, or uses an in\-memory database when none is open.
+QueryStream is like Query but returns a streaming result that can be read in chunks, for large datasets that should not be fully materialized in memory.
+
+The returned stream owns the session it runs on, because a streaming result is computed as it is read: every chunk is fetched through the connection that started the query. The session is closed when the stream reaches its end, or when Free/Cancel is called — so a caller that stops reading early must call one of them \(a dropped stream is closed by a finalizer, eventually\).
+
+<a name="Shutdown"></a>
+## func [Shutdown](<https://github.com/chdb-io/chdb-go/blob/main/chdb/shutdown.go#L54>)
+
+```go
+func Shutdown() error
+```
+
+Shutdown stops the engine, joining the threads chDB started. Call it once, when the program is finished with chDB, before it tears itself down.
+
+Why a program would bother: closing the last Session does not stop the engine's thread pools, and anything that runs after that — a sanitizer's exit handler, a C\+\+ global destructor, a host runtime's finalizers — runs alongside threads that can still wake. Measured on chdb\-core v26.7.3, linux/arm64: 19 threads with one session open, still 19 after closing it, 10 after Shutdown.
+
+Every Session must be closed first. Shutdown refuses while one is open and returns an error wrapping ErrSessionsOpen, naming how many, rather than asking the engine and relaying its bare error code — the registry here already knows the answer and can say something actionable.
+
+The engine can also refuse on its own, and that is not the same thing. As of chdb\-core v26.7.3 it does so for the rest of the process once a MergeTree table has been created, and in that state it joins nothing: the thread count is the same before and after the call. There is nothing a caller can do about it, which is why it is worth telling apart from ErrSessionsOpen — that one means the program has a leak and can fix it.
+
+Shutdown is terminal, and that is the engine's contract rather than this package's choice: after it, NewSession fails for the rest of the process. So this is not something to call between two units of work, and nothing in this package calls it for the caller — "the last Session just closed" is where a pool sits between requests, and shutting down there would break the next one permanently.
+
+A process that never opened a Session has no engine to stop, and Shutdown returns nil. Asking for the engine's version counts as never opening one: that maps the library and reads a constant, it starts no engine, and shutting one down that was never running would make the process terminal for nothing.
+
+Not calling it is as safe as it has always been for a process that simply exits: the threads are reaped by process exit.
 
 <a name="Session"></a>
-## type [Session](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb/session.go#L14-L19>)
+## type [Session](<https://github.com/chdb-io/chdb-go/blob/main/chdb/session.go#L43-L55>)
 
 
 
@@ -51,38 +109,73 @@ type Session struct {
 ```
 
 <a name="NewSession"></a>
-### func [NewSession](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb/session.go#L24>)
+### func [NewSession](<https://github.com/chdb-io/chdb-go/blob/main/chdb/session.go#L101>)
 
 ```go
 func NewSession(paths ...string) (*Session, error)
 ```
 
-NewSession creates a new session with the given path. If path is empty, the session reuses an already\-open data path, or creates a temporary directory when none is open. Multiple sessions can be open at once as long as they share the same data path \(each owns an independent native connection, so they can run queries in parallel\); opening a session on a different path while another is still open returns an error. The temporary directory is removed when the last session using it is closed.
+NewSession creates a new session with the given path.
+
+If path is empty, the session reuses the data path of any already\-open session, or creates a temporary directory when none is open. The temporary directory is removed when the last session using it is closed.
+
+Multiple sessions can be open concurrently as long as they share the same data path; each session owns an independent native connection, so they can execute queries in parallel. Opening a session on a different path while another is still open returns an error \(chDB allows only one data path per process\). The same physical path written different ways \("db", "file:db", "file:db?param=v"\) is recognized as the same path and is allowed.
+
+<a name="Session.BackupDatabase"></a>
+### func \(\*Session\) [BackupDatabase](<https://github.com/chdb-io/chdb-go/blob/main/chdb/admin.go#L61>)
+
+```go
+func (s *Session) BackupDatabase(database, filePath string) error
+```
+
+BackupDatabase writes a full archive of database to filePath.
+
+filePath must be absolute and its parent directory must already exist, and it must sit inside the \`backups.allowed\_path\` this session was opened with — a session that never set it cannot write a backup anywhere:
+
+```
+sess, _ := chdb.NewSession("/var/lib/app/data?backups.allowed_path=/var/lib/app/backups")
+err := sess.BackupDatabase("orders", "/var/lib/app/backups/orders.tar.gz")
+```
+
+An existing destination is never overwritten; the call fails instead. Give every archive its own name.
+
+The archive is always a full backup. chDB can also write one incrementally against an existing archive, and that is not offered here: such an archive records the base's path as it was given, so it restores only where that path still holds the base — which rules out moving it to another machine or into object storage.
+
+<a name="Session.ClassifyQuery"></a>
+### func \(\*Session\) [ClassifyQuery](<https://github.com/chdb-io/chdb-go/blob/main/chdb/admin.go#L105>)
+
+```go
+func (s *Session) ClassifyQuery(sql, targetDatabase string) (chdbpurego.QueryAnalysis, error)
+```
+
+ClassifyQuery says what sql would do, without running it: how many executable statements it holds, what class they fall into, whether the text carries a credential, and whether every persistent write lands in targetDatabase.
+
+The answers come from ClickHouse's own parser with this session's settings and current database, which is the only thing that can give them. A prefix check cannot see through \`INSERT ... FORMAT\` inline data, and no amount of pattern matching resolves an unqualified table name.
+
+Nothing is executed and the session is untouched: no current database change, no settings change, no query log entry. Pass "" for targetDatabase to skip the write\-target judgement, in which case QueryAnalysis.WritesOnlyTargetDatabase is never set. SQL that does not parse is reported as chdbpurego.QueryUnknown with a statement count of zero and no error — what it is, is the answer.
 
 <a name="Session.Cleanup"></a>
-### func \(\*Session\) [Cleanup](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb/session.go#L86>)
+### func \(\*Session\) [Cleanup](<https://github.com/chdb-io/chdb-go/blob/main/chdb/session.go#L232>)
 
 ```go
 func (s *Session) Cleanup()
 ```
 
-Cleanup closes the session and removes the directory.
+Cleanup closes this session and, when it is the last session on the data path, removes the data directory regardless of whether it is temporary. It is destructive and intended for teardown, but it will NOT delete a directory that sibling sessions on the same path are still using. Cleanup is idempotent and, like Close, waits for any in\-flight query to finish.
 
 <a name="Session.Close"></a>
-### func \(\*Session\) [Close](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb/session.go#L76>)
+### func \(\*Session\) [Close](<https://github.com/chdb-io/chdb-go/blob/main/chdb/session.go#L206>)
 
 ```go
 func (s *Session) Close()
 ```
 
-Close closes the session and removes the temporary directory
+Close closes this session's native connection. When it is the last open session on a registry\-owned temporary directory, that directory is removed.
 
-```
-temporary directory is created when NewSession was called with an empty path.
-```
+Close is idempotent and safe to call concurrently with Query: it waits for any in\-flight query on this session to finish before freeing the native connection.
 
 <a name="Session.ConnStr"></a>
-### func \(\*Session\) [ConnStr](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb/session.go#L99>)
+### func \(\*Session\) [ConnStr](<https://github.com/chdb-io/chdb-go/blob/main/chdb/session.go#L292>)
 
 ```go
 func (s *Session) ConnStr() string
@@ -91,7 +184,7 @@ func (s *Session) ConnStr() string
 ConnStr returns the current connection string used for the underlying connection
 
 <a name="Session.IsTemp"></a>
-### func \(\*Session\) [IsTemp](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb/session.go#L104>)
+### func \(\*Session\) [IsTemp](<https://github.com/chdb-io/chdb-go/blob/main/chdb/session.go#L297>)
 
 ```go
 func (s *Session) IsTemp() bool
@@ -100,16 +193,16 @@ func (s *Session) IsTemp() bool
 IsTemp returns whether the session is temporary.
 
 <a name="Session.Path"></a>
-### func \(\*Session\) [Path](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb/session.go#L94>)
+### func \(\*Session\) [Path](<https://github.com/chdb-io/chdb-go/blob/main/chdb/session.go#L287>)
 
 ```go
 func (s *Session) Path() string
 ```
 
-Path returns the path of the session.
+Path returns the resolved on\-disk data directory of the session \("" for an in\-memory session\).
 
 <a name="Session.Query"></a>
-### func \(\*Session\) [Query](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb/session.go#L54>)
+### func \(\*Session\) [Query](<https://github.com/chdb-io/chdb-go/blob/main/chdb/session.go#L171>)
 
 ```go
 func (s *Session) Query(queryStr string, outputFormats ...string) (result chdbpurego.ChdbResult, err error)
@@ -118,12 +211,23 @@ func (s *Session) Query(queryStr string, outputFormats ...string) (result chdbpu
 Query calls \`query\_conn\` function with the current connection and a default output format of "CSV" if not provided.
 
 <a name="Session.QueryStream"></a>
-### func \(\*Session\) [QueryStream](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb/session.go#L65>)
+### func \(\*Session\) [QueryStream](<https://github.com/chdb-io/chdb-go/blob/main/chdb/session.go#L187>)
 
 ```go
 func (s *Session) QueryStream(queryStr string, outputFormats ...string) (result chdbpurego.ChdbStreamResult, err error)
 ```
 
 QueryStream calls \`query\_conn\` function with the current connection and a default output format of "CSV" if not provided. The result is a stream of data that can be read in chunks. This is useful for large datasets that cannot be loaded into memory all at once.
+
+<a name="Session.RestoreDatabase"></a>
+### func \(\*Session\) [RestoreDatabase](<https://github.com/chdb-io/chdb-go/blob/main/chdb/admin.go#L79>)
+
+```go
+func (s *Session) RestoreDatabase(database, filePath string) error
+```
+
+RestoreDatabase restores database from an archive written by BackupDatabase.
+
+An archive names the database it was taken from, and restores under that name and no other — restoring an archive of \`orders\` as \`orders\_copy\` fails rather than renaming it. RESTORE also appends to a table that already exists, so the target must not already hold the archive's tables; the usual shape is to restore into a fresh data directory. The session's current database is left alone.
 
 Generated by [gomarkdoc](<https://github.com/princjef/gomarkdoc>)

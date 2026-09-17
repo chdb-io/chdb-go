@@ -8,15 +8,186 @@ import "github.com/chdb-io/chdb-go/v2/chdb-purego"
 
 ## Index
 
+- [Constants](<#constants>)
+- [Variables](<#variables>)
+- [func AdminABIAvailable\(\) \(bool, error\)](<#AdminABIAvailable>)
+- [func EmbeddedEngineVersion\(\) string](<#EmbeddedEngineVersion>)
+- [func LoadedLibraryPath\(\) \(string, error\)](<#LoadedLibraryPath>)
+- [func RegisterEmbeddedEngine\(e EmbeddedEngine\)](<#RegisterEmbeddedEngine>)
+- [func Shutdown\(\) error](<#Shutdown>)
+- [func ShutdownAvailable\(\) bool](<#ShutdownAvailable>)
+- [func Version\(\) \(string, error\)](<#Version>)
+- [type ChdbAdminConn](<#ChdbAdminConn>)
 - [type ChdbConn](<#ChdbConn>)
   - [func NewConnection\(argc int, argv \[\]string\) \(ChdbConn, error\)](<#NewConnection>)
   - [func NewConnectionFromConnString\(conn\_string string\) \(ChdbConn, error\)](<#NewConnectionFromConnString>)
 - [type ChdbResult](<#ChdbResult>)
 - [type ChdbStreamResult](<#ChdbStreamResult>)
+- [type EmbeddedEngine](<#EmbeddedEngine>)
+- [type QueryAnalysis](<#QueryAnalysis>)
+- [type QueryClass](<#QueryClass>)
+  - [func \(c QueryClass\) String\(\) string](<#QueryClass.String>)
 
+
+## Constants
+
+<a name="CacheDirEnv"></a>CacheDirEnv names the environment variable that chooses where the embedded engine is extracted to.
+
+```go
+const CacheDirEnv = "CHDB_CACHE_DIR"
+```
+
+<a name="LibPathEnv"></a>LibPathEnv names the environment variable that points directly at a libchdb file. When it is set, it is the only location considered.
+
+```go
+const LibPathEnv = "CHDB_LIB_PATH"
+```
+
+## Variables
+
+<a name="ErrAdminABIUnavailable"></a>ErrAdminABIUnavailable reports that the loaded libchdb predates the backup, restore and query\-analysis symbols. Its message names the release that introduced them, because the fix is always to move the engine.
+
+```go
+var ErrAdminABIUnavailable = errors.New(
+    "chdb: the loaded libchdb does not export chdb_backup_database_n, " +
+        "chdb_restore_database_n and chdb_classify_query_n; they were added in " +
+        "chdb-core v26.7.2-rc.2, so install or point CHDB_LIB_PATH at that release or later")
+```
+
+<a name="ErrShutdownUnavailable"></a>ErrShutdownUnavailable reports that the loaded libchdb predates chdb\_shutdown. Its message names the release that introduced it, because the fix is always to move the engine.
+
+```go
+var ErrShutdownUnavailable = errors.New(
+    "chdb: the loaded libchdb does not export chdb_shutdown; it was added in " +
+        "chdb-core v26.7.2-rc.2, so install or point CHDB_LIB_PATH at that release or later")
+```
+
+<a name="AdminABIAvailable"></a>
+## func [AdminABIAvailable](<https://github.com/chdb-io/chdb-go/blob/main/chdb-purego/admin.go#L191>)
+
+```go
+func AdminABIAvailable() (bool, error)
+```
+
+AdminABIAvailable reports whether the loaded engine exports the backup, restore and query\-analysis symbols. It loads the library if needed.
+
+<a name="EmbeddedEngineVersion"></a>
+## func [EmbeddedEngineVersion](<https://github.com/chdb-io/chdb-go/blob/main/chdb-purego/embedded.go#L71>)
+
+```go
+func EmbeddedEngineVersion() string
+```
+
+EmbeddedEngineVersion returns the chdb\-core release whose engine is compiled into this binary, or the empty string for a build that resolves the library from the system.
+
+<a name="LoadedLibraryPath"></a>
+## func [LoadedLibraryPath](<https://github.com/chdb-io/chdb-go/blob/main/chdb-purego/binding.go#L163>)
+
+```go
+func LoadedLibraryPath() (string, error)
+```
+
+LoadedLibraryPath returns the path of the libchdb this process loaded, loading it if that has not happened yet.
+
+It exists so a caller — or a build\-verification job checking that a binary resolves the engine it was meant to — can report the file actually in use instead of inferring it from the search order.
+
+The path is absolute for every location this package resolves itself. It is a bare library name in the one case where the dynamic loader was asked to find the library instead, since what it settled on is not reported back.
+
+<a name="RegisterEmbeddedEngine"></a>
+## func [RegisterEmbeddedEngine](<https://github.com/chdb-io/chdb-go/blob/main/chdb-purego/embedded.go#L50>)
+
+```go
+func RegisterEmbeddedEngine(e EmbeddedEngine)
+```
+
+RegisterEmbeddedEngine records the engine payload built into this binary. It is called from a platform module's init and panics if called twice, which can only happen if two platform modules were linked in at once — a build configuration that would otherwise silently pick one of them.
+
+<a name="Shutdown"></a>
+## func [Shutdown](<https://github.com/chdb-io/chdb-go/blob/main/chdb-purego/shutdown.go#L87>)
+
+```go
+func Shutdown() error
+```
+
+Shutdown stops the engine, joining the threads chDB started. Call it once, when the program is finished with chDB and before it starts tearing itself down. How much it manages to join is up to the engine; see above.
+
+Every connection must be closed and every result freed first. While one is still open the engine refuses, and this returns an error saying so.
+
+Shutdown is terminal. After it, this process cannot open another connection — NewConnection fails, and there is no way back short of restarting. That is the engine's contract, not this binding's choice.
+
+It never loads the library. A program that imported this package but never opened a connection has no engine to stop, and Shutdown returns nil rather than dlopen\-ing several hundred megabytes in order to shut it down again.
+
+Calling it more than once is harmless: the engine reports success once it is already stopped. It is not worth retrying after an error, though — the engine documents a retry and does not perform one.
+
+Skipping it entirely is as safe as it has always been for a process that just exits — the threads are reaped by process exit. It matters when something runs after main: a sanitizer's exit handler, a C\+\+ global destructor, a host runtime's finalizers.
+
+<a name="ShutdownAvailable"></a>
+## func [ShutdownAvailable](<https://github.com/chdb-io/chdb-go/blob/main/chdb-purego/shutdown.go#L115>)
+
+```go
+func ShutdownAvailable() bool
+```
+
+ShutdownAvailable reports whether the loaded engine exports chdb\_shutdown, without loading the library: false when nothing is loaded yet. A caller that wants to know before it depends on an orderly stop can ask.
+
+<a name="Version"></a>
+## func [Version](<https://github.com/chdb-io/chdb-go/blob/main/chdb-purego/admin.go#L176>)
+
+```go
+func Version() (string, error)
+```
+
+Version returns the exact chdb\_version\(\) of the loaded engine, loading the library if that has not happened yet.
+
+This is a property of the library rather than of a session, which is why it takes no connection: a caller can establish whether an engine is new enough before it opens anything.
+
+<a name="ChdbAdminConn"></a>
+## type [ChdbAdminConn](<https://github.com/chdb-io/chdb-go/blob/main/chdb-purego/admin.go#L134-L168>)
+
+ChdbAdminConn is the management surface a connection offers when the engine exports it.
+
+It is deliberately a second interface rather than three more methods on ChdbConn: an interface in this package is something callers may implement \(a fake in a test, a wrapper that adds tracing\), and widening ChdbConn would break every one of them. Callers reach these methods with a type assertion, which is also how they find out an engine is too old.
+
+```go
+type ChdbAdminConn interface {
+    // BackupDatabase writes a full archive of database to filePath.
+    //
+    // filePath must be absolute, its directory must already exist, and it must
+    // be inside the connection's `backups.allowed_path` — a connection that
+    // never set that option cannot write a backup anywhere. An existing
+    // destination is never overwritten; the call fails instead.
+    //
+    // The archive is always full. The C ABI also accepts a base archive to
+    // make the backup incremental, and that is deliberately not offered here:
+    // an incremental archive records the base's path as given, so it only
+    // restores on a machine where that path still holds the base.
+    BackupDatabase(database, filePath string) error
+
+    // RestoreDatabase restores database from an archive written by
+    // BackupDatabase. The path constraints match BackupDatabase's, and the
+    // archive must exist.
+    //
+    // RESTORE appends to an existing table rather than replacing it, so
+    // restore into a database that does not already hold the archive's tables.
+    // The connection's current database is left alone.
+    RestoreDatabase(database, filePath string) error
+
+    // ClassifyQuery says what sql would do, without running it. Nothing is
+    // executed and the session is untouched: no current database change, no
+    // settings change, no query log entry.
+    //
+    // targetDatabase names the database the caller considers its own and is
+    // what QueryAnalysis.WritesOnlyTargetDatabase is judged against; pass ""
+    // to skip that judgement, in which case the flag is never set.
+    //
+    // SQL that does not parse is reported as QueryUnknown with a statement
+    // count of zero and no error — what it is, is the answer.
+    ClassifyQuery(sql, targetDatabase string) (QueryAnalysis, error)
+}
+```
 
 <a name="ChdbConn"></a>
-## type [ChdbConn](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb-purego/types.go#L70-L81>)
+## type [ChdbConn](<https://github.com/chdb-io/chdb-go/blob/main/chdb-purego/types.go#L78-L89>)
 
 
 
@@ -36,7 +207,7 @@ type ChdbConn interface {
 ```
 
 <a name="NewConnection"></a>
-### func [NewConnection](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb-purego/chdb.go#L195>)
+### func [NewConnection](<https://github.com/chdb-io/chdb-go/blob/main/chdb-purego/chdb.go#L257>)
 
 ```go
 func NewConnection(argc int, argv []string) (ChdbConn, error)
@@ -57,7 +228,7 @@ Important:
 - You need to ensure that the path exists before creating a new connection. Or you can use NewConnectionFromConnString.
 
 <a name="NewConnectionFromConnString"></a>
-### func [NewConnectionFromConnString](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb-purego/chdb.go#L269>)
+### func [NewConnectionFromConnString](<https://github.com/chdb-io/chdb-go/blob/main/chdb-purego/chdb.go#L356>)
 
 ```go
 func NewConnectionFromConnString(conn_string string) (ChdbConn, error)
@@ -90,7 +261,7 @@ Important:
 - chDB supports only one data path per process. Multiple connections to the same path can be open at once and execute queries concurrently; connecting to a different path while connections are still open returns an error.
 
 <a name="ChdbResult"></a>
-## type [ChdbResult](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb-purego/types.go#L39-L55>)
+## type [ChdbResult](<https://github.com/chdb-io/chdb-go/blob/main/chdb-purego/types.go#L47-L63>)
 
 
 
@@ -115,7 +286,7 @@ type ChdbResult interface {
 ```
 
 <a name="ChdbStreamResult"></a>
-## type [ChdbStreamResult](<https://github.com/s0und0fs1lence/chdb-go/blob/main/chdb-purego/types.go#L57-L68>)
+## type [ChdbStreamResult](<https://github.com/chdb-io/chdb-go/blob/main/chdb-purego/types.go#L65-L76>)
 
 
 
@@ -133,5 +304,115 @@ type ChdbStreamResult interface {
     Free()
 }
 ```
+
+<a name="EmbeddedEngine"></a>
+## type [EmbeddedEngine](<https://github.com/chdb-io/chdb-go/blob/main/chdb-purego/embedded.go#L15-L39>)
+
+EmbeddedEngine describes a libchdb payload compiled into the calling binary.
+
+A per\-platform module supplies one of these through RegisterEmbeddedEngine so that \`go get\` is all a user needs: no system\-wide install, no separate download step, and the engine version is pinned by the build rather than by whatever happens to be present on the machine.
+
+```go
+type EmbeddedEngine struct {
+    // Version is the chdb-core release the payload was built from, used in
+    // diagnostics so a bug report says which engine is running.
+    Version string
+
+    // FileName is the name the library must be written under. The published
+    // macOS archive calls its Mach-O library libchdb.so, so this is not
+    // derivable from the platform.
+    FileName string
+
+    // Digest is the lowercase hex SHA-256 of the extracted library. It names
+    // the cache directory, which is what makes concurrent extraction safe:
+    // every process computes the same destination, so whichever one publishes
+    // it first has produced exactly what the others would have.
+    Digest string
+
+    // Size is the extracted size in bytes. Only used to make "not enough
+    // space" errors actionable.
+    Size int64
+
+    // Open returns the extracted library bytes. Decompression lives in the
+    // platform module so that this package needs no compression dependency
+    // and the payload format can change without touching the loader.
+    Open func() (io.ReadCloser, error)
+}
+```
+
+<a name="QueryAnalysis"></a>
+## type [QueryAnalysis](<https://github.com/chdb-io/chdb-go/blob/main/chdb-purego/admin.go#L88-L113>)
+
+QueryAnalysis is what ClassifyQuery reports: chdb\_query\_analysis\_v1 with the flag word already unpacked into named booleans.
+
+```go
+type QueryAnalysis struct {
+    // StatementCount is how many executable statements the text holds. Zero
+    // for empty input or text that did not parse; `a PARALLEL WITH b` counts
+    // as two, because both arms execute.
+    StatementCount uint32
+
+    // Class is what the statement does to state that outlives it.
+    Class QueryClass
+
+    // HasSecrets reports that the text carries a credential: a password, a
+    // named collection's key, an access key handed to a table function. Never
+    // set when Class is QueryUnknown, since nothing was proven about text that
+    // did not parse.
+    HasSecrets bool
+
+    // WritesOnlyTargetDatabase reports that every persistent write the
+    // statement performs lands in the database named in the call. Set only
+    // when the parser can prove it: a write to another database, to `system`,
+    // to a table function or to a file clears it, and a statement that writes
+    // nothing sets it vacuously. Never set when no target database was named.
+    WritesOnlyTargetDatabase bool
+
+    // ChangesDatabaseLifecycle reports that the statement creates, drops or
+    // renames a database rather than acting inside one.
+    ChangesDatabaseLifecycle bool
+}
+```
+
+<a name="QueryClass"></a>
+## type [QueryClass](<https://github.com/chdb-io/chdb-go/blob/main/chdb-purego/admin.go#L42>)
+
+QueryClass says what a statement does to state that outlives it, as decided by the ClickHouse parser. Values match chdb\_query\_class in the C ABI and ascend by how restricted the statement is, so a batch classifies as the maximum over its members.
+
+```go
+type QueryClass uint32
+```
+
+<a name="QueryReadOnly"></a>
+
+```go
+const (
+    // QueryReadOnly covers SELECT, SHOW, DESCRIBE, EXPLAIN: leaves no trace.
+    QueryReadOnly QueryClass = 0
+    // QueryMutating covers INSERT, CREATE, ALTER, DROP and friends: changes a
+    // database, and `BACKUP DATABASE` captures the change.
+    QueryMutating QueryClass = 1
+    // QueryMutatingGlobal covers global UDFs, named collections, access
+    // entities and writes into `system`: persistent and replayable, but
+    // outside every database a checkpoint could capture.
+    QueryMutatingGlobal QueryClass = 2
+    // QueryControl covers USE, SET, SYSTEM, BACKUP, RESTORE, and statements
+    // writing outside the engine altogether.
+    QueryControl QueryClass = 3
+    // QueryUnknown means the text did not parse, or parsed into something this
+    // engine does not classify. A caller gating writes on the class must treat
+    // it as a refusal.
+    QueryUnknown QueryClass = 4
+)
+```
+
+<a name="QueryClass.String"></a>
+### func \(QueryClass\) [String](<https://github.com/chdb-io/chdb-go/blob/main/chdb-purego/admin.go#L63>)
+
+```go
+func (c QueryClass) String() string
+```
+
+
 
 Generated by [gomarkdoc](<https://github.com/princjef/gomarkdoc>)
