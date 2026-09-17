@@ -3,11 +3,11 @@ module github.com/chdb-io/chdb-go/lib/embedded
 go 1.21
 
 require (
-	github.com/chdb-io/chdb-go/lib/darwin-amd64 v0.260700.1
-	github.com/chdb-io/chdb-go/lib/darwin-arm64 v0.260700.1
-	github.com/chdb-io/chdb-go/lib/linux-amd64 v0.260700.1
-	github.com/chdb-io/chdb-go/lib/linux-arm64 v0.260700.1
-	github.com/chdb-io/chdb-go/v2 v2.1.0
+	github.com/chdb-io/chdb-go/lib/darwin-amd64 v0.260703.1
+	github.com/chdb-io/chdb-go/lib/darwin-arm64 v0.260703.1
+	github.com/chdb-io/chdb-go/lib/linux-amd64 v0.260703.1
+	github.com/chdb-io/chdb-go/lib/linux-arm64 v0.260703.1
+	github.com/chdb-io/chdb-go/v2 v2.2.0
 )
 
 require (
