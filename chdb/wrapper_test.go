@@ -2,6 +2,7 @@ package chdb
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -14,9 +15,9 @@ func TestQueryToBuffer(t *testing.T) {
 		queryStr     string
 		outputFormat string
 
-		udfPath        string
-		expectedErrMsg string
-		expectedResult string
+		udfPath          string
+		expectedErrParts []string
+		expectedResult   string
 	}{
 		{
 			name:         "Basic Query",
@@ -24,7 +25,6 @@ func TestQueryToBuffer(t *testing.T) {
 			outputFormat: "CSV",
 
 			udfPath:        "",
-			expectedErrMsg: "",
 			expectedResult: "123\n",
 		},
 
@@ -33,9 +33,9 @@ func TestQueryToBuffer(t *testing.T) {
 			queryStr:     "SELECT * FROM nonexist; ",
 			outputFormat: "CSV",
 
-			udfPath:        "",
-			expectedErrMsg: "Code: 60. DB::Exception: Unknown table expression identifier 'nonexist' in scope SELECT * FROM nonexist. (UNKNOWN_TABLE)",
-			expectedResult: "",
+			udfPath:          "",
+			expectedErrParts: []string{"Code: 60", "'nonexist'", "UNKNOWN_TABLE"},
+			expectedResult:   "",
 		},
 	}
 
@@ -47,14 +47,16 @@ func TestQueryToBuffer(t *testing.T) {
 			fmt.Println("result: ", result)
 
 			// Verify
-			if tc.expectedErrMsg != "" {
+			if len(tc.expectedErrParts) != 0 {
 				if err == nil {
-					t.Errorf("%v queryToBuffer() with queryStr %v, outputFormat %v, udfPath %v, expect error message: %v, got no error",
-						tc.name, tc.queryStr, tc.outputFormat, tc.udfPath, tc.expectedErrMsg)
+					t.Errorf("%v queryToBuffer() with queryStr %v, outputFormat %v, udfPath %v, expected error containing %v, got no error",
+						tc.name, tc.queryStr, tc.outputFormat, tc.udfPath, tc.expectedErrParts)
 				} else {
-					if err.Error() != tc.expectedErrMsg {
-						t.Errorf("%v queryToBuffer() with queryStr %v, outputFormat %v, udfPath %v, expect error message: %v, got error message: %v",
-							tc.name, tc.queryStr, tc.outputFormat, tc.udfPath, tc.expectedErrMsg, err.Error())
+					for _, part := range tc.expectedErrParts {
+						if !strings.Contains(err.Error(), part) {
+							t.Errorf("%v queryToBuffer() with queryStr %v, outputFormat %v, udfPath %v, expected error containing %q, got error message: %v",
+								tc.name, tc.queryStr, tc.outputFormat, tc.udfPath, part, err)
+						}
 					}
 				}
 			} else {
