@@ -12,7 +12,7 @@ extern "C" {
 
 #define CHDB_EXPORT __attribute__((visibility("default")))
 
-#define CHDB_VERSION "26.7.3"
+#define CHDB_VERSION "26.11.0-rc.1"
 
 /**
  * Returns the version of the linked chDB library.
@@ -24,6 +24,8 @@ CHDB_EXPORT const char * chdb_version(void);
 // WARNING: The following structs are deprecated and will be removed in a future version.
 struct local_result
 {
+    /// buf is NOT NUL-terminated: len is the only length. Treating buf as a C string
+    /// (printf("%s"), strlen) reads past the end of the buffer.
     char * buf;
     size_t len;
     void * _vec; // std::vector<char> *, for freeing
@@ -708,6 +710,9 @@ CHDB_EXPORT void chdb_destroy_insert_stream(chdb_insert_stream stream);
  * Gets pointer to the result data buffer
  * @param result The query result handle
  * @return Read-only pointer to the result data
+ * @note NOT NUL-terminated. The buffer is exactly chdb_result_length() bytes and the byte
+ *       after it belongs to no one -- printf("%s"), strlen() and strcpy() read out of bounds.
+ *       Use the length: fwrite(chdb_result_buffer(r), 1, chdb_result_length(r), stdout).
  */
 CHDB_EXPORT char * chdb_result_buffer(chdb_result * result);
 
@@ -930,6 +935,43 @@ CHDB_EXPORT chdb_state chdb_arrow_array_scan(
  */
 CHDB_EXPORT chdb_state chdb_arrow_unregister_table(chdb_connection conn, const char * table_name);
 
+/**
+ * Options for direct Arrow insert APIs.
+ */
+typedef struct chdb_arrow_insert_options
+{
+    /// Optional INSERT SETTINGS clause body, e.g. "max_threads=4,min_insert_block_size_rows=65536".
+    /// Pass NULL for engine defaults.
+    const char * settings;
+} chdb_arrow_insert_options;
+
+/**
+ * Insert rows from an Arrow C Data Interface schema+array directly into a
+ * MergeTree (or compatible) table. Combines register, INSERT … SELECT, and
+ * unregister in one call. Destination columns are matched by name from the
+ * Arrow schema (not by position), so ALTER TABLE ADD COLUMN is safe.
+ *
+ * @param conn Active connection
+ * @param dest_table Destination table identifier (bare name or already-quoted)
+ * @param arrow_schema Arrow schema pointer
+ * @param arrow_array Arrow array pointer
+ * @param options Optional insert settings; pass NULL for defaults
+ * @return chdb_result with metrics or error (no result buffer on success)
+ */
+CHDB_EXPORT chdb_result * chdb_insert_arrow_array(
+    chdb_connection conn, const char * dest_table,
+    chdb_arrow_schema arrow_schema, chdb_arrow_array arrow_array,
+    const chdb_arrow_insert_options * options);
+
+/**
+ * Insert rows from an Arrow C Data Interface stream directly into a destination table.
+ * See chdb_insert_arrow_array for semantics.
+ */
+CHDB_EXPORT chdb_result * chdb_insert_arrow_stream(
+    chdb_connection conn, const char * dest_table,
+    chdb_arrow_stream arrow_stream,
+    const chdb_arrow_insert_options * options);
+
 //===--------------------------------------------------------------------===//
 // Backup, Restore and Statement Classification
 //===--------------------------------------------------------------------===//
@@ -1121,8 +1163,11 @@ CHDB_EXPORT void chdb_reset_signal_handlers(void);
  * chdb_connect(): callers are serialized, and a connect racing a shutdown either
  * gets in first and is counted, or arrives later and is refused.
  *
- * Skipping it stays as safe as it has always been for a process that just exits:
- * the threads left running are reaped by process exit.
+ * A C/C++/Go host must call this before its own runtime teardown or unloading
+ * the library. OS thread reaping is not a substitute for Context/catalog
+ * cleanup: C++ static destructors can run while those resources are still
+ * referenced. CHDBError also means embedded cleanup was incomplete; do not
+ * treat a zero connection count as proof that the engine stopped cleanly.
  *
  * @return CHDBSuccess once no chDB thread is left running, CHDBError if a
  *         connection is still open or some thread could not be stopped
