@@ -3,7 +3,10 @@ package chdbdriver
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"testing"
+
+	"github.com/chdb-io/chdb-go/v2/chdb"
 )
 
 func TestDbWithParquetStreaming(t *testing.T) {
@@ -150,5 +153,59 @@ func TestDBWithParquetStreamingConnection(t *testing.T) {
 			t.Fatalf("result is not match, want: %d actual: %d", count, bar)
 		}
 		count++
+	}
+}
+
+// A failing query on a streaming handle used to panic: the engine reports the
+// error on the first chunk, which carries no bytes, and that chunk went straight
+// to the Parquet reader ("reading magic header of parquet file: EOF"). The panic
+// also skipped the cleanup that frees the stream, so each failure left a session
+// open and the Shutdown in globalTeardown refused with ErrSessionsOpen.
+func TestQueryErrorOnStreamingConnection(t *testing.T) {
+	before := chdb.ActiveSessionRefs()
+	db, err := sql.Open("chdb", "driverType=PARQUET_STREAMING")
+	if err != nil {
+		t.Fatalf("open db fail, err: %s", err)
+	}
+	defer db.Close()
+
+	// Both fail before the query produces output. An error raised while the
+	// query runs takes the same path here, but chdb-core v26.11.0-rc.1 leaves
+	// that query's partial Parquet output in the buffer the next result is
+	// written to, which would corrupt the query below and the tests after this.
+	for _, query := range []string{
+		"SELECT * FROM TestQueryErrorOnStreamingConnection_missing",
+		"SELECT TestQueryErrorOnStreamingConnection_missing()",
+	} {
+		err := func() (err error) {
+			defer func() {
+				if r := recover(); r != nil {
+					err = fmt.Errorf("panic: %v", r)
+				}
+			}()
+			rows, err := db.Query(query)
+			if err == nil {
+				rows.Close()
+			}
+			return err
+		}()
+		if err == nil {
+			t.Fatalf("%q: expected an error", query)
+		}
+		if !strings.Contains(err.Error(), "DB::Exception") {
+			t.Fatalf("%q: expected the engine's error, got: %s", query, err)
+		}
+	}
+
+	// The handle still works afterwards.
+	var n int
+	if err := db.QueryRow("SELECT 42").Scan(&n); err != nil || n != 42 {
+		t.Fatalf("query after the failures: n=%d err=%v", n, err)
+	}
+
+	// Shutdown refuses while any session is open, so a leaked stream shows here.
+	db.Close()
+	if after := chdb.ActiveSessionRefs(); after != before {
+		t.Fatalf("open sessions went from %d to %d; a failed query leaked its stream", before, after)
 	}
 }

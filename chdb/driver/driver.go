@@ -68,6 +68,14 @@ func (d DriverType) PrepareStreamingRows(result chdbpurego.ChdbStreamResult, buf
 		if nextRes == nil {
 			return nil, fmt.Errorf("result is nil")
 		}
+		// A failed query arrives as a first chunk carrying the error and no
+		// bytes; parquet.NewGenericReader panics on an empty buffer.
+		if err := nextRes.Error(); err != nil {
+			return nil, err
+		}
+		if nextRes.Len() == 0 {
+			return nil, fmt.Errorf("result is nil")
+		}
 
 		reader := parquet.NewGenericReader[any](bytes.NewReader(nextRes.Buf()))
 		return &parquetStreamingRows{
