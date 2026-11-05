@@ -396,7 +396,11 @@ of `main`, not between two units of work. A program that never opened a session
 can call it anyway: it loads nothing and returns nil.
 
 Not calling it is as safe as it has always been for a process that simply
-exits.
+exits. The exception is a binary built with `-race`: on a clean exit it leaves
+through libc's `exit()`, which runs the engine's exit teardown while engine
+threads are still running, so exiting it with a session open — `MergeTree`
+merges in flight especially — can crash. Close every session and call
+`chdb.Shutdown()` first.
 
 It needs an engine from chdb-core v26.7.2-rc.2 or later; on an older one it
 returns `chdbpurego.ErrShutdownUnavailable`. Up to v26.11.0-rc.1 its reach was

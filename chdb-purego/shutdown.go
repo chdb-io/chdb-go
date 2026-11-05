@@ -84,7 +84,9 @@ var engineStarted atomic.Bool
 // Skipping it entirely is as safe as it has always been for a process that
 // just exits — the threads are reaped by process exit. It matters when
 // something runs after main: a sanitizer's exit handler, a C++ global
-// destructor, a host runtime's finalizers.
+// destructor, a host runtime's finalizers. A binary built with -race is one:
+// on a clean exit it leaves through libc's exit(), which runs the engine's exit
+// teardown while engine threads are still running.
 func Shutdown() error {
 	// Nothing was ever connected, so there is nothing to join and nothing to
 	// gain from making the process terminal.

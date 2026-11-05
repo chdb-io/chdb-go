@@ -51,7 +51,11 @@ var ErrSessionsOpen = errors.New("chdb: a session is still open")
 // for nothing.
 //
 // Not calling it is as safe as it has always been for a process that simply
-// exits: the threads are reaped by process exit.
+// exits: the threads are reaped by process exit. A binary built with -race is
+// the exception, because on a clean exit it leaves through libc's exit(),
+// which runs the engine's exit teardown while engine threads are still
+// running, so exiting it with a Session open (MergeTree merges in flight
+// especially) can crash; close every Session and call Shutdown first.
 func Shutdown() error {
 	// Held across the native call, so a NewSession arriving mid-shutdown
 	// cannot slip a connection in behind the refcount check. The engine

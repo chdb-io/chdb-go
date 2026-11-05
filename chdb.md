@@ -77,7 +77,7 @@ QueryStream is like Query but returns a streaming result that can be read in chu
 The returned stream owns the session it runs on, because a streaming result is computed as it is read: every chunk is fetched through the connection that started the query. The session is closed when the stream reaches its end, or when Free/Cancel is called — so a caller that stops reading early must call one of them \(a dropped stream is closed by a finalizer, eventually\).
 
 <a name="Shutdown"></a>
-## func [Shutdown](<https://github.com/chdb-io/chdb-go/blob/main/chdb/shutdown.go#L55>)
+## func [Shutdown](<https://github.com/chdb-io/chdb-go/blob/main/chdb/shutdown.go#L59>)
 
 ```go
 func Shutdown() error
@@ -95,7 +95,7 @@ Shutdown is terminal, and that is the engine's contract rather than this package
 
 A process that never opened a Session has no engine to stop, and Shutdown returns nil. Asking for the engine's version counts as never opening one: that maps the library and reads a constant, it starts no engine, and shutting one down that was never running would make the process terminal for nothing.
 
-Not calling it is as safe as it has always been for a process that simply exits: the threads are reaped by process exit.
+Not calling it is as safe as it has always been for a process that simply exits: the threads are reaped by process exit. A binary built with \-race is the exception, because on a clean exit it leaves through libc's exit\(\), which runs the engine's exit teardown while engine threads are still running, so exiting it with a Session open \(MergeTree merges in flight especially\) can crash; close every Session and call Shutdown first.
 
 <a name="Session"></a>
 ## type [Session](<https://github.com/chdb-io/chdb-go/blob/main/chdb/session.go#L43-L55>)
