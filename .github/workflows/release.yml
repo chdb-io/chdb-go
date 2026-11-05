@@ -34,17 +34,19 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.ACTION }}
 
-  # macos-14 rather than macos-13: the macos-13 label has been retired, and a job
-  # asking for a label that no longer exists does not fail — it waits for a
-  # runner until the 24 hour limit and is then cancelled. That is what happened
-  # to the v2.0.0 and v2.0.1 releases, which published no macOS artifact at all.
+  # macos-15: the macos-13 and macos-14 labels have been retired, and a job
+  # asking for a retired label never runs. A macos-13 job waited for a runner
+  # until the 24 hour limit and was then cancelled, which is what happened to
+  # the v2.0.0 and v2.0.1 releases: they published no macOS artifact at all. A
+  # macos-14 job is cancelled at once ("The configuration
+  # 'macos-14-arm64-us-default' is not supported").
   #
-  # macos-14 is arm64, so what this job produces is an arm64 artifact and is
+  # macos-15 is arm64, so what this job produces is an arm64 artifact and is
   # named accordingly. Publishing it under the old macos-x86_64 name would ship
   # a binary for the wrong architecture under a name users match on, which is
   # worse than not publishing it.
   build_mac:
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
     - uses: actions/checkout@v4
     - name: Fetch library
