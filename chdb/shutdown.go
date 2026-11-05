@@ -20,21 +20,22 @@ var ErrSessionsOpen = errors.New("chdb: a session is still open")
 // Why a program would bother: closing the last Session does not stop the
 // engine's thread pools, and anything that runs after that — a sanitizer's
 // exit handler, a C++ global destructor, a host runtime's finalizers — runs
-// alongside threads that can still wake. Measured on chdb-core v26.7.3,
-// linux/arm64: 19 threads with one session open, still 19 after closing it,
-// 10 after Shutdown.
+// alongside threads that can still wake. Measured on chdb-core
+// v26.11.0-rc.2, linux/amd64: 6 threads before the first session, 19 with one
+// open, 22 after closing it, and 6 again after Shutdown.
 //
 // Every Session must be closed first. Shutdown refuses while one is open and
 // returns an error wrapping ErrSessionsOpen, naming how many, rather than
 // asking the engine and relaying its bare error code — the registry here
 // already knows the answer and can say something actionable.
 //
-// The engine can also refuse on its own, and that is not the same thing. As of
-// chdb-core v26.7.3 it does so for the rest of the process once a MergeTree
-// table has been created, and in that state it joins nothing: the thread count
-// is the same before and after the call. There is nothing a caller can do
-// about it, which is why it is worth telling apart from ErrSessionsOpen — that
-// one means the program has a leak and can fix it.
+// The engine can also refuse on its own, and that is not the same thing: it
+// means a chDB thread could not be stopped, which a caller can do nothing
+// about, while ErrSessionsOpen means the program has a leak and can fix it.
+// Up to chdb-core v26.11.0-rc.1 the engine refused for the rest of the process
+// once a MergeTree table had been created, joining nothing at all; from
+// v26.11.0-rc.2 it stops the MergeTree background threads, and jemalloc's, as
+// well.
 //
 // Shutdown is terminal, and that is the engine's contract rather than this
 // package's choice: after it, NewSession fails for the rest of the process.

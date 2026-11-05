@@ -103,7 +103,7 @@ func RegisterEmbeddedEngine(e EmbeddedEngine)
 RegisterEmbeddedEngine records the engine payload built into this binary. It is called from a platform module's init and panics if called twice, which can only happen if two platform modules were linked in at once — a build configuration that would otherwise silently pick one of them.
 
 <a name="Shutdown"></a>
-## func [Shutdown](<https://github.com/chdb-io/chdb-go/blob/main/chdb-purego/shutdown.go#L87>)
+## func [Shutdown](<https://github.com/chdb-io/chdb-go/blob/main/chdb-purego/shutdown.go#L88>)
 
 ```go
 func Shutdown() error
@@ -122,7 +122,7 @@ Calling it more than once is harmless: the engine reports success once it is alr
 Skipping it entirely is as safe as it has always been for a process that just exits — the threads are reaped by process exit. It matters when something runs after main: a sanitizer's exit handler, a C\+\+ global destructor, a host runtime's finalizers.
 
 <a name="ShutdownAvailable"></a>
-## func [ShutdownAvailable](<https://github.com/chdb-io/chdb-go/blob/main/chdb-purego/shutdown.go#L115>)
+## func [ShutdownAvailable](<https://github.com/chdb-io/chdb-go/blob/main/chdb-purego/shutdown.go#L117>)
 
 ```go
 func ShutdownAvailable() bool

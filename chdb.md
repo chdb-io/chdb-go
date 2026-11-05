@@ -77,7 +77,7 @@ QueryStream is like Query but returns a streaming result that can be read in chu
 The returned stream owns the session it runs on, because a streaming result is computed as it is read: every chunk is fetched through the connection that started the query. The session is closed when the stream reaches its end, or when Free/Cancel is called — so a caller that stops reading early must call one of them \(a dropped stream is closed by a finalizer, eventually\).
 
 <a name="Shutdown"></a>
-## func [Shutdown](<https://github.com/chdb-io/chdb-go/blob/main/chdb/shutdown.go#L54>)
+## func [Shutdown](<https://github.com/chdb-io/chdb-go/blob/main/chdb/shutdown.go#L55>)
 
 ```go
 func Shutdown() error
@@ -85,11 +85,11 @@ func Shutdown() error
 
 Shutdown stops the engine, joining the threads chDB started. Call it once, when the program is finished with chDB, before it tears itself down.
 
-Why a program would bother: closing the last Session does not stop the engine's thread pools, and anything that runs after that — a sanitizer's exit handler, a C\+\+ global destructor, a host runtime's finalizers — runs alongside threads that can still wake. Measured on chdb\-core v26.7.3, linux/arm64: 19 threads with one session open, still 19 after closing it, 10 after Shutdown.
+Why a program would bother: closing the last Session does not stop the engine's thread pools, and anything that runs after that — a sanitizer's exit handler, a C\+\+ global destructor, a host runtime's finalizers — runs alongside threads that can still wake. Measured on chdb\-core v26.11.0\-rc.2, linux/amd64: 6 threads before the first session, 19 with one open, 22 after closing it, and 6 again after Shutdown.
 
 Every Session must be closed first. Shutdown refuses while one is open and returns an error wrapping ErrSessionsOpen, naming how many, rather than asking the engine and relaying its bare error code — the registry here already knows the answer and can say something actionable.
 
-The engine can also refuse on its own, and that is not the same thing. As of chdb\-core v26.7.3 it does so for the rest of the process once a MergeTree table has been created, and in that state it joins nothing: the thread count is the same before and after the call. There is nothing a caller can do about it, which is why it is worth telling apart from ErrSessionsOpen — that one means the program has a leak and can fix it.
+The engine can also refuse on its own, and that is not the same thing: it means a chDB thread could not be stopped, which a caller can do nothing about, while ErrSessionsOpen means the program has a leak and can fix it. Up to chdb\-core v26.11.0\-rc.1 the engine refused for the rest of the process once a MergeTree table had been created, joining nothing at all; from v26.11.0\-rc.2 it stops the MergeTree background threads, and jemalloc's, as well.
 
 Shutdown is terminal, and that is the engine's contract rather than this package's choice: after it, NewSession fails for the rest of the process. So this is not something to call between two units of work, and nothing in this package calls it for the caller — "the last Session just closed" is where a pool sits between requests, and shutting down there would break the next one permanently.
 
