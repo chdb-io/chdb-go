@@ -44,7 +44,7 @@ jobs:
       run: ./chdb-go "SELECT 12345"
 
   build_mac:
-    runs-on: macos-14
+    runs-on: macos-15
     # The durable suite's end-to-end tests need the management ABI. They skip
     # without it, so that a developer on an older libchdb is not shown failures
     # for it — but here the engine is whatever CHDB_ENGINE_PIN names, so a skip
@@ -83,7 +83,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-14]
+        os: [ubuntu-latest, macos-15]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
@@ -104,7 +104,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-14]
+        os: [ubuntu-latest, macos-15]
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
