@@ -1,7 +1,6 @@
 package chdb
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -17,18 +16,16 @@ import (
 // second is the load-bearing half — leaving a connection open until exit is
 // what actually crashed the chdb/driver tests.
 //
-// A refusal from the engine itself is reported rather than failed on. As of
-// chdb-core v26.7.3 it stops joining threads at all once a MergeTree table has
-// been created, which is a property of the engine and not of a test in this
-// package.
+// A refusal from the engine itself fails the run too. Up to chdb-core
+// v26.11.0-rc.1 the engine stopped joining threads at all once a MergeTree
+// table had been created, so a refusal said nothing about this package and was
+// only reported. From v26.11.0-rc.2 it stops those threads as well, and a
+// refusal means a chDB thread really could not be stopped.
 func TestMain(m *testing.M) {
 	code := m.Run()
 	if err := Shutdown(); err != nil {
-		if errors.Is(err, ErrSessionsOpen) {
-			fmt.Println("engine shutdown failed:", err)
-			os.Exit(1)
-		}
-		fmt.Println("engine shutdown incomplete:", err)
+		fmt.Println("engine shutdown failed:", err)
+		os.Exit(1)
 	}
 	os.Exit(code)
 }

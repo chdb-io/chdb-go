@@ -2,7 +2,6 @@ package chdbdriver
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"os"
 	"runtime"
@@ -41,20 +40,17 @@ func globalTeardown() {
 	// between them, each an *sql.DB nobody closed. Closing those is what fixed
 	// the crash; this check is what keeps them closed.
 	//
-	// The engine refusing for its own reasons is not a test failure: chdb-core
-	// v26.7.3 stops joining threads entirely once a MergeTree table has been
-	// created, and several tests here create one. Report it and carry on —
-	// there is nothing this package can do about it, and the exit is clean
-	// regardless once no connection is left open.
+	// The engine refusing for its own reasons fails the run as well. Up to
+	// chdb-core v26.11.0-rc.1 it stopped joining threads entirely once a
+	// MergeTree table had been created, and several tests here create one, so
+	// that refusal was only reported. From v26.11.0-rc.2 it stops those threads
+	// too, and a refusal means a chDB thread really could not be stopped.
 	//
 	// Nothing may open a session after this point; shutdown is terminal and
 	// TestMain is about to exit.
 	if err := chdb.Shutdown(); err != nil {
-		if errors.Is(err, chdb.ErrSessionsOpen) {
-			fmt.Println("Engine shutdown failed:", err)
-			os.Exit(1)
-		}
-		fmt.Println("Engine shutdown incomplete:", err)
+		fmt.Println("Engine shutdown failed:", err)
+		os.Exit(1)
 	}
 }
 

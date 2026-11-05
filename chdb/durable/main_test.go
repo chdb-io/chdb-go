@@ -1,7 +1,6 @@
 package durable
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -19,17 +18,15 @@ import (
 // nothing was loaded, so the fake-only case costs nothing.
 //
 // A durable object that was not closed leaves its session open and fails the
-// run. A refusal from the engine itself is reported instead: chdb-core v26.7.3
-// stops joining threads at all once a MergeTree table has been created, which
-// nothing here can affect.
+// run. So does a refusal from the engine itself: up to chdb-core v26.11.0-rc.1
+// the engine stopped joining threads at all once a MergeTree table had been
+// created, and that was only reported, but from v26.11.0-rc.2 it stops those
+// threads too, so a refusal means a chDB thread really could not be stopped.
 func TestMain(m *testing.M) {
 	code := m.Run()
 	if err := chdb.Shutdown(); err != nil {
-		if errors.Is(err, chdb.ErrSessionsOpen) {
-			fmt.Println("engine shutdown failed:", err)
-			os.Exit(1)
-		}
-		fmt.Println("engine shutdown incomplete:", err)
+		fmt.Println("engine shutdown failed:", err)
+		os.Exit(1)
 	}
 	os.Exit(code)
 }
