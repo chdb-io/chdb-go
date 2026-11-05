@@ -169,26 +169,34 @@ func TestQueryErrorOnStreamingConnection(t *testing.T) {
 	}
 	defer db.Close()
 
-	// Both fail before the query produces output. An error raised while the
-	// query runs takes the same path here, but chdb-core v26.11.0-rc.1 leaves
-	// that query's partial Parquet output in the buffer the next result is
-	// written to, which would corrupt the query below and the tests after this.
+	// A panic is reported as this test failing rather than taking the whole
+	// binary down with it.
+	guarded := func(f func() error) (err error) {
+		defer func() {
+			if r := recover(); r != nil {
+				err = fmt.Errorf("panic: %v", r)
+			}
+		}()
+		return f()
+	}
+
 	for _, query := range []string{
+		// These two fail before the query produces any output.
 		"SELECT * FROM TestQueryErrorOnStreamingConnection_missing",
 		"SELECT TestQueryErrorOnStreamingConnection_missing()",
+		// This one fails while it runs, after the Parquet writer has started.
+		// Up to chdb-core v26.11.0-rc.1 the engine left that partial output in
+		// the buffer the next result is written to, so the query below read
+		// back a corrupt file.
+		"SELECT throwIf(number = 5) FROM numbers(10)",
 	} {
-		err := func() (err error) {
-			defer func() {
-				if r := recover(); r != nil {
-					err = fmt.Errorf("panic: %v", r)
-				}
-			}()
+		err := guarded(func() error {
 			rows, err := db.Query(query)
 			if err == nil {
 				rows.Close()
 			}
 			return err
-		}()
+		})
 		if err == nil {
 			t.Fatalf("%q: expected an error", query)
 		}
@@ -197,9 +205,9 @@ func TestQueryErrorOnStreamingConnection(t *testing.T) {
 		}
 	}
 
-	// The handle still works afterwards.
+	// The handle still works afterwards, and returns this query's own result.
 	var n int
-	if err := db.QueryRow("SELECT 42").Scan(&n); err != nil || n != 42 {
+	if err := guarded(func() error { return db.QueryRow("SELECT 42").Scan(&n) }); err != nil || n != 42 {
 		t.Fatalf("query after the failures: n=%d err=%v", n, err)
 	}
 
