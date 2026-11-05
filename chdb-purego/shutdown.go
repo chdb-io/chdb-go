@@ -8,22 +8,23 @@ import (
 // Stopping the engine.
 //
 // libchdb starts process-global ClickHouse thread pools, and closing the last
-// connection does not stop them. Measured on chdb-core v26.7.3, linux/arm64:
-// a process at 6 threads reaches 19 once a session runs a SELECT, and is
-// still at 19 after that session is closed. A process that just exits never
-// notices — the kernel reaps them. A process that runs a teardown sequence of
-// its own does: global destructors, a finalizing runtime, or a sanitizer exit
-// handler all run while those threads can still wake and execute code.
+// connection does not stop them. Measured on chdb-core v26.11.0-rc.2,
+// linux/amd64: a process at 6 threads reaches 19 once a session runs a
+// SELECT, and is at 22 after that session is closed. A process that just
+// exits never notices — the kernel reaps them. A process that runs a teardown
+// sequence of its own does: global destructors, a finalizing runtime, or a
+// sanitizer exit handler all run while those threads can still wake and
+// execute code.
 //
-// chdb_shutdown(), added in chdb-core v26.7.2-rc.2, joins them: 19 threads
-// down to 10 in that same measurement.
+// chdb_shutdown(), added in chdb-core v26.7.2-rc.2, joins them: back to 6
+// threads in that same measurement, whether or not MergeTree tables were used.
 //
-// Its reach is narrower than its documentation suggests. Once a MergeTree
-// table has been created it returns CHDBError for the rest of the process and
-// joins nothing at all — 27 threads before the call and 27 after, on every
-// attempt, with retries and delays making no difference. So on v26.7.3 a
-// caller gets an orderly stop only if it never created a MergeTree table, and
-// this belongs upstream in chdb-core rather than here.
+// Up to chdb-core v26.11.0-rc.1 its reach was narrower than its documentation
+// suggested. Once a MergeTree table had been created it returned CHDBError for
+// the rest of the process and joined nothing at all — 27 threads before the
+// call and 27 after on v26.7.3, on every attempt, with retries and delays
+// making no difference. v26.11.0-rc.2 fixed that upstream: it stops the
+// MergeTree background executors and jemalloc's background threads too.
 //
 // It is deliberately not called for the caller. The C ABI's contract is that
 // shutdown is terminal: "once it starts, the library is closed for business
@@ -83,7 +84,9 @@ var engineStarted atomic.Bool
 // Skipping it entirely is as safe as it has always been for a process that
 // just exits — the threads are reaped by process exit. It matters when
 // something runs after main: a sanitizer's exit handler, a C++ global
-// destructor, a host runtime's finalizers.
+// destructor, a host runtime's finalizers. A binary built with -race is one:
+// on a clean exit it leaves through libc's exit(), which runs the engine's exit
+// teardown while engine threads are still running.
 func Shutdown() error {
 	// Nothing was ever connected, so there is nothing to join and nothing to
 	// gain from making the process terminal.
@@ -101,8 +104,9 @@ func Shutdown() error {
 	defer guardSignalHandlers()()
 	if chdbShutdown() != 0 {
 		// CHDBError means a connection is still open, or a thread would not
-		// stop. The engine reports no detail beyond the code, and on v26.7.3
-		// it has done nothing when it says this.
+		// stop. The engine reports no detail beyond the code. Up to
+		// v26.11.0-rc.1, once a MergeTree table existed, it had also done
+		// nothing at all when it said this.
 		return errors.New("chdb: chdb_shutdown() failed; either a connection is " +
 			"still open or a chDB thread could not be stopped")
 	}
