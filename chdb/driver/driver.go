@@ -505,49 +505,270 @@ func stripComments(query string) string {
 }
 
 // scanQuery returns the byte offsets of the ? placeholders in query and the
-// [start, end) ranges of its comments. A ? inside a '...' or "..." literal, a
-// `...` identifier, a -- or # line comment, or a /* */ comment (which
-// ClickHouse nests) is not a placeholder. A line comment ends before its
-// newline.
+// [start, end) ranges of its comments. It splits the query into tokens with
+// the rules of ClickHouse's lexer (src/Parsers/Lexer.cpp), so a ? or a comment
+// marker is recognized exactly where the server would see one, and never
+// inside a '...' string, a "..." or `...` identifier, a ‘...’ or “...”
+// literal, an x'..' or b'..' string, a $tag$...$tag$ heredoc or a comment.
+// Comments are --, // and "# " or "#!" through the end of the line (the
+// newline is not part of the comment), and /* */, which nests. A string,
+// identifier or comment that is not closed runs to the end of the query.
 func scanQuery(query string) (placeholders []int, comments [][2]int) {
 	n := len(query)
-	for i := 0; i < n; i++ {
-		switch ch := query[i]; ch {
-		case '?':
+	prev := tokenOther // the last token that is not whitespace or a comment
+	for i := 0; i < n; {
+		start := i
+		ch := query[i]
+		kind := tokenOther
+		switch {
+		case isSQLWhitespace(ch):
+			i++
+			continue
+		case isDigit(ch):
+			i, kind = lexNumber(query, i, prev == tokenDot)
+		case ch == '\'':
+			i = lexQuoted(query, i)
+		case ch == '"' || ch == '`':
+			i, kind = lexQuoted(query, i), tokenQuotedIdentifier
+		case ch == ')' || ch == ']':
+			i, kind = i+1, tokenClosingBracket
+		case ch == '.':
+			if i > 0 && (i+1 >= n || !isDigit(query[i+1]) || prev == tokenClosingBracket ||
+				prev == tokenBareWord || prev == tokenQuotedIdentifier || prev == tokenNumber) {
+				i, kind = i+1, tokenDot
+			} else {
+				i, kind = lexFraction(query, i+1), tokenNumber
+			}
+		case ch == '-' && i+1 < n && query[i+1] == '-',
+			ch == '/' && i+1 < n && query[i+1] == '/',
+			ch == '#' && i+1 < n && (query[i+1] == ' ' || query[i+1] == '!'):
+			if j := strings.IndexByte(query[i:], '\n'); j >= 0 {
+				i += j
+			} else {
+				i = n
+			}
+			comments = append(comments, [2]int{start, i})
+			continue
+		case ch == '/' && i+1 < n && query[i+1] == '*':
+			i = lexBlockComment(query, i)
+			comments = append(comments, [2]int{start, i})
+			continue
+		case ch == '?':
 			placeholders = append(placeholders, i)
-		case '\'', '"', '`':
-			for i++; i < n && query[i] != ch; i++ {
-				if query[i] == '\\' {
-					i++
-				}
+			i++
+		case ch == '\xE2' && i+5 < n && query[i+1] == '\x80' && (query[i+2] == '\x98' || query[i+2] == '\x9C'):
+			if query[i+2] == '\x9C' {
+				kind = tokenQuotedIdentifier
 			}
-		case '-', '#':
-			if i+1 < n && (ch == '-' && query[i+1] == '-' || ch == '#' && (query[i+1] == ' ' || query[i+1] == '!')) {
-				start := i
-				for i < n && query[i] != '\n' {
-					i++
-				}
-				comments = append(comments, [2]int{start, i})
+			closing := string([]byte{'\xE2', '\x80', query[i+2] + 1})
+			if j := strings.Index(query[i+3:], closing); j >= 0 {
+				i += 3 + j + len(closing)
+			} else {
+				i = n
 			}
-		case '/':
-			if i+1 < n && query[i+1] == '*' {
-				start := i
-				depth := 1
-				for i += 2; i < n && depth > 0; i++ {
-					if i+1 < n && query[i] == '/' && query[i+1] == '*' {
-						depth++
-						i++
-					} else if i+1 < n && query[i] == '*' && query[i+1] == '/' {
-						depth--
-						i++
-					}
-				}
-				comments = append(comments, [2]int{start, i})
-				i--
+		case ch == '\xE2' && i+3 <= n && query[i+1] == '\x88' && query[i+2] == '\x92': // − (minus sign)
+			i += 3
+		case ch == '$':
+			if end, ok := lexHeredoc(query, i); ok {
+				i = end
+			} else if i+1 == n || !isWordChar(query[i+1]) {
+				i++
+			} else {
+				i, kind = lexBareWord(query, i), tokenBareWord
+			}
+		case (ch == 'x' || ch == 'X' || ch == 'b' || ch == 'B') && i+2 < n && query[i+1] == '\'':
+			i = lexHexOrBinString(query, i)
+		case isWordChar(ch):
+			i, kind = lexBareWord(query, i), tokenBareWord
+		case ch >= 0x80:
+			// Any other non-ASCII character is Unicode whitespace or an error
+			// that fails the query, so skipping it like whitespace is enough.
+			for i++; i < n && query[i]&0xC0 == 0x80; i++ {
+			}
+			continue
+		default:
+			i++
+		}
+		prev = kind
+	}
+	return placeholders, comments
+}
+
+// The token types scanQuery tells apart: a dot is tuple access or the start
+// of a number depending on the token before it.
+const (
+	tokenOther = iota
+	tokenBareWord
+	tokenNumber
+	tokenQuotedIdentifier
+	tokenClosingBracket
+	tokenDot
+)
+
+func isDigit(c byte) bool { return c >= '0' && c <= '9' }
+
+func isHexDigit(c byte) bool {
+	return isDigit(c) || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F'
+}
+
+func isWordChar(c byte) bool {
+	return isDigit(c) || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '_'
+}
+
+func isSQLWhitespace(c byte) bool {
+	return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' || c == '\v'
+}
+
+// lexQuoted returns the end of the '...', "..." or `...` token at i. A quote
+// is escaped by a backslash or by doubling it.
+func lexQuoted(query string, i int) int {
+	quote := query[i]
+	for i++; i < len(query); i++ {
+		switch query[i] {
+		case '\\':
+			i++
+		case quote:
+			if i+1 < len(query) && query[i+1] == quote {
+				i++
+			} else {
+				return i + 1
 			}
 		}
 	}
-	return placeholders, comments
+	return len(query)
+}
+
+// lexHeredoc returns the end of the $tag$...$tag$ heredoc at i. The tag is
+// made of word characters and may be empty.
+func lexHeredoc(query string, i int) (int, bool) {
+	j := strings.IndexByte(query[i+1:], '$')
+	if j < 0 {
+		return 0, false
+	}
+	for k := i + 1; k < i+1+j; k++ {
+		if !isWordChar(query[k]) {
+			return 0, false
+		}
+	}
+	tag := query[i : i+j+2]
+	k := strings.Index(query[i+len(tag):], tag)
+	if k < 0 {
+		return 0, false
+	}
+	return i + len(tag) + k + len(tag), true
+}
+
+func lexBareWord(query string, i int) int {
+	for i++; i < len(query) && (isWordChar(query[i]) || query[i] == '$'); i++ {
+	}
+	return i
+}
+
+// lexHexOrBinString returns the end of the x'..' or b'..' string at i. Any
+// character other than a digit of the base leaves it unclosed.
+func lexHexOrBinString(query string, i int) int {
+	hex := query[i] == 'x' || query[i] == 'X'
+	for i += 2; i < len(query) && (hex && isHexDigit(query[i]) || !hex && (query[i] == '0' || query[i] == '1')); i++ {
+	}
+	if i >= len(query) || query[i] != '\'' {
+		return len(query)
+	}
+	return i + 1
+}
+
+// lexBlockComment returns the end of the /* */ comment at i, counting nested
+// comments.
+func lexBlockComment(query string, i int) int {
+	depth := 1
+	for i += 2; i+2 <= len(query); {
+		switch {
+		case query[i] == '/' && query[i+1] == '*':
+			i += 2
+			depth++
+		case query[i] == '*' && query[i+1] == '/':
+			i += 2
+			if depth--; depth == 0 {
+				return i
+			}
+		default:
+			i++
+		}
+	}
+	return len(query)
+}
+
+// lexNumber returns the end and type of the token that starts with a digit at
+// i: a number such as 1_000, 0x1F, 0b101, 1.5e-3 or 0x1p+4, or a bare word
+// such as 1st. Right after a dot only the digits are part of the number, so
+// that x.1.2 is two tuple accesses.
+func lexNumber(query string, i int, afterDot bool) (int, int) {
+	n := len(query)
+	start := i
+	if afterDot {
+		i = lexDigits(query, i+1, false, false)
+	} else {
+		hex, startOfBlock := false, false
+		if i+2 < n && query[i] == '0' && (query[i+1] == 'x' || query[i+1] == 'X') && isHexDigit(query[i+2]) {
+			hex, startOfBlock, i = true, true, i+2
+		} else if i+2 < n && query[i] == '0' && (query[i+1] == 'b' || query[i+1] == 'B') && (query[i+2] == '0' || query[i+2] == '1') {
+			startOfBlock, i = true, i+2
+		} else {
+			i++
+		}
+		i = lexDigits(query, i, hex, startOfBlock)
+		if i < n && query[i] == '.' {
+			i = lexDigits(query, i+1, hex, true)
+		}
+		if i+1 < n && (hex && (query[i] == 'p' || query[i] == 'P') || !hex && (query[i] == 'e' || query[i] == 'E')) {
+			i = lexExponent(query, i+1)
+		}
+	}
+	if i >= n || !isWordChar(query[i]) {
+		return i, tokenNumber
+	}
+	for i++; i < n && isWordChar(query[i]); i++ {
+	}
+	for k := start; k < i; k++ {
+		if !isWordChar(query[k]) {
+			return i, tokenOther // a malformed number such as 1.5x
+		}
+	}
+	return i, tokenBareWord
+}
+
+// lexFraction returns the end of the number that starts with a dot, with i
+// just after the dot, as in .5 or .5e-3.
+func lexFraction(query string, i int) int {
+	i = lexDigits(query, i, false, true)
+	if i+1 < len(query) && (query[i] == 'e' || query[i] == 'E') {
+		i = lexExponent(query, i+1)
+	}
+	return i
+}
+
+// lexExponent returns the end of an exponent, with i just after the e or p.
+// The sign is taken even when no digit follows it, as ClickHouse does.
+func lexExponent(query string, i int) int {
+	if i+1 < len(query) && (query[i] == '-' || query[i] == '+') {
+		i++
+	}
+	return lexDigits(query, i, false, true)
+}
+
+// lexDigits returns the end of the digits at i. An underscore separates two
+// digits, but cannot start a block of them.
+func lexDigits(query string, i int, hex, startOfBlock bool) int {
+	isDigitOf := isDigit
+	if hex {
+		isDigitOf = isHexDigit
+	}
+	for ; i < len(query); i++ {
+		if !isDigitOf(query[i]) && (query[i] != '_' || startOfBlock || i+1 >= len(query) || !isDigitOf(query[i+1])) {
+			break
+		}
+		startOfBlock = false
+	}
+	return i
 }
 
 func (c *conn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {

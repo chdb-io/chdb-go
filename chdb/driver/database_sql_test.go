@@ -155,6 +155,9 @@ func TestTxBatchInsert(t *testing.T) {
 		"INSERT INTO TestTxBatchInsert VALUES (?, ?, ?); -- trailing comment\n",
 		"INSERT INTO TestTxBatchInsert -- the target\nVALUES (?, ?, ?)",
 		"INSERT INTO /* t */ TestTxBatchInsert (id, name, ts) /* ? */ VALUES (?, ?, ?)",
+		"INSERT INTO TestTxBatchInsert VALUES (?, ?, ?) // trailing comment",
+		"INSERT INTO TestTxBatchInsert // the target\nVALUES (?, ?, ?)",
+		"INSERT INTO TestTxBatchInsert VALUES (?, ?, ?) #! trailing comment",
 	} {
 		t.Run(query, func(t *testing.T) {
 			if _, err := db.Exec("TRUNCATE TABLE TestTxBatchInsert"); err != nil {
@@ -187,6 +190,60 @@ func TestTxBatchInsert(t *testing.T) {
 				t.Fatalf("got %v, want %s", got, want)
 			}
 		})
+	}
+}
+
+// A /* */ inside a heredoc is data. Preparing the INSERT used to strip it as a
+// comment, so the batch inserted "a b".
+func TestTxBatchInsertKeepsHeredoc(t *testing.T) {
+	db := openSessionDB(t)
+	if _, err := db.Exec("CREATE TABLE TestTxBatchHeredoc (id UInt64, name String) ENGINE = MergeTree ORDER BY id"); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { db.Exec("DROP TABLE TestTxBatchHeredoc") })
+
+	tx, err := db.Begin()
+	if err != nil {
+		t.Fatalf("begin: %s", err)
+	}
+	st, err := tx.Prepare("INSERT INTO TestTxBatchHeredoc VALUES (?, $h$a/*keep*/b -- ?$h$)")
+	if err != nil {
+		t.Fatalf("prepare: %s", err)
+	}
+	for i := uint64(1); i <= 2; i++ {
+		if _, err := st.Exec(i); err != nil {
+			t.Fatalf("exec row %d: %s", i, err)
+		}
+	}
+	if n := countRows(t, db, "TestTxBatchHeredoc"); n != 0 {
+		t.Fatalf("rows visible before Commit: %d", n)
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatalf("commit: %s", err)
+	}
+	got := queryStrings(t, db, "SELECT name FROM TestTxBatchHeredoc ORDER BY id")
+	if want := "[a/*keep*/b -- ? a/*keep*/b -- ?]"; fmt.Sprint(got) != want {
+		t.Fatalf("got %v, want %s", got, want)
+	}
+}
+
+// Removing what scanQuery calls comments must not change what a query
+// returns, so nothing it strips is data to chDB.
+func TestStripCommentsKeepsResult(t *testing.T) {
+	db := openSessionDB(t)
+	for _, query := range []string{
+		"SELECT $h$a/*keep*/b$h$, $$-- x # y$$",
+		"SELECT 6 // 2\n, 1",
+		"SELECT 1 -- c\r, 2\n, 3",
+		"SELECT 1 # c\n, 2 #! c\n, 3",
+		"SELECT /* a /* b */ c */ 1, '/* d */', \"x/*\" FROM (SELECT 2 AS `x/*`)",
+		"SELECT ‘-- a’, x'2D2D', 0x1e--c\n, 1e-1--c\n, tuple(1, 2).1--c\n, (.5e-1--c\n)",
+	} {
+		want := queryStrings(t, db, "SELECT toString(tuple(*)) FROM ("+query+"\n)")
+		got := queryStrings(t, db, "SELECT toString(tuple(*)) FROM ("+stripComments(query)+"\n)")
+		if fmt.Sprint(got) != fmt.Sprint(want) {
+			t.Errorf("%q: stripped query returned %v, the query returned %v", query, got, want)
+		}
 	}
 }
 
@@ -353,6 +410,11 @@ func TestPlaceholdersIgnoreQuotesAndComments(t *testing.T) {
 		{"SELECT /* ? /* nested ? */ ? */ ?", []any{"b"}, "b"},
 		{"SELECT concat(?, \"?\") FROM (SELECT 'z' AS `?`)", []any{"c"}, "cz"},
 		{"SELECT ? # hash ? comment\n", []any{"d"}, "d"},
+		{"SELECT ? #! shebang ? comment\n", []any{"e"}, "e"},
+		{"SELECT ? // slash ? comment\n", []any{"f"}, "f"},
+		{"SELECT concat($h$?/*keep*/'$h$, $$?$$, ?)", []any{"g"}, "?/*keep*/'?g"},
+		{"SELECT concat(‘?’, ?) AS “?”", []any{"h"}, "?h"},
+		{"SELECT concat(x'3F', toString(0x1e--?\n), ?)", []any{"i"}, "?30i"},
 	} {
 		var got string
 		if err := db.QueryRow(tc.query, tc.args...).Scan(&got); err != nil {
