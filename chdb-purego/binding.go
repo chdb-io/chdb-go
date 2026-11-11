@@ -92,7 +92,7 @@ var (
 	chdbQuery                  func(conn unsafe.Pointer, query string, format string) *chdb_result
 	chdbStreamQuery            func(conn unsafe.Pointer, query string, format string) *chdb_result
 	chdbStreamFetchResult      func(conn unsafe.Pointer, result *chdb_result) *chdb_result
-	chdbStreamCancelQuery      func(conn *chdb_connection, result *chdb_result)
+	chdbStreamCancelQuery      func(conn unsafe.Pointer, result *chdb_result)
 	chdbDestroyQueryResult     func(result *chdb_result)
 	chdbResultBuffer           func(result *chdb_result) *byte
 	chdbResultLen              func(result *chdb_result) uint    //size_t
