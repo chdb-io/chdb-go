@@ -74,3 +74,37 @@ func TestStreamingResultReportsEndOfData(t *testing.T) {
 		t.Error("GetNext() past end of data returned a chunk, want nil")
 	}
 }
+
+// Cancelling has to reach the engine: once a stream is cancelled, fetching from
+// it again is an error rather than more rows.
+func TestStreamingResultCancelStopsTheQuery(t *testing.T) {
+	conn, err := NewConnectionFromConnString(":memory:")
+	if err != nil {
+		t.Fatalf("NewConnectionFromConnString() error: %v", err)
+	}
+	defer conn.Close()
+
+	stream, err := conn.QueryStreaming("SELECT number FROM system.numbers LIMIT 10000000", "CSV")
+	if err != nil {
+		t.Fatalf("QueryStreaming() error: %v", err)
+	}
+	defer stream.Free()
+	if chunk := stream.GetNext(); chunk == nil || chunk.RowsRead() == 0 {
+		t.Fatal("GetNext() returned no rows before the cancel")
+	}
+
+	c := conn.(*connection)
+	s := stream.(*streamingResult)
+	c.mu.RLock()
+	c.cancelStreamLocked(s.stream)
+	c.mu.RUnlock()
+
+	res := c.fetchStream(s.stream)
+	if res == nil {
+		t.Fatal("fetch after cancel returned no result")
+	}
+	defer chdbDestroyQueryResult(res)
+	if msg := chdbResultError(res); msg == "" {
+		t.Fatalf("fetch after cancel returned %d rows and no error; the cancel did not reach the engine", chdbResultRowsRead(res))
+	}
+}

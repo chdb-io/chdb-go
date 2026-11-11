@@ -230,9 +230,19 @@ func (c *connection) releaseStream(stream *chdb_result, cancel bool) {
 		return
 	}
 	if cancel {
-		chdbStreamCancelQuery(c.conn, stream)
+		c.cancelStreamLocked(stream)
 	}
 	chdbDestroyQueryResult(stream)
+}
+
+// cancelStreamLocked stops a streaming query that has not reached end of data.
+// The caller holds c.mu and has checked that the connection is open.
+func (c *connection) cancelStreamLocked(stream *chdb_result) {
+	// Like every query call, chdb_stream_cancel_query takes the connection
+	// handle itself, not the chdb_connection* that chdb_connect returns and
+	// chdb_close_conn takes. Given the latter, the engine reads the slot holding
+	// the handle as its connection and calls into whatever memory follows it.
+	chdbStreamCancelQuery(c.conn.internal_data, stream)
 }
 
 // NewConnection is the low level function to create a new connection to the chdb server.
