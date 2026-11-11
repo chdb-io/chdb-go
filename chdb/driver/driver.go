@@ -5,7 +5,9 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"errors"
 	"fmt"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -342,6 +344,7 @@ type conn struct {
 	// path, where database/sql owns and closes the connector). When set, Close
 	// also releases the connector's keeper session.
 	connector *connector
+	tx        *tx
 
 	QueryFun  queryHandle
 	streamFun queryStream
@@ -360,6 +363,9 @@ func prepareValues(values []driver.Value) []driver.NamedValue {
 }
 
 func (c *conn) Close() error {
+	if c.tx != nil {
+		c.tx.end()
+	}
 	if c.session != nil {
 		c.session.Close()
 		c.session = nil
@@ -508,7 +514,23 @@ func (c *conn) QueryContext(ctx context.Context, query string, args []driver.Nam
 }
 
 func (c *conn) Begin() (driver.Tx, error) {
-	return nil, fmt.Errorf("does not support Transcation")
+	return c.BeginTx(context.Background(), driver.TxOptions{})
+}
+
+// BeginTx starts a batch, not an ACID transaction, with the semantics
+// clickhouse-go gives database/sql: an INSERT prepared inside it collects one
+// row per Exec, Commit sends each collected batch as a single INSERT, and
+// Rollback discards them. Statements executed directly on the transaction run
+// immediately and are not undone by Rollback.
+func (c *conn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, error) {
+	if opts.ReadOnly || sql.IsolationLevel(opts.Isolation) != sql.LevelDefault {
+		return nil, errors.New("chdb: isolation levels and read-only transactions are not supported")
+	}
+	if c.tx != nil {
+		return nil, errors.New("chdb: a transaction is already open on this connection")
+	}
+	c.tx = &tx{c: c}
+	return c.tx, nil
 }
 
 func (c *conn) Prepare(query string) (driver.Stmt, error) {
@@ -517,9 +539,97 @@ func (c *conn) Prepare(query string) (driver.Stmt, error) {
 
 // PrepareContext returns a client-side statement: chDB has no server-side
 // prepare, so the query is kept and its arguments are interpolated on every
-// execution, exactly as db.Exec and db.Query do.
+// execution, exactly as db.Exec and db.Query do. Inside a transaction, an
+// INSERT ... VALUES (or a bare INSERT INTO t) becomes a batch instead.
 func (c *conn) PrepareContext(ctx context.Context, query string) (driver.Stmt, error) {
+	if c.tx != nil {
+		if m := insertBatchQuery.FindStringSubmatch(query); m != nil {
+			b := &batchStmt{tx: c.tx, prefix: m[1], row: strings.TrimSpace(m[2])}
+			c.tx.batches = append(c.tx.batches, b)
+			return b, nil
+		}
+	}
 	return &stmt{c: c, query: query}, nil
+}
+
+// insertBatchQuery matches "INSERT INTO [TABLE] t [(cols)] [VALUES row]" and
+// captures the part before VALUES and the row template after it. INSERT ...
+// SELECT, FORMAT and SETTINGS do not match and run as ordinary statements.
+var insertBatchQuery = regexp.MustCompile(`(?is)^\s*(INSERT\s+INTO\s+(?:TABLE\s+)?[^\s(]+(?:\s*\([^()]*\))?)(?:\s+VALUES\s*(.*?))?\s*;?\s*$`)
+
+type tx struct {
+	c       *conn
+	batches []*batchStmt
+}
+
+func (t *tx) end() {
+	if t.c != nil && t.c.tx == t {
+		t.c.tx = nil
+	}
+	t.c = nil
+}
+
+// Commit sends the batches in the order they were prepared. Each batch is one
+// INSERT, so a failure leaves the batches before it inserted.
+func (t *tx) Commit() error {
+	c, batches := t.c, t.batches
+	if c == nil {
+		return errors.New("chdb: commit after the connection was closed; batched rows were discarded")
+	}
+	t.end()
+	for _, b := range batches {
+		if err := b.flush(c); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t *tx) Rollback() error {
+	t.end()
+	return nil
+}
+
+type batchStmt struct {
+	tx     *tx
+	prefix string
+	row    string // VALUES template; empty means one placeholder per argument
+	rows   []string
+}
+
+func (b *batchStmt) Close() error  { return nil }
+func (b *batchStmt) NumInput() int { return -1 }
+
+func (b *batchStmt) Exec(args []driver.Value) (driver.Result, error) {
+	return b.ExecContext(context.Background(), prepareValues(args))
+}
+
+func (b *batchStmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver.Result, error) {
+	if b.tx.c == nil {
+		return nil, errors.New("chdb: batch statement used after its transaction ended")
+	}
+	row := b.row
+	if row == "" {
+		row = "(" + strings.TrimSuffix(strings.Repeat("?, ", len(args)), ", ") + ")"
+	}
+	compiled, err := b.tx.c.compileArguments(row, args)
+	if err != nil {
+		return nil, err
+	}
+	b.rows = append(b.rows, compiled)
+	return driver.RowsAffected(0), nil
+}
+
+func (b *batchStmt) Query(args []driver.Value) (driver.Rows, error) {
+	return nil, errors.New("chdb: a statement prepared for a batch INSERT only supports Exec")
+}
+
+func (b *batchStmt) flush(c *conn) error {
+	if len(b.rows) == 0 {
+		return nil
+	}
+	_, err := c.ExecContext(context.Background(), b.prefix+" VALUES "+strings.Join(b.rows, ", "), nil)
+	return err
 }
 
 type stmt struct {

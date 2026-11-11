@@ -1,10 +1,13 @@
 package chdbdriver
 
 import (
+	"context"
 	"database/sql"
+	"database/sql/driver"
 	"fmt"
 	"math"
 	"testing"
+	"time"
 )
 
 func openSessionDB(t *testing.T) *sql.DB {
@@ -100,5 +103,187 @@ func TestPreparedStatement(t *testing.T) {
 		if got != want {
 			t.Fatalf("id %d: got %q, want %q", id, got, want)
 		}
+	}
+}
+
+func queryStrings(t *testing.T, db *sql.DB, query string) []string {
+	t.Helper()
+	rows, err := db.Query(query)
+	if err != nil {
+		t.Fatalf("query %q: %s", query, err)
+	}
+	defer rows.Close()
+	var got []string
+	for rows.Next() {
+		var v string
+		if err := rows.Scan(&v); err != nil {
+			t.Fatalf("scan: %s", err)
+		}
+		got = append(got, v)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("rows: %s", err)
+	}
+	return got
+}
+
+func countRows(t *testing.T, db *sql.DB, table string) uint64 {
+	t.Helper()
+	var n uint64
+	if err := db.QueryRow("SELECT count() FROM " + table).Scan(&n); err != nil {
+		t.Fatalf("count %s: %s", table, err)
+	}
+	return n
+}
+
+// Issue #27: the clickhouse-go database/sql batch idiom — Begin, Prepare an
+// INSERT, Exec once per row, Commit — failed at Begin.
+func TestTxBatchInsert(t *testing.T) {
+	db := openSessionDB(t)
+	if _, err := db.Exec("CREATE TABLE TestTxBatchInsert (id UInt64, name String, ts DateTime) ENGINE = MergeTree ORDER BY id"); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { db.Exec("DROP TABLE TestTxBatchInsert") })
+
+	for _, query := range []string{
+		"INSERT INTO TestTxBatchInsert",
+		"INSERT INTO TestTxBatchInsert (id, name, ts)",
+		"INSERT INTO TestTxBatchInsert VALUES (?, ?, ?)",
+		"insert into TestTxBatchInsert (id, name, ts) values (?, ?, ?);",
+	} {
+		t.Run(query, func(t *testing.T) {
+			if _, err := db.Exec("TRUNCATE TABLE TestTxBatchInsert"); err != nil {
+				t.Fatal(err)
+			}
+			tx, err := db.Begin()
+			if err != nil {
+				t.Fatalf("begin: %s", err)
+			}
+			st, err := tx.Prepare(query)
+			if err != nil {
+				t.Fatalf("prepare: %s", err)
+			}
+			ts := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+			for i, name := range []string{"a", "b's", "c"} {
+				if _, err := st.Exec(uint64(math.MaxUint64-2)+uint64(i), name, ts); err != nil {
+					t.Fatalf("exec row %d: %s", i, err)
+				}
+			}
+			if n := countRows(t, db, "TestTxBatchInsert"); n != 0 {
+				t.Fatalf("rows visible before Commit: %d", n)
+			}
+			if err := tx.Commit(); err != nil {
+				t.Fatalf("commit: %s", err)
+			}
+			assertUint64s(t, queryUint64s(t, db, "SELECT id FROM TestTxBatchInsert ORDER BY id"),
+				[]uint64{math.MaxUint64 - 2, math.MaxUint64 - 1, math.MaxUint64})
+			got := queryStrings(t, db, "SELECT concat(name, ' ', toString(ts)) FROM TestTxBatchInsert ORDER BY id")
+			if want := "[a 2026-01-02 03:04:05 b's 2026-01-02 03:04:05 c 2026-01-02 03:04:05]"; fmt.Sprint(got) != want {
+				t.Fatalf("got %v, want %s", got, want)
+			}
+		})
+	}
+}
+
+func TestTxRollbackDiscardsBatch(t *testing.T) {
+	db := openSessionDB(t)
+	if _, err := db.Exec("CREATE TABLE TestTxRollback (id UInt64) ENGINE = MergeTree ORDER BY id"); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { db.Exec("DROP TABLE TestTxRollback") })
+
+	tx, err := db.Begin()
+	if err != nil {
+		t.Fatalf("begin: %s", err)
+	}
+	st, err := tx.Prepare("INSERT INTO TestTxRollback")
+	if err != nil {
+		t.Fatalf("prepare: %s", err)
+	}
+	if _, err := st.Exec(uint64(1)); err != nil {
+		t.Fatalf("exec: %s", err)
+	}
+	if err := tx.Rollback(); err != nil {
+		t.Fatalf("rollback: %s", err)
+	}
+	if n := countRows(t, db, "TestTxRollback"); n != 0 {
+		t.Fatalf("rolled-back rows were inserted: %d", n)
+	}
+	if _, err := st.Exec(uint64(2)); err == nil {
+		t.Fatalf("exec after rollback should fail")
+	}
+}
+
+// Statements that are not a batchable INSERT run immediately inside a
+// transaction, and Commit/Rollback do not touch them.
+func TestTxNonBatchStatementsRunImmediately(t *testing.T) {
+	db := openSessionDB(t)
+	if _, err := db.Exec("CREATE TABLE TestTxImmediate (id UInt64) ENGINE = MergeTree ORDER BY id"); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { db.Exec("DROP TABLE TestTxImmediate") })
+
+	tx, err := db.Begin()
+	if err != nil {
+		t.Fatalf("begin: %s", err)
+	}
+	if _, err := tx.Exec("INSERT INTO TestTxImmediate VALUES (?)", uint64(1)); err != nil {
+		t.Fatalf("tx exec: %s", err)
+	}
+	sel, err := tx.Prepare("INSERT INTO TestTxImmediate SELECT number + 10 FROM numbers(2)")
+	if err != nil {
+		t.Fatalf("prepare: %s", err)
+	}
+	if _, err := sel.Exec(); err != nil {
+		t.Fatalf("exec insert-select: %s", err)
+	}
+	var n uint64
+	if err := tx.QueryRow("SELECT count() FROM TestTxImmediate").Scan(&n); err != nil || n != 3 {
+		t.Fatalf("count inside tx: n=%d err=%v", n, err)
+	}
+	if err := tx.Rollback(); err != nil {
+		t.Fatalf("rollback: %s", err)
+	}
+	assertUint64s(t, queryUint64s(t, db, "SELECT id FROM TestTxImmediate ORDER BY id"), []uint64{1, 10, 11})
+}
+
+func TestBeginTxRejectsUnsupportedOptions(t *testing.T) {
+	db := openSessionDB(t)
+	for _, opts := range []*sql.TxOptions{
+		{Isolation: sql.LevelSerializable},
+		{ReadOnly: true},
+	} {
+		if tx, err := db.BeginTx(context.Background(), opts); err == nil {
+			tx.Rollback()
+			t.Fatalf("BeginTx(%+v) should fail", *opts)
+		}
+	}
+}
+
+func TestTxEndsWhenConnectionCloses(t *testing.T) {
+	cn, err := Driver{}.Open(fmt.Sprintf("session=%s", session.ConnStr()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := cn.(*conn)
+	txn, err := c.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	st, err := c.Prepare("INSERT INTO TestTxEndsWhenConnectionCloses")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.Exec([]driver.Value{int64(1)}); err == nil {
+		t.Fatalf("exec on a batch whose connection closed should fail")
+	}
+	if err := txn.Commit(); err == nil {
+		t.Fatalf("commit after the connection closed should fail")
+	}
+	if err := txn.Rollback(); err != nil {
+		t.Fatalf("rollback after the connection closed: %s", err)
 	}
 }
