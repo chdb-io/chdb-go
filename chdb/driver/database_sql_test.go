@@ -287,3 +287,75 @@ func TestTxEndsWhenConnectionCloses(t *testing.T) {
 		t.Fatalf("rollback after the connection closed: %s", err)
 	}
 }
+
+func createUint64Table(t *testing.T, db *sql.DB, name string) {
+	t.Helper()
+	if _, err := db.Exec("CREATE TABLE " + name + " (id UInt64) ENGINE = MergeTree ORDER BY id"); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { db.Exec("DROP TABLE " + name) })
+}
+
+// An argument without a placeholder used to be dropped without an error, so
+// the row was inserted with the remaining values.
+func TestArgumentCountMustMatchPlaceholders(t *testing.T) {
+	db := openSessionDB(t)
+	createUint64Table(t, db, "TestArgumentCount")
+
+	st, err := db.Prepare("INSERT INTO TestArgumentCount VALUES (?)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	if _, err := st.Exec(uint64(1), uint64(2)); err == nil {
+		t.Errorf("prepared Exec with a surplus argument should fail")
+	}
+	if _, err := st.Exec(); err == nil {
+		t.Errorf("prepared Exec with a missing argument should fail")
+	}
+	if _, err := db.Exec("INSERT INTO TestArgumentCount VALUES (?)", uint64(3), uint64(4)); err == nil {
+		t.Errorf("db.Exec with a surplus argument should fail")
+	}
+	if _, err := db.Exec("INSERT INTO TestArgumentCount VALUES (1)", uint64(5)); err == nil {
+		t.Errorf("db.Exec with an argument and no placeholder should fail")
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Stmt(st).Exec(uint64(6), uint64(7)); err == nil {
+		t.Errorf("batched Exec with a surplus argument should fail")
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+	if n := countRows(t, db, "TestArgumentCount"); n != 0 {
+		t.Fatalf("calls with the wrong number of arguments inserted %d rows", n)
+	}
+}
+
+// A ? inside a string, a quoted identifier or a comment is not a placeholder.
+func TestPlaceholdersIgnoreQuotesAndComments(t *testing.T) {
+	db := openSessionDB(t)
+	for _, tc := range []struct {
+		query string
+		args  []any
+		want  string
+	}{
+		{"SELECT concat('?', ?, '\\'?')", []any{"x"}, "?x'?"},
+		{"SELECT ? AS `col?` -- trailing ? comment\n", []any{"a"}, "a"},
+		{"SELECT /* ? /* nested ? */ ? */ ?", []any{"b"}, "b"},
+		{"SELECT concat(?, \"?\") FROM (SELECT 'z' AS `?`)", []any{"c"}, "cz"},
+		{"SELECT ? # hash ? comment\n", []any{"d"}, "d"},
+	} {
+		var got string
+		if err := db.QueryRow(tc.query, tc.args...).Scan(&got); err != nil {
+			t.Errorf("%q: %v", tc.query, err)
+			continue
+		}
+		if got != tc.want {
+			t.Errorf("%q: got %q, want %q", tc.query, got, tc.want)
+		}
+	}
+}

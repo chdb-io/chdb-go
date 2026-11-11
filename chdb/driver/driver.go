@@ -454,22 +454,72 @@ func (c *conn) CheckNamedValue(nv *driver.NamedValue) error {
 	return driver.ErrSkip
 }
 
+// compileArguments replaces each placeholder with its encoded argument. The
+// number of arguments must match the number of placeholders. A query with no
+// arguments is returned untouched, because ? is also ClickHouse's ternary
+// operator.
 func (c *conn) compileArguments(query string, args []driver.NamedValue) (string, error) {
-	var compiledQuery string
-	if len(args) > 0 {
-		compiledArgs := make([]interface{}, len(args))
-		for idx := range args {
-			compiledArgs[idx] = args[idx].Value
-		}
-		compiled, err := sqlbuilder.ClickHouse.Interpolate(query, compiledArgs)
+	if len(args) == 0 {
+		return query, nil
+	}
+	pos := placeholders(query)
+	if len(pos) != len(args) {
+		return "", fmt.Errorf("chdb: the query has %d placeholders but %d arguments were given", len(pos), len(args))
+	}
+	var b strings.Builder
+	last := 0
+	for i, p := range pos {
+		v, err := sqlbuilder.ClickHouse.Interpolate("?", []interface{}{args[i].Value})
 		if err != nil {
 			return "", err
 		}
-		compiledQuery = compiled
-	} else {
-		compiledQuery = query
+		b.WriteString(query[last:p])
+		b.WriteString(v)
+		last = p + 1
 	}
-	return compiledQuery, nil
+	b.WriteString(query[last:])
+	return b.String(), nil
+}
+
+// placeholders returns the byte offsets of the ? placeholders in query. A ?
+// inside a '...' or "..." literal, a `...` identifier, a -- or # line comment,
+// or a /* */ comment (which ClickHouse nests) is not a placeholder.
+func placeholders(query string) []int {
+	var pos []int
+	n := len(query)
+	for i := 0; i < n; i++ {
+		switch ch := query[i]; ch {
+		case '?':
+			pos = append(pos, i)
+		case '\'', '"', '`':
+			for i++; i < n && query[i] != ch; i++ {
+				if query[i] == '\\' {
+					i++
+				}
+			}
+		case '-', '#':
+			if i+1 < n && (ch == '-' && query[i+1] == '-' || ch == '#' && (query[i+1] == ' ' || query[i+1] == '!')) {
+				for i < n && query[i] != '\n' {
+					i++
+				}
+			}
+		case '/':
+			if i+1 < n && query[i+1] == '*' {
+				depth := 1
+				for i += 2; i < n && depth > 0; i++ {
+					if i+1 < n && query[i] == '/' && query[i+1] == '*' {
+						depth++
+						i++
+					} else if i+1 < n && query[i] == '*' && query[i+1] == '/' {
+						depth--
+						i++
+					}
+				}
+				i--
+			}
+		}
+	}
+	return pos
 }
 
 func (c *conn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
