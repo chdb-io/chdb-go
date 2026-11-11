@@ -435,6 +435,19 @@ func (c *conn) QueryRowContext(ctx context.Context, query string, values []drive
 	}
 }
 
+// CheckNamedValue lets unsigned integers through untouched. Arguments are
+// interpolated into the query text, which formats uint64 exactly, but
+// database/sql's default converter refuses a uint64 with the high bit set,
+// and UInt64 columns hold values up to math.MaxUint64. Every other type keeps
+// the default conversion.
+func (c *conn) CheckNamedValue(nv *driver.NamedValue) error {
+	switch nv.Value.(type) {
+	case uint, uint64:
+		return nil
+	}
+	return driver.ErrSkip
+}
+
 func (c *conn) compileArguments(query string, args []driver.NamedValue) (string, error) {
 	var compiledQuery string
 	if len(args) > 0 {
