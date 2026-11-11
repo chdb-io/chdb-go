@@ -359,3 +359,95 @@ func TestPlaceholdersIgnoreQuotesAndComments(t *testing.T) {
 		}
 	}
 }
+
+// tx.Stmt on a statement prepared on the same connection reuses the driver
+// statement database/sql cached there, so the batch decision cannot be made
+// when the statement is prepared.
+func TestTxStmtOnSameConnectionIsBatched(t *testing.T) {
+	db := openSessionDB(t)
+	db.SetMaxOpenConns(1)
+	createUint64Table(t, db, "TestTxStmtSameConn")
+
+	st, err := db.Prepare("INSERT INTO TestTxStmtSameConn VALUES (?)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+
+	tx, err := db.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Stmt(st).Exec(uint64(1)); err != nil {
+		t.Fatalf("exec: %v", err)
+	}
+	if err := tx.Rollback(); err != nil {
+		t.Fatal(err)
+	}
+	if n := countRows(t, db, "TestTxStmtSameConn"); n != 0 {
+		t.Fatalf("rolled-back row was inserted: %d rows", n)
+	}
+
+	if _, err := st.Exec(uint64(2)); err != nil {
+		t.Fatalf("exec outside a transaction: %v", err)
+	}
+	assertUint64s(t, queryUint64s(t, db, "SELECT id FROM TestTxStmtSameConn ORDER BY id"), []uint64{2})
+}
+
+// tx.Stmt on a statement prepared on another connection prepares it again on
+// the transaction's connection and caches the result on the *sql.Stmt, so the
+// same driver statement is used outside the transaction afterwards.
+func TestTxStmtPreparedOnOtherConnectionIsReusableAfterTx(t *testing.T) {
+	ctx := context.Background()
+	db := openSessionDB(t)
+	createUint64Table(t, db, "TestTxStmtOtherConn")
+
+	st, err := db.Prepare("INSERT INTO TestTxStmtOtherConn VALUES (?)")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+
+	// The pool hands out the most recently freed connection first: pin the one
+	// st was prepared on so the transaction gets a new one.
+	pinned, err := db.Conn(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Stmt(st).Exec(uint64(1)); err != nil {
+		t.Fatalf("exec in tx: %v", err)
+	}
+	// Free the pinned connection first so the transaction's connection is the
+	// one handed out next.
+	pinned.Close()
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := st.Exec(uint64(2)); err != nil {
+		t.Fatalf("exec after the transaction: %v", err)
+	}
+	assertUint64s(t, queryUint64s(t, db, "SELECT id FROM TestTxStmtOtherConn ORDER BY id"), []uint64{1, 2})
+}
+
+// A bare INSERT INTO t prepared outside a transaction inserts one row per Exec.
+func TestBareInsertStatementOutsideTx(t *testing.T) {
+	db := openSessionDB(t)
+	createUint64Table(t, db, "TestBareInsertOutsideTx")
+
+	st, err := db.Prepare("INSERT INTO TestBareInsertOutsideTx")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	for _, v := range []uint64{1, 2} {
+		if _, err := st.Exec(v); err != nil {
+			t.Fatalf("exec %d: %v", v, err)
+		}
+	}
+	assertUint64s(t, queryUint64s(t, db, "SELECT id FROM TestBareInsertOutsideTx ORDER BY id"), []uint64{1, 2})
+}

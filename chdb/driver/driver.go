@@ -568,10 +568,10 @@ func (c *conn) Begin() (driver.Tx, error) {
 }
 
 // BeginTx starts a batch, not an ACID transaction, with the semantics
-// clickhouse-go gives database/sql: an INSERT prepared inside it collects one
-// row per Exec, Commit sends each collected batch as a single INSERT, and
-// Rollback discards them. Statements executed directly on the transaction run
-// immediately and are not undone by Rollback.
+// clickhouse-go gives database/sql: Exec on a prepared INSERT collects one row,
+// Commit sends the rows collected for each INSERT target as a single INSERT,
+// and Rollback discards them. Anything else, including db.Exec-style calls on
+// the transaction, runs immediately and is not undone by Rollback.
 func (c *conn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, error) {
 	if opts.ReadOnly || sql.IsolationLevel(opts.Isolation) != sql.LevelDefault {
 		return nil, errors.New("chdb: isolation levels and read-only transactions are not supported")
@@ -589,17 +589,18 @@ func (c *conn) Prepare(query string) (driver.Stmt, error) {
 
 // PrepareContext returns a client-side statement: chDB has no server-side
 // prepare, so the query is kept and its arguments are interpolated on every
-// execution, exactly as db.Exec and db.Query do. Inside a transaction, an
-// INSERT ... VALUES (or a bare INSERT INTO t) becomes a batch instead.
+// execution, exactly as db.Exec and db.Query do.
+//
+// database/sql caches a driver statement per connection and hands the same one
+// to code inside and outside a transaction (tx.Stmt reuses it), so whether an
+// INSERT is batched is decided on every Exec from the connection's current
+// state, never here.
 func (c *conn) PrepareContext(ctx context.Context, query string) (driver.Stmt, error) {
-	if c.tx != nil {
-		if m := insertBatchQuery.FindStringSubmatch(query); m != nil {
-			b := &batchStmt{tx: c.tx, prefix: m[1], row: strings.TrimSpace(m[2])}
-			c.tx.batches = append(c.tx.batches, b)
-			return b, nil
-		}
+	s := &stmt{c: c, query: query}
+	if m := insertBatchQuery.FindStringSubmatch(query); m != nil {
+		s.insert = &insertTarget{prefix: m[1], row: strings.TrimSpace(m[2])}
 	}
-	return &stmt{c: c, query: query}, nil
+	return s, nil
 }
 
 // insertBatchQuery matches "INSERT INTO [TABLE] t [(cols)] [VALUES row]" and
@@ -607,9 +608,44 @@ func (c *conn) PrepareContext(ctx context.Context, query string) (driver.Stmt, e
 // SELECT, FORMAT and SETTINGS do not match and run as ordinary statements.
 var insertBatchQuery = regexp.MustCompile(`(?is)^\s*(INSERT\s+INTO\s+(?:TABLE\s+)?[^\s(]+(?:\s*\([^()]*\))?)(?:\s+VALUES\s*(.*?))?\s*;?\s*$`)
 
+// insertTarget is a prepared INSERT split into the part before VALUES and the
+// row template after it. An empty template takes one placeholder per argument,
+// so "INSERT INTO t" accepts a row of any width.
+type insertTarget struct {
+	prefix string
+	row    string
+}
+
+func (it *insertTarget) compileRow(c *conn, args []driver.NamedValue) (string, error) {
+	row := it.row
+	if row == "" {
+		if len(args) == 0 {
+			return "", errors.New("chdb: an INSERT without VALUES needs one argument per column")
+		}
+		row = "(" + strings.TrimSuffix(strings.Repeat("?, ", len(args)), ", ") + ")"
+	}
+	return c.compileArguments(row, args)
+}
+
 type tx struct {
 	c       *conn
-	batches []*batchStmt
+	batches []*batch
+}
+
+// batch holds the rows collected for one INSERT target.
+type batch struct {
+	prefix string
+	rows   []string
+}
+
+func (t *tx) add(prefix, row string) {
+	for _, b := range t.batches {
+		if b.prefix == prefix {
+			b.rows = append(b.rows, row)
+			return
+		}
+	}
+	t.batches = append(t.batches, &batch{prefix: prefix, rows: []string{row}})
 }
 
 func (t *tx) end() {
@@ -619,8 +655,8 @@ func (t *tx) end() {
 	t.c = nil
 }
 
-// Commit sends the batches in the order they were prepared. Each batch is one
-// INSERT, so a failure leaves the batches before it inserted.
+// Commit sends the batches in the order their first row was added. Each batch
+// is one INSERT, so a failure leaves the batches before it inserted.
 func (t *tx) Commit() error {
 	c, batches := t.c, t.batches
 	if c == nil {
@@ -628,7 +664,7 @@ func (t *tx) Commit() error {
 	}
 	t.end()
 	for _, b := range batches {
-		if err := b.flush(c); err != nil {
+		if _, err := c.ExecContext(context.Background(), b.prefix+" VALUES "+strings.Join(b.rows, ", "), nil); err != nil {
 			return err
 		}
 	}
@@ -640,69 +676,39 @@ func (t *tx) Rollback() error {
 	return nil
 }
 
-type batchStmt struct {
-	tx     *tx
-	prefix string
-	row    string // VALUES template; empty means one placeholder per argument
-	rows   []string
-}
-
-func (b *batchStmt) Close() error  { return nil }
-func (b *batchStmt) NumInput() int { return -1 }
-
-func (b *batchStmt) Exec(args []driver.Value) (driver.Result, error) {
-	return b.ExecContext(context.Background(), prepareValues(args))
-}
-
-func (b *batchStmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver.Result, error) {
-	if b.tx.c == nil {
-		return nil, errors.New("chdb: batch statement used after its transaction ended")
-	}
-	row := b.row
-	if row == "" {
-		row = "(" + strings.TrimSuffix(strings.Repeat("?, ", len(args)), ", ") + ")"
-	}
-	compiled, err := b.tx.c.compileArguments(row, args)
-	if err != nil {
-		return nil, err
-	}
-	b.rows = append(b.rows, compiled)
-	return driver.RowsAffected(0), nil
-}
-
-func (b *batchStmt) Query(args []driver.Value) (driver.Rows, error) {
-	return nil, errors.New("chdb: a statement prepared for a batch INSERT only supports Exec")
-}
-
-func (b *batchStmt) flush(c *conn) error {
-	if len(b.rows) == 0 {
-		return nil
-	}
-	_, err := c.ExecContext(context.Background(), b.prefix+" VALUES "+strings.Join(b.rows, ", "), nil)
-	return err
-}
-
 type stmt struct {
-	c     *conn
-	query string
+	c      *conn
+	query  string
+	insert *insertTarget // set when the query is an INSERT that can be batched
 }
 
 func (s *stmt) Close() error { return nil }
 
-// NumInput returns -1 because placeholders are counted by the interpolator,
-// which also understands quoting.
+// NumInput returns -1: compileArguments checks the argument count itself, and
+// a statement executed without arguments keeps ? as the ternary operator.
 func (s *stmt) NumInput() int { return -1 }
 
 func (s *stmt) Exec(args []driver.Value) (driver.Result, error) {
-	return s.c.ExecContext(context.Background(), s.query, prepareValues(args))
+	return s.ExecContext(context.Background(), prepareValues(args))
 }
 
 func (s *stmt) Query(args []driver.Value) (driver.Rows, error) {
-	return s.c.QueryContext(context.Background(), s.query, prepareValues(args))
+	return s.QueryContext(context.Background(), prepareValues(args))
 }
 
 func (s *stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver.Result, error) {
-	return s.c.ExecContext(ctx, s.query, args)
+	if s.insert == nil {
+		return s.c.ExecContext(ctx, s.query, args)
+	}
+	row, err := s.insert.compileRow(s.c, args)
+	if err != nil {
+		return nil, err
+	}
+	if s.c.tx != nil {
+		s.c.tx.add(s.insert.prefix, row)
+		return driver.RowsAffected(0), nil
+	}
+	return s.c.ExecContext(ctx, s.insert.prefix+" VALUES "+row, nil)
 }
 
 func (s *stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (driver.Rows, error) {
