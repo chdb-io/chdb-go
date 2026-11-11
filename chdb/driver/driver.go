@@ -515,10 +515,36 @@ func (c *conn) Prepare(query string) (driver.Stmt, error) {
 	return c.PrepareContext(context.Background(), query)
 }
 
+// PrepareContext returns a client-side statement: chDB has no server-side
+// prepare, so the query is kept and its arguments are interpolated on every
+// execution, exactly as db.Exec and db.Query do.
 func (c *conn) PrepareContext(ctx context.Context, query string) (driver.Stmt, error) {
-	return nil, fmt.Errorf("does not support prepare statement")
+	return &stmt{c: c, query: query}, nil
 }
 
-// todo: func(c *conn) Prepare(query string)
-// todo: func(c *conn) PrepareContext(ctx context.Context, query string)
-// todo: prepared statment
+type stmt struct {
+	c     *conn
+	query string
+}
+
+func (s *stmt) Close() error { return nil }
+
+// NumInput returns -1 because placeholders are counted by the interpolator,
+// which also understands quoting.
+func (s *stmt) NumInput() int { return -1 }
+
+func (s *stmt) Exec(args []driver.Value) (driver.Result, error) {
+	return s.c.ExecContext(context.Background(), s.query, prepareValues(args))
+}
+
+func (s *stmt) Query(args []driver.Value) (driver.Rows, error) {
+	return s.c.QueryContext(context.Background(), s.query, prepareValues(args))
+}
+
+func (s *stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver.Result, error) {
+	return s.c.ExecContext(ctx, s.query, args)
+}
+
+func (s *stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (driver.Rows, error) {
+	return s.c.QueryContext(ctx, s.query, args)
+}

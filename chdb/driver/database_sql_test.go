@@ -67,3 +67,38 @@ func TestExecUint64ArgumentAboveMaxInt64(t *testing.T) {
 	assertUint64s(t, queryUint64s(t, db, "SELECT id FROM TestExecUint64Arg ORDER BY id"),
 		[]uint64{0, 7, math.MaxInt64 + 1, math.MaxUint64})
 }
+
+// Issue #27: db.Prepare returned "does not support prepare statement".
+func TestPreparedStatement(t *testing.T) {
+	db := openSessionDB(t)
+	if _, err := db.Exec("CREATE TABLE TestPreparedStatement (id UInt64, name String) ENGINE = MergeTree ORDER BY id"); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { db.Exec("DROP TABLE TestPreparedStatement") })
+
+	ins, err := db.Prepare("INSERT INTO TestPreparedStatement VALUES (?, ?)")
+	if err != nil {
+		t.Fatalf("prepare insert: %s", err)
+	}
+	defer ins.Close()
+	for i, name := range []string{"a", "b's", "c"} {
+		if _, err := ins.Exec(uint64(i+1), name); err != nil {
+			t.Fatalf("exec %d: %s", i, err)
+		}
+	}
+
+	sel, err := db.Prepare("SELECT name FROM TestPreparedStatement WHERE id = ?")
+	if err != nil {
+		t.Fatalf("prepare select: %s", err)
+	}
+	defer sel.Close()
+	for id, want := range map[uint64]string{1: "a", 2: "b's", 3: "c"} {
+		var got string
+		if err := sel.QueryRow(id).Scan(&got); err != nil {
+			t.Fatalf("query %d: %s", id, err)
+		}
+		if got != want {
+			t.Fatalf("id %d: got %q, want %q", id, got, want)
+		}
+	}
+}
