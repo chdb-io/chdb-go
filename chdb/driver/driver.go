@@ -481,16 +481,40 @@ func (c *conn) compileArguments(query string, args []driver.NamedValue) (string,
 	return b.String(), nil
 }
 
-// placeholders returns the byte offsets of the ? placeholders in query. A ?
-// inside a '...' or "..." literal, a `...` identifier, a -- or # line comment,
-// or a /* */ comment (which ClickHouse nests) is not a placeholder.
+// placeholders returns the byte offsets of the ? placeholders in query.
 func placeholders(query string) []int {
-	var pos []int
+	pos, _ := scanQuery(query)
+	return pos
+}
+
+// stripComments replaces every comment in query with a space.
+func stripComments(query string) string {
+	_, comments := scanQuery(query)
+	if len(comments) == 0 {
+		return query
+	}
+	var b strings.Builder
+	last := 0
+	for _, c := range comments {
+		b.WriteString(query[last:c[0]])
+		b.WriteByte(' ')
+		last = c[1]
+	}
+	b.WriteString(query[last:])
+	return b.String()
+}
+
+// scanQuery returns the byte offsets of the ? placeholders in query and the
+// [start, end) ranges of its comments. A ? inside a '...' or "..." literal, a
+// `...` identifier, a -- or # line comment, or a /* */ comment (which
+// ClickHouse nests) is not a placeholder. A line comment ends before its
+// newline.
+func scanQuery(query string) (placeholders []int, comments [][2]int) {
 	n := len(query)
 	for i := 0; i < n; i++ {
 		switch ch := query[i]; ch {
 		case '?':
-			pos = append(pos, i)
+			placeholders = append(placeholders, i)
 		case '\'', '"', '`':
 			for i++; i < n && query[i] != ch; i++ {
 				if query[i] == '\\' {
@@ -499,12 +523,15 @@ func placeholders(query string) []int {
 			}
 		case '-', '#':
 			if i+1 < n && (ch == '-' && query[i+1] == '-' || ch == '#' && (query[i+1] == ' ' || query[i+1] == '!')) {
+				start := i
 				for i < n && query[i] != '\n' {
 					i++
 				}
+				comments = append(comments, [2]int{start, i})
 			}
 		case '/':
 			if i+1 < n && query[i+1] == '*' {
+				start := i
 				depth := 1
 				for i += 2; i < n && depth > 0; i++ {
 					if i+1 < n && query[i] == '/' && query[i+1] == '*' {
@@ -515,11 +542,12 @@ func placeholders(query string) []int {
 						i++
 					}
 				}
+				comments = append(comments, [2]int{start, i})
 				i--
 			}
 		}
 	}
-	return pos
+	return placeholders, comments
 }
 
 func (c *conn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
@@ -597,16 +625,17 @@ func (c *conn) Prepare(query string) (driver.Stmt, error) {
 // state, never here.
 func (c *conn) PrepareContext(ctx context.Context, query string) (driver.Stmt, error) {
 	s := &stmt{c: c, query: query}
-	if m := insertBatchQuery.FindStringSubmatch(query); m != nil {
+	if m := insertBatchQuery.FindStringSubmatch(stripComments(query)); m != nil {
 		s.insert = &insertTarget{prefix: m[1], row: strings.TrimSpace(m[2])}
 	}
 	return s, nil
 }
 
-// insertBatchQuery matches "INSERT INTO [TABLE] t [(cols)] [VALUES row]" and
-// captures the part before VALUES and the row template after it. INSERT ...
-// SELECT, FORMAT and SETTINGS do not match and run as ordinary statements.
-var insertBatchQuery = regexp.MustCompile(`(?is)^\s*(INSERT\s+INTO\s+(?:TABLE\s+)?[^\s(]+(?:\s*\([^()]*\))?)(?:\s+VALUES\s*(.*?))?\s*;?\s*$`)
+// insertBatchQuery matches "INSERT INTO [TABLE] t [(cols)] [VALUES row] [;]",
+// with comments already removed, and captures the part before VALUES and the
+// row template after it. INSERT ... SELECT, FORMAT and SETTINGS do not match
+// and run as ordinary statements.
+var insertBatchQuery = regexp.MustCompile(`(?is)^\s*(INSERT\s+INTO\s+(?:TABLE\s+)?[^\s(;]+(?:\s*\([^()]*\))?)(?:\s+VALUES\s*(.*?))?\s*;?\s*$`)
 
 // insertTarget is a prepared INSERT split into the part before VALUES and the
 // row template after it. An empty template takes one placeholder per argument,

@@ -33,3 +33,20 @@ func TestPlaceholderOffsets(t *testing.T) {
 		}
 	}
 }
+
+func TestStripComments(t *testing.T) {
+	for _, tc := range []struct{ query, want string }{
+		{"SELECT 1", "SELECT 1"},
+		{"SELECT 1 -- c", "SELECT 1  "},
+		{"SELECT 1 -- c\n, 2", "SELECT 1  \n, 2"},
+		{"INSERT/* c */INTO t", "INSERT INTO t"},
+		{"SELECT /* /* nested */ still */ 1", "SELECT   1"},
+		{"SELECT '-- not', \"/* not */\", `# not` # c", "SELECT '-- not', \"/* not */\", `# not`  "},
+		{"SELECT 1 - -1", "SELECT 1 - -1"},
+		{"SELECT 1 /* open", "SELECT 1  "},
+	} {
+		if got := stripComments(tc.query); got != tc.want {
+			t.Errorf("stripComments(%q) = %q, want %q", tc.query, got, tc.want)
+		}
+	}
+}

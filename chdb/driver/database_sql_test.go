@@ -150,6 +150,11 @@ func TestTxBatchInsert(t *testing.T) {
 		"INSERT INTO TestTxBatchInsert (id, name, ts)",
 		"INSERT INTO TestTxBatchInsert VALUES (?, ?, ?)",
 		"insert into TestTxBatchInsert (id, name, ts) values (?, ?, ?);",
+		"INSERT INTO TestTxBatchInsert;",
+		"INSERT INTO TestTxBatchInsert VALUES (?, ?, ?) -- trailing comment",
+		"INSERT INTO TestTxBatchInsert VALUES (?, ?, ?); -- trailing comment\n",
+		"INSERT INTO TestTxBatchInsert -- the target\nVALUES (?, ?, ?)",
+		"INSERT INTO /* t */ TestTxBatchInsert (id, name, ts) /* ? */ VALUES (?, ?, ?)",
 	} {
 		t.Run(query, func(t *testing.T) {
 			if _, err := db.Exec("TRUNCATE TABLE TestTxBatchInsert"); err != nil {
