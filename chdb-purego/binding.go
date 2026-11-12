@@ -114,6 +114,13 @@ var (
 	// loaded engine exports it; see shutdown.go.
 	chdbShutdown func() int32
 
+	// Optional Arrow registration ABI. Old engines still support byte queries.
+	chdbArrowScan            func(conn unsafe.Pointer, name string, stream unsafe.Pointer) int32
+	chdbArrowUnregisterTable func(conn unsafe.Pointer, name string) int32
+	chdbQueryArrowN          func(conn unsafe.Pointer, query *byte, queryLen uint, outStream unsafe.Pointer, options unsafe.Pointer) *chdb_result
+	chdbStreamQueryArrowN    func(conn unsafe.Pointer, query *byte, queryLen uint, options unsafe.Pointer) *chdb_result
+	chdbStreamFetchArrow     func(conn unsafe.Pointer, result *chdb_result, outStream unsafe.Pointer) int32
+
 	// Process-wide signal handler control. See issue #30: by default libchdb
 	// installs its own SIGSEGV/SIGABRT/SIGBUS/SIGILL handlers when a
 	// connection is opened, which overwrites the Go runtime's handlers and
@@ -200,6 +207,17 @@ func bindSymbols(libchdb uintptr) {
 	purego.RegisterLibFunc(&chdbResultError, libchdb, "chdb_result_error")
 
 	bindAdminSymbols(libchdb)
+	if has(libchdb, "chdb_arrow_scan") && has(libchdb, "chdb_arrow_unregister_table") {
+		purego.RegisterLibFunc(&chdbArrowScan, libchdb, "chdb_arrow_scan")
+		purego.RegisterLibFunc(&chdbArrowUnregisterTable, libchdb, "chdb_arrow_unregister_table")
+	}
+	if has(libchdb, "chdb_query_arrow_n") {
+		purego.RegisterLibFunc(&chdbQueryArrowN, libchdb, "chdb_query_arrow_n")
+	}
+	if has(libchdb, "chdb_stream_query_arrow_n") && has(libchdb, "chdb_stream_fetch_arrow") {
+		purego.RegisterLibFunc(&chdbStreamQueryArrowN, libchdb, "chdb_stream_query_arrow_n")
+		purego.RegisterLibFunc(&chdbStreamFetchArrow, libchdb, "chdb_stream_fetch_arrow")
+	}
 
 	// Probed rather than declared, for the same reason the admin symbols are:
 	// an engine older than v26.7.2-rc.2 does not export it, and panicking
