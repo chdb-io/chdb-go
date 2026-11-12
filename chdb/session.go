@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	chdbpurego "github.com/chdb-io/chdb-go/v2/chdb-purego"
+	"github.com/chdb-io/chdb-go/v2/internal/nativearrow"
 )
 
 // chDB embeds a single ClickHouse engine (EmbeddedServer) per process: the
@@ -52,6 +53,12 @@ type Session struct {
 	path    string // resolved on-disk data directory ("" for an in-memory session)
 	isTemp  bool
 	closed  bool
+	// Lazy Arrow resources pin conn until their closers finish. closeDone
+	// serializes concurrent Close/Cleanup callers without holding mu while
+	// invoking a resource closer.
+	arrowResources map[*nativearrow.Lease]func()
+	arrowCond      *sync.Cond
+	closeDone      chan struct{}
 }
 
 // resolveTarget canonicalizes a requested connection string the same way the
@@ -197,31 +204,71 @@ func (s *Session) QueryStream(queryStr string, outputFormats ...string) (result 
 	return s.conn.QueryStreaming(queryStr, outputFormat)
 }
 
+// WithNativeArrow runs a complete native Arrow operation on this session.
+// The callback must unregister and release all borrowed inputs before it
+// returns. Holding the session read lock for the whole scope prevents Close
+// from destroying the connection between registration and the last scan.
+// It does not protect scans issued by other connections using the process-wide
+// registration name; such scans are outside this scope's contract.
+//
+// The internal parameter type deliberately limits this bridge to packages in
+// this module's import tree, including the separately versioned Arrow module.
+func (s *Session) WithNativeArrow(fn func(nativearrow.Connection) error) error {
+	if s == nil || fn == nil {
+		return fmt.Errorf("chdb: nil session or Arrow operation")
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.closed || s.conn == nil {
+		return fmt.Errorf("chdb: Arrow operation on a closed session")
+	}
+	conn, ok := s.conn.(nativearrow.Connection)
+	if !ok {
+		return chdbpurego.ErrArrowABIUnavailable
+	}
+	return fn(conn)
+}
+
+// AcquireNativeArrow registers a lazy resource and pins its native connection.
+// The closer must finish native work and Release the returned lease; Session
+// Close invokes it without holding mu. This internal-type interface is only
+// usable by the separately versioned Arrow module in this import tree.
+func (s *Session) AcquireNativeArrow(closer func()) (*nativearrow.Lease, error) {
+	if s == nil || closer == nil {
+		return nil, fmt.Errorf("chdb: nil session or Arrow closer")
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closed || s.conn == nil {
+		return nil, fmt.Errorf("chdb: Arrow operation on a closed session")
+	}
+	conn, ok := s.conn.(nativearrow.Connection)
+	if !ok {
+		return nil, chdbpurego.ErrArrowABIUnavailable
+	}
+	if s.arrowResources == nil {
+		s.arrowResources = make(map[*nativearrow.Lease]func())
+		s.arrowCond = sync.NewCond(&s.mu)
+	}
+	var lease *nativearrow.Lease
+	lease = nativearrow.NewLease(conn, func() {
+		s.mu.Lock()
+		delete(s.arrowResources, lease)
+		s.arrowCond.Broadcast()
+		s.mu.Unlock()
+	})
+	s.arrowResources[lease] = closer
+	return lease, nil
+}
+
 // Close closes this session's native connection. When it is the last open
 // session on a registry-owned temporary directory, that directory is removed.
 //
-// Close is idempotent and safe to call concurrently with Query: it waits for
-// any in-flight query on this session to finish before freeing the native
-// connection.
+// Close is idempotent and safe to call concurrently with Query. It closes
+// registered Arrow Sources and result readers, waits for their in-flight
+// native calls to finish, then frees the native connection.
 func (s *Session) Close() {
-	if s == nil {
-		return
-	}
-	s.mu.Lock()
-	if s.closed {
-		s.mu.Unlock()
-		return
-	}
-	s.closed = true
-	if s.conn != nil {
-		s.conn.Close()
-		s.conn = nil
-	}
-	s.mu.Unlock()
-
-	sessMu.Lock()
-	s.release(false)
-	sessMu.Unlock()
+	s.close(false)
 }
 
 // Cleanup closes this session and, when it is the last session on the data
@@ -230,37 +277,63 @@ func (s *Session) Close() {
 // that sibling sessions on the same path are still using. Cleanup is
 // idempotent and, like Close, waits for any in-flight query to finish.
 func (s *Session) Cleanup() {
+	s.close(true)
+}
+
+func (s *Session) close(forced bool) {
 	if s == nil {
 		return
 	}
 	s.mu.Lock()
-	wasOpen := !s.closed
-	if wasOpen {
-		s.closed = true
-		if s.conn != nil {
-			s.conn.Close()
-			s.conn = nil
+	if s.closed {
+		done := s.closeDone
+		dir := s.path
+		s.mu.Unlock()
+		if done != nil {
+			<-done
 		}
+		if forced {
+			sessMu.Lock()
+			idle := activeRefs == 0
+			sessMu.Unlock()
+			if idle && dir != "" {
+				_ = os.RemoveAll(dir)
+			}
+		}
+		return
+	}
+	s.closed = true
+	s.closeDone = make(chan struct{})
+	done := s.closeDone
+	closers := make([]func(), 0, len(s.arrowResources))
+	for _, closer := range s.arrowResources {
+		closers = append(closers, closer)
+	}
+	s.mu.Unlock()
+	for _, closer := range closers {
+		closer()
+	}
+	s.mu.Lock()
+	for len(s.arrowResources) != 0 {
+		s.arrowCond.Wait()
+	}
+	if s.conn != nil {
+		s.conn.Close()
+		s.conn = nil
 	}
 	dir := s.path
 	s.mu.Unlock()
 
 	sessMu.Lock()
-	var last bool
-	if wasOpen {
-		// forced: suppress release()'s own temp removal; we remove dir below
-		// (Cleanup removes non-temp directories too).
-		last = s.release(true)
-	} else {
-		// This session was already released by a prior Close; only remove the
-		// directory if the path is now idle (no sibling sessions remain).
-		last = activeRefs == 0
-	}
+	// forced suppresses release's automatic temp removal; Cleanup removes
+	// either kind of directory below once this was the last session.
+	last := s.release(forced)
 	sessMu.Unlock()
 
-	if last && dir != "" {
+	if forced && last && dir != "" {
 		_ = os.RemoveAll(dir)
 	}
+	close(done)
 }
 
 // release decrements the active refcount and reports whether this was the last
