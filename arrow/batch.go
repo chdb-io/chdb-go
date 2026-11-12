@@ -35,10 +35,10 @@ import (
 // another connection or after QueryBatch returns. Closing sess waits for this
 // entire call, including native unregister and stream release.
 //
-// This first slice accepts nullable primitive and binary/string columns. It copies their
-// buffers into C-owned memory before exporting the Arrow C Stream, so native
-// callbacks never retain Go-heap data. It does not support cancellation or
-// incremental readers yet; those are separate A2/A4 milestones.
+// It copies supported input buffers into C-owned memory before exporting the
+// Arrow C Stream, so native callbacks never retain Go-heap data. Use
+// QueryFromReaderContext for incremental, cancellable-at-batch-boundaries
+// input and QueryReader for incremental typed output.
 func QueryBatch(sess *chdb.Session, batch arrow.RecordBatch, sql func(source string) string, format string) (out []byte, err error) {
 	if batch == nil || sql == nil {
 		return nil, errors.New("chdbarrow: nil batch or query builder")
