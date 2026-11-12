@@ -197,10 +197,7 @@ func (r *ResultReader) closeLocked() {
 		r.current = nil
 	}
 	if r.stream != nil {
-		if !r.eof {
-			r.stream.Cancel()
-		}
-		r.stream.Close()
+		r.stream.Close(!r.eof)
 		r.stream = nil
 	}
 	if r.lease != nil {

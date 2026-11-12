@@ -25,8 +25,12 @@ func (s *blockingStream) Fetch(unsafe.Pointer) error {
 	<-s.resume
 	return errors.New("synthetic fetch failure")
 }
-func (s *blockingStream) Cancel() { s.cancelled.Store(true) }
-func (s *blockingStream) Close()  { s.closed.Store(true) }
+func (s *blockingStream) Close(cancel bool) {
+	if cancel {
+		s.cancelled.Store(true)
+	}
+	s.closed.Store(true)
+}
 
 func TestCloseWaitsForFetchBeforeCancelAndLeaseRelease(t *testing.T) {
 	s := &blockingStream{entered: make(chan struct{}), resume: make(chan struct{})}
