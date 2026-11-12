@@ -30,7 +30,9 @@ var (
 // Source is a one-shot, in-memory SQL source registered on one Session. Query
 // is the only supported way to scan it: the generated name is process-wide in
 // core, but this module can only track queries made through this Source. Close
-// waits for such a query, unregisters, then releases the borrowed C Stream.
+// waits for an active native query, unregisters, then releases the borrowed C
+// Stream. If Close happens while the SQL builder is running, the query is not
+// started and returns ErrSourceClosed.
 // Session.Close also closes any live Sources. Callers must not use an expression
 // captured from Query's callback in another connection or after Query returns.
 type Source struct {
@@ -180,15 +182,26 @@ func (s *Source) run(build func(string) string, execute func(nativearrow.Connect
 		return errors.New("chdbarrow: nil source or query builder")
 	}
 	s.mu.Lock()
+	if s.closed {
+		s.mu.Unlock()
+		return ErrSourceClosed
+	}
+	if s.used {
+		s.mu.Unlock()
+		return ErrSourceConsumed
+	}
+	s.used = true
+	expression := "arrowstream('" + s.name + "')"
+	s.mu.Unlock()
+
+	// User code may close the Source or Session. Do not hold the mutex across
+	// the callback; a close during construction prevents the native query.
+	query := build(expression)
+	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.closed {
 		return ErrSourceClosed
 	}
-	if s.used {
-		return ErrSourceConsumed
-	}
-	s.used = true
-	query := build("arrowstream('" + s.name + "')")
 	if query == "" {
 		return errors.New("chdbarrow: empty query")
 	}

@@ -133,6 +133,8 @@ check its error** before closing the session. The source is one-shot. Its
 expression is process-visible inside chDB, but safe use is limited to the
 single tracked query on the registering session. Do not cache it, use it from
 another session, scan it twice, or start an asynchronous query with it.
+The SQL builder may close the source or session; if either closes before the
+builder returns, no native query starts and the call returns `ErrSourceClosed`.
 
 ## Insert batches into an existing table
 

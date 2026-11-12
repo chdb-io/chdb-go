@@ -428,6 +428,31 @@ func TestQueryBatchWithCore(t *testing.T) {
 	if _, err := unconsumed.Query(func(expr string) string { return "SELECT * FROM " + expr }, "TSV"); !errors.Is(err, ErrSourceClosed) {
 		t.Fatalf("session-closed source query = %v, want ErrSourceClosed", err)
 	}
+	selfClosingSession, err := chdb.NewSession(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	selfClosingSource, err := RegisterBatch(selfClosingSession, rec)
+	if err != nil {
+		selfClosingSession.Close()
+		t.Fatal(err)
+	}
+	selfCloseDone := make(chan error, 1)
+	go func() {
+		_, queryErr := selfClosingSource.Query(func(expr string) string {
+			selfClosingSession.Close()
+			return "SELECT count() FROM " + expr
+		}, "TSV")
+		selfCloseDone <- queryErr
+	}()
+	select {
+	case queryErr := <-selfCloseDone:
+		if !errors.Is(queryErr, ErrSourceClosed) {
+			t.Fatalf("query builder closed its Session: %v, want ErrSourceClosed", queryErr)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("query builder deadlocked while closing its Session")
+	}
 	overlapped, err := chdb.NewSession(":memory:")
 	if err != nil {
 		t.Fatal(err)
@@ -453,14 +478,13 @@ func TestQueryBatchWithCore(t *testing.T) {
 	go func() { overlapped.Close(); close(sourceCloseDone) }()
 	select {
 	case <-sourceCloseDone:
-		t.Fatal("Session.Close retired a Source during its query")
-	case <-time.After(20 * time.Millisecond):
+	case <-time.After(2 * time.Second):
+		t.Fatal("Session.Close waited for a SQL builder with no native query in flight")
 	}
 	close(queryResume)
-	if err := <-queryDone; err != nil {
-		t.Fatal(err)
+	if err := <-queryDone; !errors.Is(err, ErrSourceClosed) {
+		t.Fatalf("query after close during SQL construction = %v, want ErrSourceClosed", err)
 	}
-	<-sourceCloseDone
 	if _, err := busySource.Query(func(expr string) string { return "SELECT * FROM " + expr }, "TSV"); !errors.Is(err, ErrSourceClosed) {
 		t.Fatalf("source after Session.Close = %v, want ErrSourceClosed", err)
 	}
