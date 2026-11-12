@@ -1,0 +1,63 @@
+name: Optional Arrow module
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'arrow/**'
+      - 'chdb-purego/arrow.go'
+      - 'chdb-purego/binding.go'
+      - 'chdb/session.go'
+      - 'internal/nativearrow/**'
+      - '.github/workflows/arrow.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'arrow/**'
+      - 'chdb-purego/arrow.go'
+      - 'chdb-purego/binding.go'
+      - 'chdb/session.go'
+      - 'internal/nativearrow/**'
+      - '.github/workflows/arrow.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  arrow:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-15]
+    runs-on: ${{ matrix.os }}
+    env:
+      CHDB_CORE_TAG: v26.11.0-rc.3
+      CGO_ENABLED: '1'
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.2'
+      - name: Fetch and verify released libchdb
+        run: |
+          case "${RUNNER_OS}-$(uname -m)" in
+            Linux-x86_64) asset=linux-x86_64-libchdb.tar.gz ;;
+            Linux-aarch64) asset=linux-aarch64-libchdb.tar.gz ;;
+            macOS-x86_64) asset=macos-x86_64-libchdb.tar.gz ;;
+            macOS-arm64) asset=macos-arm64-libchdb.tar.gz ;;
+            *) echo "unsupported runner architecture" >&2; exit 1 ;;
+          esac
+          mkdir -p "$RUNNER_TEMP/chdb-core"
+          gh release download "$CHDB_CORE_TAG" -R chdb-io/chdb-core \
+            -p "$asset" -p SHA256SUMS -D "$RUNNER_TEMP/chdb-core"
+          cd "$RUNNER_TEMP/chdb-core"
+          grep "  $asset$" SHA256SUMS | shasum -a 256 -c -
+          tar -xzf "$asset"
+          echo "CHDB_ARROW_TEST_LIB=$RUNNER_TEMP/chdb-core/libchdb.so" >> "$GITHUB_ENV"
+      - name: Test optional module against its published root dependency
+        run: |
+          cd arrow
+          GOWORK=off go vet ./...
+          GOWORK=off GOEXPERIMENT=cgocheck2 GODEBUG=cgocheck=1 go test -count=5 -timeout=180s ./...
+          GOWORK=off go test -race -timeout=180s ./...
