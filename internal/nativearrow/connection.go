@@ -38,12 +38,12 @@ type OutputOptions struct {
 }
 
 // Stream owns a native streaming query result. Fetch fills one caller-owned C
-// Stream; its release callback must be invoked independently. Cancel must not
-// race Fetch unless the core version explicitly supports that use.
+// Stream; its release callback must be invoked independently. Close waits for
+// Fetch, then optionally cancels the still-active query before destroying its
+// handle. Callers must pass false at EOF to avoid cancelling retired state.
 type Stream interface {
 	Fetch(outStream unsafe.Pointer) error
-	Cancel()
-	Close()
+	Close(cancel bool)
 }
 
 // Lease pins a Session connection until its owner retires its native handles.

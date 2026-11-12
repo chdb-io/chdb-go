@@ -156,24 +156,19 @@ func (s *arrowStream) Fetch(out unsafe.Pointer) error {
 	return nil
 }
 
-func (s *arrowStream) Cancel() {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+func (s *arrowStream) Close(cancel bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.result == nil {
 		return
 	}
 	s.conn.mu.RLock()
-	defer s.conn.mu.RUnlock()
 	if s.conn.conn != nil {
-		s.conn.cancelStreamLocked(s.result)
-	}
-}
-
-func (s *arrowStream) Close() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.result != nil {
+		if cancel {
+			s.conn.cancelStreamLocked(s.result)
+		}
 		chdbDestroyQueryResult(s.result)
-		s.result = nil
 	}
+	s.conn.mu.RUnlock()
+	s.result = nil
 }
