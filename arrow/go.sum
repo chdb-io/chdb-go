@@ -1,0 +1,4 @@
+github.com/apache/arrow-go/v18 v18.4.1 h1:q/jVkBWCJOB9reDgaIZIdruLQUb1kbkvOnOFezVH1C4=
+github.com/apache/arrow-go/v18 v18.4.1/go.mod h1:tLyFubsAl17bvFdUAy24bsSvA/6ww95Iqi67fTpGu3E=
+github.com/chdb-io/chdb-go/v2 v2.2.0 h1:brdTia4QAizbivFDeCIyEOHMfohrgDcEUS57piLDAxk=
+github.com/chdb-io/chdb-go/v2 v2.2.0/go.mod h1:tyiHoF8pWUfrD7ylseofFEnELnA+jocf/yElE3AHBaQ=
