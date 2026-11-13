@@ -152,6 +152,16 @@ registered source; call `Source.Close` afterward and check its error. This
 interface does not promise an end-to-end memory bound inside the native SQL
 engine, whose query plan may need to buffer data (for example, a global sort).
 
+`Source.QueryContext`, `Source.QueryTableContext`,
+`Source.QueryTableWithOptionsContext`, `QueryTableContext`, and
+`QueryTableWithOptionsContext` check their context before and after the native
+call. A deadline reached while libchdb is executing is reported only after
+that call returns; these functions do **not** promise immediate interruption.
+`QueryReader` also checks cancellation after its initial fetch and each later
+fetch, releasing a result that arrived after cancellation. Never use a Go
+goroutine that returns on timeout while leaving a native query running on a
+session you then reuse or close: its resources still belong to that call.
+
 If you need to manage that lifetime yourself, `RegisterBatch` or
 `RegisterReaderContext` returns a `Source`. Use `source.Query` for formatted
 bytes or `source.QueryTable` for typed output, then **call `source.Close()` and

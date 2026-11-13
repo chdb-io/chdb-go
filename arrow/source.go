@@ -134,15 +134,24 @@ func RegisterReaderContext(ctx context.Context, sess *chdb.Session, reader array
 // QueryBatchesContext for incremental typed output from this source, or
 // QueryReader separately for queries without a Source dependency.
 func (s *Source) Query(build func(source string) string, format string) ([]byte, error) {
+	return s.QueryContext(context.Background(), build, format)
+}
+
+// QueryContext checks cancellation before starting and after completing the
+// native call. It cannot interrupt a query already executing in libchdb.
+func (s *Source) QueryContext(ctx context.Context, build func(string) string, format string) ([]byte, error) {
 	if format == "" {
 		format = "TSV"
 	}
 	var out []byte
-	err := s.run(build, func(conn nativearrow.Connection, query string) error {
+	err := s.runContext(ctx, build, func(conn nativearrow.Connection, query string) error {
 		var callErr error
 		out, callErr = conn.QueryBytes(query, format)
 		return callErr
 	})
+	if err != nil {
+		return nil, err
+	}
 	return out, err
 }
 
@@ -150,8 +159,14 @@ func (s *Source) Query(build func(source string) string, format string) ([]byte,
 // caller must Release the table. It follows the same tracked, synchronous
 // lifetime as Query, so Close cannot unregister during the SQL scan.
 func (s *Source) QueryTable(build func(source string) string) (arrow.Table, error) {
+	return s.QueryTableContext(context.Background(), build)
+}
+
+// QueryTableContext checks cancellation around the native query, not during
+// it. A cancelled result is released before returning the context error.
+func (s *Source) QueryTableContext(ctx context.Context, build func(string) string) (arrow.Table, error) {
 	var table arrow.Table
-	err := s.run(build, func(conn nativearrow.Connection, query string) error {
+	err := s.runContext(ctx, build, func(conn nativearrow.Connection, query string) error {
 		var callErr error
 		table, callErr = queryTable(conn, query, nil)
 		return callErr
@@ -165,8 +180,14 @@ func (s *Source) QueryTable(build func(source string) string) (arrow.Table, erro
 
 // QueryTableWithOptions is QueryTable with explicit output type mapping.
 func (s *Source) QueryTableWithOptions(build func(string) string, options OutputOptions) (arrow.Table, error) {
+	return s.QueryTableWithOptionsContext(context.Background(), build, options)
+}
+
+// QueryTableWithOptionsContext checks cancellation around the native query
+// while preserving explicit output type mapping.
+func (s *Source) QueryTableWithOptionsContext(ctx context.Context, build func(string) string, options OutputOptions) (arrow.Table, error) {
 	var table arrow.Table
-	err := s.run(build, func(conn nativearrow.Connection, query string) error {
+	err := s.runContext(ctx, build, func(conn nativearrow.Connection, query string) error {
 		var callErr error
 		table, callErr = queryTable(conn, query, options.native())
 		return callErr
@@ -179,8 +200,18 @@ func (s *Source) QueryTableWithOptions(build func(string) string, options Output
 }
 
 func (s *Source) run(build func(string) string, execute func(nativearrow.Connection, string) error) error {
+	return s.runContext(context.Background(), build, execute)
+}
+
+func (s *Source) runContext(ctx context.Context, build func(string) string, execute func(nativearrow.Connection, string) error) error {
 	if s == nil || build == nil {
 		return errors.New("chdbarrow: nil source or query builder")
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if err := ctx.Err(); err != nil {
+		return err
 	}
 	s.mu.Lock()
 	if s.closed {
@@ -206,7 +237,11 @@ func (s *Source) run(build func(string) string, execute func(nativearrow.Connect
 	if query == "" {
 		return errors.New("chdbarrow: empty query")
 	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	err := execute(s.lease.Conn, query)
+	err = errors.Join(err, ctx.Err())
 	if inputErr := s.copying.Err(); inputErr != nil {
 		err = errors.Join(err, inputErr)
 	}

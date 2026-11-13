@@ -68,7 +68,7 @@ func InsertReaderContext(ctx context.Context, sess *chdb.Session, table string, 
 		return err
 	}
 	defer func() { err = errors.Join(err, source.Close()) }()
-	_, err = source.Query(func(source string) string {
+	_, err = source.QueryContext(ctx, func(source string) string {
 		return "INSERT INTO " + destination + " (" + projection + ") SELECT " + projection + " FROM " + source
 	}, "TSV")
 	return err

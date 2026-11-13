@@ -45,7 +45,7 @@ func (s *Source) QueryBatchesContext(ctx context.Context, build func(string) str
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	return s.run(build, func(conn nativearrow.Connection, query string) error {
+	return s.runContext(ctx, build, func(conn nativearrow.Connection, query string) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}

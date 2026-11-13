@@ -84,6 +84,12 @@ func queryReaderWithOptions(ctx context.Context, sess *chdb.Session, sql string,
 		r.mu.Unlock()
 		return nil, err
 	}
+	if err = ctx.Err(); err != nil {
+		r.err = err
+		r.closeLocked()
+		r.mu.Unlock()
+		return nil, err
+	}
 	if r.eof {
 		r.closeLocked()
 	}
@@ -121,6 +127,14 @@ func (r *ResultReader) Next() bool {
 	var err error
 	r.schema, batch, r.eof, err = fetchOneBatch(r.stream, r.schema)
 	if err != nil {
+		r.err = err
+		r.closeLocked()
+		return false
+	}
+	if err := r.ctx.Err(); err != nil {
+		if batch != nil {
+			batch.Release()
+		}
 		r.err = err
 		r.closeLocked()
 		return false
