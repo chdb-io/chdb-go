@@ -4,6 +4,7 @@ package chdbarrow
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"os"
 	"testing"
@@ -15,6 +16,7 @@ import (
 	"github.com/apache/arrow-go/v18/arrow/decimal128"
 	"github.com/apache/arrow-go/v18/arrow/memory"
 	"github.com/chdb-io/chdb-go/v2/chdb"
+	_ "github.com/chdb-io/chdb-go/v2/chdb/driver"
 	"github.com/chdb-io/chdb-go/v2/internal/nativearrow"
 )
 
@@ -38,6 +40,9 @@ func TestQueryBatchWithCore(t *testing.T) {
 	if err != nil || !capabilities.ContractCompatible || !capabilities.Input || !capabilities.TableOutput || !capabilities.ReaderOutput {
 		t.Fatalf("Arrow ABI capabilities = %+v, %v", capabilities, err)
 	}
+	if !capabilities.ParamBinding {
+		t.Fatalf("released engine lacks Arrow parameter ABI: %+v", capabilities)
+	}
 	schema := arrow.NewSchema([]arrow.Field{
 		{Name: "id", Type: arrow.PrimitiveTypes.Int64, Nullable: true},
 		{Name: "label", Type: arrow.BinaryTypes.String, Nullable: true},
@@ -60,6 +65,96 @@ func TestQueryBatchWithCore(t *testing.T) {
 	}
 	if string(got) != "7\t2\t1\n" {
 		t.Fatalf("unexpected query output: %q", got)
+	}
+	streamInput, err := array.NewRecordReader(schema, []arrow.RecordBatch{rec})
+	if err != nil {
+		t.Fatal(err)
+	}
+	streamedRows := 0
+	err = QueryFromReaderBatchesContext(context.Background(), sess, streamInput,
+		func(expr string) string { return "SELECT id FROM " + expr + " WHERE id IS NOT NULL" },
+		func(batch arrow.RecordBatch) error {
+			ids := batch.Column(0).(*array.Int64)
+			for i := 0; i < ids.Len(); i++ {
+				if ids.Value(i) != 7 {
+					t.Fatalf("unexpected streamed id: %d", ids.Value(i))
+				}
+				streamedRows++
+			}
+			return nil
+		})
+	streamInput.Release()
+	if err != nil || streamedRows != 1 {
+		t.Fatalf("streamed Arrow query rows=%d err=%v", streamedRows, err)
+	}
+	bound, err := QueryReaderParams(context.Background(), sess, "SELECT {v:Int64} AS v", []Parameter{{Name: "v", Value: "17"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bound.Next() || bound.RecordBatch().Column(0).(*array.Int64).Value(0) != 17 {
+		t.Fatal("server-side Arrow parameter did not bind")
+	}
+	_ = bound.Close()
+	quotedValue := "x' OR 1=1 --"
+	quoted, err := QueryReaderParams(context.Background(), sess, "SELECT {v:String} AS v", []Parameter{{Name: "v", Value: quotedValue}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !quoted.Next() || quoted.RecordBatch().Column(0).(*array.String).Value(0) != quotedValue {
+		t.Fatal("parameter value was not preserved as data")
+	}
+	_ = quoted.Close()
+	if leaked, err := QueryReader(context.Background(), sess, "SELECT {v:String}"); err == nil {
+		_ = leaked.Close()
+		t.Fatal("per-call parameter leaked into a later query")
+	}
+
+	boundInput, err := array.NewRecordReader(schema, []arrow.RecordBatch{rec})
+	if err != nil {
+		t.Fatal(err)
+	}
+	boundRows := 0
+	err = QueryFromReaderBatchesParamsContext(context.Background(), sess, boundInput,
+		func(expr string) string { return "SELECT id + {offset:Int64} FROM " + expr + " WHERE id IS NOT NULL" },
+		[]Parameter{{Name: "offset", Value: "3"}}, func(batch arrow.RecordBatch) error {
+			if batch.Column(0).(*array.Int64).Value(0) != 10 {
+				t.Fatal("input scan parameter mismatch")
+			}
+			boundRows += int(batch.NumRows())
+			return nil
+		})
+	boundInput.Release()
+	if err != nil || boundRows != 1 {
+		t.Fatalf("bound input scan rows=%d err=%v", boundRows, err)
+	}
+
+	db, err := sql.Open("chdb", "session=:memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	sqlConn, err := db.Conn(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer sqlConn.Close()
+	sqlInput, err := array.NewRecordReader(schema, []arrow.RecordBatch{rec})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sqlRows := 0
+	err = QueryFromReaderBatchesSQLContext(context.Background(), sqlConn, sqlInput,
+		func(expr string) string { return "SELECT id + {offset:Int64} FROM " + expr + " WHERE id IS NOT NULL" },
+		[]Parameter{{Name: "offset", Value: "4"}}, func(batch arrow.RecordBatch) error {
+			if batch.Column(0).(*array.Int64).Value(0) != 11 {
+				t.Fatal("database/sql Arrow result mismatch")
+			}
+			sqlRows += int(batch.NumRows())
+			return nil
+		})
+	sqlInput.Release()
+	if err != nil || sqlRows != 1 {
+		t.Fatalf("database/sql Arrow rows=%d err=%v", sqlRows, err)
 	}
 	primitiveSchema := arrow.NewSchema([]arrow.Field{
 		{Name: "i32", Type: arrow.PrimitiveTypes.Int32},

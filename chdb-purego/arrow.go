@@ -28,6 +28,7 @@ func (c *connection) Capabilities() nativearrow.Capabilities {
 	out.Input = chdbArrowScan != nil && chdbArrowUnregisterTable != nil
 	out.TableOutput = chdbQueryArrowN != nil
 	out.ReaderOutput = chdbStreamQueryArrowN != nil && chdbStreamFetchArrow != nil && chdbStreamCancelQuery != nil
+	out.ParamBinding = chdbStreamQueryArrowWithParamsN != nil
 	return out
 }
 
@@ -125,6 +126,41 @@ func (c *connection) QueryArrowStream(sql string, options *nativearrow.OutputOpt
 		return nil, errors.New("chdb: empty streaming Arrow query")
 	}
 	result := chdbStreamQueryArrowN(c.conn.internal_data, &query[0], uint(len(query)), unsafe.Pointer(options))
+	runtime.KeepAlive(options)
+	if result == nil {
+		return nil, errors.New("chdb: Arrow stream init returned no result handle")
+	}
+	if msg := chdbResultError(result); msg != "" {
+		chdbDestroyQueryResult(result)
+		return nil, errors.New(msg)
+	}
+	return &arrowStream{conn: c, result: result}, nil
+}
+
+// QueryArrowStreamParams uses the engine's binary-safe per-call binding ABI.
+// The parameter buffers and pointer arrays are pinned only for the native
+// initialization call; core captures their values before it returns.
+func (c *connection) QueryArrowStreamParams(sql string, options *nativearrow.OutputOptions, params []nativearrow.Parameter) (nativearrow.Stream, error) {
+	if len(params) == 0 {
+		return c.QueryArrowStream(sql, options)
+	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if c.conn == nil {
+		return nil, errors.New("chdb: closed connection")
+	}
+	if chdbStreamQueryArrowWithParamsN == nil || chdbStreamFetchArrow == nil {
+		return nil, ErrArrowABIUnavailable
+	}
+	if sql == "" {
+		return nil, errors.New("chdb: empty streaming Arrow query")
+	}
+	query := []byte(sql)
+	result := pinnedParams(params, func(names **byte, nameLens *uint, values **byte, valueLens *uint, count uint) *chdb_result {
+		return chdbStreamQueryArrowWithParamsN(c.conn.internal_data, &query[0], uint(len(query)), unsafe.Pointer(options),
+			names, nameLens, values, valueLens, count)
+	})
+	runtime.KeepAlive(query)
 	runtime.KeepAlive(options)
 	if result == nil {
 		return nil, errors.New("chdb: Arrow stream init returned no result handle")

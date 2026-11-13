@@ -279,6 +279,24 @@ func main() {
 
 #### Concurrency
 
+For native per-query binding, use ClickHouse `{name:Type}` placeholders with
+`sql.Named`. Values are parsed by libchdb as the declared type, not
+interpolated into SQL:
+
+```go
+var total int64
+err := db.QueryRowContext(ctx,
+        "SELECT count() FROM events WHERE user_id = {id:Int64}",
+        sql.Named("id", int64(42))).Scan(&total)
+```
+
+This requires a libchdb that exports the parameter-binding ABI. Named and
+positional arguments cannot be mixed. The existing positional `?` path still
+uses SQL interpolation; `sql.Named` plus a typed placeholder is the secure
+binding path. Named values accept strings, bytes, numbers, booleans and
+`time.Time` (formatted in UTC); null and other Go types need explicit
+conversion. A context deadline is not a guarantee of native interruption.
+
 chDB runs a single embedded engine per process bound to one data path, but that
 engine accepts multiple connections that execute queries concurrently. The
 `database/sql` driver opens an independent native chDB connection per pooled

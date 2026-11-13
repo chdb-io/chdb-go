@@ -53,6 +53,7 @@ static int chdb_array_valid(struct ArrowArray *a) { return a->release != NULL; }
 import "C"
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"unsafe"
@@ -70,20 +71,45 @@ import (
 // released before this call returns, including on errors. This is not a
 // streaming query; use QueryReader for incrementally fetched results.
 func QueryTable(sess *chdb.Session, sql string) (table arrow.Table, err error) {
-	return queryTableOnSession(sess, sql, nil)
+	return QueryTableContext(context.Background(), sess, sql)
+}
+
+// QueryTableContext checks cancellation before and after the native query.
+// It does not interrupt a native query in progress.
+func QueryTableContext(ctx context.Context, sess *chdb.Session, sql string) (arrow.Table, error) {
+	return queryTableOnSession(ctx, sess, sql, nil)
 }
 
 // QueryTableWithOptions materializes typed Arrow results with explicit core
 // type mapping. The caller owns the returned Table and must Release it.
 func QueryTableWithOptions(sess *chdb.Session, sql string, options OutputOptions) (arrow.Table, error) {
-	return queryTableOnSession(sess, sql, options.native())
+	return QueryTableWithOptionsContext(context.Background(), sess, sql, options)
 }
 
-func queryTableOnSession(sess *chdb.Session, sql string, options *nativearrow.OutputOptions) (table arrow.Table, err error) {
+// QueryTableWithOptionsContext combines type mapping with cooperative context checks.
+func QueryTableWithOptionsContext(ctx context.Context, sess *chdb.Session, sql string, options OutputOptions) (arrow.Table, error) {
+	return queryTableOnSession(ctx, sess, sql, options.native())
+}
+
+func queryTableOnSession(ctx context.Context, sess *chdb.Session, sql string, options *nativearrow.OutputOptions) (table arrow.Table, err error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	err = sess.WithNativeArrow(func(conn nativearrow.Connection) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		table, err = queryTable(conn, sql, options)
 		return err
 	})
+	err = errors.Join(err, ctx.Err())
+	if err != nil && table != nil {
+		table.Release()
+		table = nil
+	}
 	return table, err
 }
 

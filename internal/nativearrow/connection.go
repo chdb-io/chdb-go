@@ -18,6 +18,13 @@ type Connection interface {
 	QueryBytes(sql, format string) ([]byte, error)
 	QueryArrow(sql string, outStream unsafe.Pointer, options *OutputOptions) error
 	QueryArrowStream(sql string, options *OutputOptions) (Stream, error)
+	QueryArrowStreamParams(sql string, options *OutputOptions, params []Parameter) (Stream, error)
+}
+
+// Parameter is a per-call ClickHouse {name:Type} binding. Value is parsed by
+// the engine according to the placeholder's type, not interpolated into SQL.
+type Parameter struct {
+	Name, Value string
 }
 
 // Capabilities reports exactly the Arrow symbols available in the loaded
@@ -27,6 +34,7 @@ type Capabilities struct {
 	Input         bool
 	TableOutput   bool
 	ReaderOutput  bool
+	ParamBinding  bool
 }
 
 // OutputOptions matches the three int fields of chdb_arrow_options in chdb.h.

@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/chdb-io/chdb-go/v2/chdb"
 	chdbpurego "github.com/chdb-io/chdb-go/v2/chdb-purego"
@@ -347,6 +348,16 @@ type conn struct {
 	streamFun queryStream
 }
 
+// WithArrowSession exposes this pooled connection's Session only for the
+// duration of a database/sql Conn.Raw callback. Callers must finish all Arrow
+// work inside fn and must not retain or close the Session themselves.
+func (c *conn) WithArrowSession(fn func(*chdb.Session) error) error {
+	if c.session == nil || fn == nil {
+		return fmt.Errorf("chdb: closed connection or nil Arrow callback")
+	}
+	return fn(c.session)
+}
+
 func prepareValues(values []driver.Value) []driver.NamedValue {
 	namedValues := make([]driver.NamedValue, len(values))
 	for i, value := range values {
@@ -400,12 +411,26 @@ func (c *conn) Exec(query string, values []driver.Value) (sql.Result, error) {
 }
 
 func (c *conn) ExecContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
-	compiledQuery, err := c.compileArguments(query, args)
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	params, named, err := namedParameters(args)
 	if err != nil {
 		return nil, err
 	}
-
-	result, err := c.QueryFun(compiledQuery, c.driverType.GetFormat(), c.udfPath)
+	var result chdbpurego.ChdbResult
+	if named {
+		if c.session == nil {
+			return nil, fmt.Errorf("chdb: named binding requires a session")
+		}
+		result, err = c.session.QueryParams(query, c.driverType.GetFormat(), params)
+	} else {
+		compiledQuery, compileErr := c.compileArguments(query, args)
+		if compileErr != nil {
+			return nil, compileErr
+		}
+		result, err = c.QueryFun(compiledQuery, c.driverType.GetFormat(), c.udfPath)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -453,13 +478,110 @@ func (c *conn) compileArguments(query string, args []driver.NamedValue) (string,
 	return compiledQuery, nil
 }
 
+// CheckNamedValue lets database/sql pass sql.Named values to QueryContext and
+// ExecContext without converting them to positional driver.Values first.
+func (c *conn) CheckNamedValue(value *driver.NamedValue) error {
+	if value.Name == "" {
+		return driver.ErrSkip
+	}
+	_, err := parameterValue(value.Value)
+	return err
+}
+
+func parameterValue(value any) (string, error) {
+	switch v := value.(type) {
+	case string:
+		return v, nil
+	case []byte:
+		return string(v), nil
+	case int64:
+		return strconv.FormatInt(v, 10), nil
+	case int, int8, int16, int32:
+		return fmt.Sprint(v), nil
+	case uint, uint8, uint16, uint32, uint64:
+		return fmt.Sprint(v), nil
+	case float64:
+		return strconv.FormatFloat(v, 'g', -1, 64), nil
+	case float32:
+		return strconv.FormatFloat(float64(v), 'g', -1, 32), nil
+	case bool:
+		if v {
+			return "1", nil
+		}
+		return "0", nil
+	case time.Time:
+		return v.UTC().Format("2006-01-02 15:04:05.999999999"), nil
+	default:
+		return "", fmt.Errorf("chdb: unsupported native parameter value %T", value)
+	}
+}
+
+func namedParameters(args []driver.NamedValue) ([]chdb.QueryParameter, bool, error) {
+	if len(args) == 0 {
+		return nil, false, nil
+	}
+	if args[0].Name == "" {
+		for _, arg := range args {
+			if arg.Name != "" {
+				return nil, false, fmt.Errorf("chdb: cannot mix named and positional parameters")
+			}
+		}
+		return nil, false, nil
+	}
+	params := make([]chdb.QueryParameter, len(args))
+	seen := make(map[string]bool, len(args))
+	for i, arg := range args {
+		if arg.Name == "" || !validParameterName(arg.Name) || seen[arg.Name] {
+			return nil, false, fmt.Errorf("chdb: invalid, duplicate or mixed parameter name %q", arg.Name)
+		}
+		seen[arg.Name] = true
+		value, err := parameterValue(arg.Value)
+		if err != nil {
+			return nil, false, err
+		}
+		params[i] = chdb.QueryParameter{Name: arg.Name, Value: value}
+	}
+	return params, true, nil
+}
+
+func validParameterName(name string) bool {
+	if name == "" {
+		return false
+	}
+	for i, ch := range name {
+		if ch == '_' || ch >= 'a' && ch <= 'z' || ch >= 'A' && ch <= 'Z' || i > 0 && ch >= '0' && ch <= '9' {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
 func (c *conn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
-	compiledQuery, err := c.compileArguments(query, args)
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	params, named, err := namedParameters(args)
 	if err != nil {
 		return nil, err
 	}
+	compiledQuery := query
+	if !named {
+		compiledQuery, err = c.compileArguments(query, args)
+		if err != nil {
+			return nil, err
+		}
+	}
 	if c.isStreaming {
-		result, err := c.streamFun(compiledQuery, c.driverType.GetFormat(), c.udfPath)
+		var result chdbpurego.ChdbStreamResult
+		if named {
+			if c.session == nil {
+				return nil, fmt.Errorf("chdb: named binding requires a session")
+			}
+			result, err = c.session.QueryStreamParams(query, c.driverType.GetFormat(), params)
+		} else {
+			result, err = c.streamFun(compiledQuery, c.driverType.GetFormat(), c.udfPath)
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -473,7 +595,15 @@ func (c *conn) QueryContext(ctx context.Context, query string, args []driver.Nam
 		}
 		return rows, nil
 	}
-	result, err := c.QueryFun(compiledQuery, c.driverType.GetFormat(), c.udfPath)
+	var result chdbpurego.ChdbResult
+	if named {
+		if c.session == nil {
+			return nil, fmt.Errorf("chdb: named binding requires a session")
+		}
+		result, err = c.session.QueryParams(query, c.driverType.GetFormat(), params)
+	} else {
+		result, err = c.QueryFun(compiledQuery, c.driverType.GetFormat(), c.udfPath)
+	}
 	if err != nil {
 		return nil, err
 	}

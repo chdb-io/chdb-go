@@ -87,21 +87,24 @@ var (
 	streamingResultCancel  func(conn *chdb_conn, result *chdb_streaming_result)
 
 	// new API
-	chdbConnect                func(argc int, argv []*byte) *chdb_connection
-	chdbCloseConn              func(conn *chdb_connection)
-	chdbQuery                  func(conn unsafe.Pointer, query string, format string) *chdb_result
-	chdbStreamQuery            func(conn unsafe.Pointer, query string, format string) *chdb_result
-	chdbStreamFetchResult      func(conn unsafe.Pointer, result *chdb_result) *chdb_result
-	chdbStreamCancelQuery      func(conn unsafe.Pointer, result *chdb_result)
-	chdbDestroyQueryResult     func(result *chdb_result)
-	chdbResultBuffer           func(result *chdb_result) *byte
-	chdbResultLen              func(result *chdb_result) uint    //size_t
-	chdbResultElapsed          func(result *chdb_result) float64 // double
-	chdbResultRowsRead         func(result *chdb_result) uint64
-	chdbResultBytesRead        func(result *chdb_result) uint64
-	chdbResultStorageRowsRead  func(result *chdb_result) uint64
-	chdbResultStorageBytesRead func(result *chdb_result) uint64
-	chdbResultError            func(result *chdb_result) string
+	chdbConnect                     func(argc int, argv []*byte) *chdb_connection
+	chdbCloseConn                   func(conn *chdb_connection)
+	chdbQuery                       func(conn unsafe.Pointer, query string, format string) *chdb_result
+	chdbStreamQuery                 func(conn unsafe.Pointer, query string, format string) *chdb_result
+	chdbStreamFetchResult           func(conn unsafe.Pointer, result *chdb_result) *chdb_result
+	chdbStreamCancelQuery           func(conn unsafe.Pointer, result *chdb_result)
+	chdbDestroyQueryResult          func(result *chdb_result)
+	chdbResultBuffer                func(result *chdb_result) *byte
+	chdbResultLen                   func(result *chdb_result) uint    //size_t
+	chdbResultElapsed               func(result *chdb_result) float64 // double
+	chdbResultRowsRead              func(result *chdb_result) uint64
+	chdbResultBytesRead             func(result *chdb_result) uint64
+	chdbResultStorageRowsRead       func(result *chdb_result) uint64
+	chdbResultStorageBytesRead      func(result *chdb_result) uint64
+	chdbResultError                 func(result *chdb_result) string
+	chdbStreamQueryArrowWithParamsN func(conn unsafe.Pointer, query *byte, queryLen uint, options unsafe.Pointer, names **byte, nameLens *uint, values **byte, valueLens *uint, count uint) *chdb_result
+	chdbQueryWithParamsN            func(conn unsafe.Pointer, query *byte, queryLen uint, format *byte, formatLen uint, names **byte, nameLens *uint, values **byte, valueLens *uint, count uint) *chdb_result
+	chdbStreamQueryWithParamsN      func(conn unsafe.Pointer, query *byte, queryLen uint, format *byte, formatLen uint, names **byte, nameLens *uint, values **byte, valueLens *uint, count uint) *chdb_result
 
 	// Management ABI, added in chdb-core v26.7.2-rc.2. Bound only when the
 	// loaded engine exports it; see admin.go and bindAdminSymbols.
@@ -217,6 +220,15 @@ func bindSymbols(libchdb uintptr) {
 	if has(libchdb, "chdb_stream_query_arrow_n") && has(libchdb, "chdb_stream_fetch_arrow") {
 		purego.RegisterLibFunc(&chdbStreamQueryArrowN, libchdb, "chdb_stream_query_arrow_n")
 		purego.RegisterLibFunc(&chdbStreamFetchArrow, libchdb, "chdb_stream_fetch_arrow")
+	}
+	if has(libchdb, "chdb_stream_query_arrow_with_params_n") {
+		purego.RegisterLibFunc(&chdbStreamQueryArrowWithParamsN, libchdb, "chdb_stream_query_arrow_with_params_n")
+	}
+	if has(libchdb, "chdb_query_with_params_n") {
+		purego.RegisterLibFunc(&chdbQueryWithParamsN, libchdb, "chdb_query_with_params_n")
+	}
+	if has(libchdb, "chdb_stream_query_with_params_n") {
+		purego.RegisterLibFunc(&chdbStreamQueryWithParamsN, libchdb, "chdb_stream_query_with_params_n")
 	}
 
 	// Probed rather than declared, for the same reason the admin symbols are:

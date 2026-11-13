@@ -33,6 +33,9 @@ func (c *fakeArrowConn) QueryArrow(string, unsafe.Pointer, *nativearrow.OutputOp
 func (c *fakeArrowConn) QueryArrowStream(string, *nativearrow.OutputOptions) (nativearrow.Stream, error) {
 	return nil, nil
 }
+func (c *fakeArrowConn) QueryArrowStreamParams(string, *nativearrow.OutputOptions, []nativearrow.Parameter) (nativearrow.Stream, error) {
+	return nil, nil
+}
 
 func TestWithNativeArrowKeepsConnectionUntilScopeEnds(t *testing.T) {
 	conn := &fakeArrowConn{}

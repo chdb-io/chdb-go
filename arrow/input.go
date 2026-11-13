@@ -34,7 +34,7 @@ func QueryFromReaderContext(ctx context.Context, sess *chdb.Session, reader arra
 		return nil, err
 	}
 	defer func() { err = errors.Join(err, source.Close()) }()
-	return source.Query(sql, format)
+	return source.QueryContext(ctx, sql, format)
 }
 
 // copyReader owns a reference to the caller's reader and makes each batch

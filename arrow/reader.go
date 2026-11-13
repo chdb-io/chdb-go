@@ -43,17 +43,26 @@ var _ array.RecordReader = (*ResultReader)(nil)
 // QueryReader begins a streaming typed query on sess. It holds a Session
 // resource lease until EOF or Close. It does not use Arrow IPC.
 func QueryReader(ctx context.Context, sess *chdb.Session, sql string) (*ResultReader, error) {
-	return queryReaderWithOptions(ctx, sess, sql, nil)
+	return queryReaderWithOptionsParams(ctx, sess, sql, nil, nil)
+}
+
+// QueryReaderParams streams a typed result with server-side named bindings.
+func QueryReaderParams(ctx context.Context, sess *chdb.Session, sql string, params []Parameter) (*ResultReader, error) {
+	return queryReaderWithOptionsParams(ctx, sess, sql, nil, params)
 }
 
 // QueryReaderWithOptions streams typed batches using explicit core type
 // mapping. It retains the same cooperative cancellation semantics as
 // QueryReader.
 func QueryReaderWithOptions(ctx context.Context, sess *chdb.Session, sql string, options OutputOptions) (*ResultReader, error) {
-	return queryReaderWithOptions(ctx, sess, sql, options.native())
+	return queryReaderWithOptionsParams(ctx, sess, sql, options.native(), nil)
 }
 
-func queryReaderWithOptions(ctx context.Context, sess *chdb.Session, sql string, options *nativearrow.OutputOptions) (*ResultReader, error) {
+func queryReaderWithOptionsParams(ctx context.Context, sess *chdb.Session, sql string, options *nativearrow.OutputOptions, params []Parameter) (*ResultReader, error) {
+	bindings, err := nativeParams(params)
+	if err != nil {
+		return nil, err
+	}
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -74,11 +83,23 @@ func queryReaderWithOptions(ctx context.Context, sess *chdb.Session, sql string,
 		r.mu.Unlock()
 		return nil, err
 	}
-	r.stream, err = lease.Conn.QueryArrowStream(sql, options)
+	if err = requireParamBinding(lease.Conn.Capabilities(), bindings); err != nil {
+		r.err = err
+		r.closeLocked()
+		r.mu.Unlock()
+		return nil, err
+	}
+	r.stream, err = lease.Conn.QueryArrowStreamParams(sql, options, bindings)
 	if err == nil {
 		r.schema, r.pending, r.eof, err = fetchOneBatch(r.stream, nil)
 	}
 	if err != nil {
+		r.err = err
+		r.closeLocked()
+		r.mu.Unlock()
+		return nil, err
+	}
+	if err = ctx.Err(); err != nil {
 		r.err = err
 		r.closeLocked()
 		r.mu.Unlock()
@@ -121,6 +142,14 @@ func (r *ResultReader) Next() bool {
 	var err error
 	r.schema, batch, r.eof, err = fetchOneBatch(r.stream, r.schema)
 	if err != nil {
+		r.err = err
+		r.closeLocked()
+		return false
+	}
+	if err := r.ctx.Err(); err != nil {
+		if batch != nil {
+			batch.Release()
+		}
 		r.err = err
 		r.closeLocked()
 		return false
