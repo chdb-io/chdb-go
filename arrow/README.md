@@ -86,6 +86,7 @@ Choose the API by what your program already has:
 | --- | --- | --- |
 | One input batch and formatted SQL bytes | `QueryBatch` | Release your batch |
 | A multi-batch input reader and formatted SQL bytes | `QueryFromReaderContext` | Release your reader |
+| Incremental Arrow input and incremental typed output | `QueryFromReaderBatchesContext` | Release your reader; retain/release any output batches you keep |
 | An existing table to fill | `InsertBatch` or `InsertReaderContext` | Release your input |
 | A complete typed SQL result | `QueryTable` | Release the returned table |
 | Typed results one batch at a time | `QueryReader` | Close the returned reader |
@@ -126,6 +127,31 @@ the query. The module retains/releases its own reference; the caller releases
 the reader's reference. These convenience functions close the temporary
 source and return any close error along with a query or producer error.
 
+For an incremental typed pipeline, call `QueryFromReaderBatchesContext`.
+It scans one input reader and calls your consumer once per output batch:
+
+```go
+err := chdbarrow.QueryFromReaderBatchesContext(ctx, sess, input,
+    func(source string) string { return "SELECT id FROM " + source },
+    func(batch arrow.RecordBatch) error {
+        // Process batch before returning; Retain and later Release to keep it.
+        return process(batch)
+    })
+// Handle err and release your input reader.
+```
+
+This is a synchronous call, not a lazy result reader: the source stays
+registered until the output stream is exhausted or the consumer returns an
+error, and is unregistered before the function returns. The SQL must scan it
+at most once. The consumer must not close the source or session inside its
+callback. Cancellation is cooperative between batches; it cannot interrupt
+an already-running native query, fetch, input `Next`, or consumer call. The
+consumer owns any concurrency or backpressure policy beyond this synchronous
+handoff. `Source.QueryBatchesContext` offers the same scan for a manually
+registered source; call `Source.Close` afterward and check its error. This
+interface does not promise an end-to-end memory bound inside the native SQL
+engine, whose query plan may need to buffer data (for example, a global sort).
+
 If you need to manage that lifetime yourself, `RegisterBatch` or
 `RegisterReaderContext` returns a `Source`. Use `source.Query` for formatted
 bytes or `source.QueryTable` for typed output, then **call `source.Close()` and
@@ -158,8 +184,8 @@ checks the stored count and sum.
 `QueryTable(sess, sql)` returns an `arrow.Table` containing the complete
 result. Always call `table.Release()` when finished. The native query handle
 and stream are released before `QueryTable` returns, including on errors.
-For a large result, use `QueryReader(ctx, sess, sql)` to fetch batches
-incrementally instead:
+For a large result without a temporary Arrow input source, use
+`QueryReader(ctx, sess, sql)` to fetch batches incrementally instead:
 
 ```go
 reader, err := chdbarrow.QueryReader(ctx, sess,

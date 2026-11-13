@@ -61,6 +61,27 @@ func TestQueryBatchWithCore(t *testing.T) {
 	if string(got) != "7\t2\t1\n" {
 		t.Fatalf("unexpected query output: %q", got)
 	}
+	streamInput, err := array.NewRecordReader(schema, []arrow.RecordBatch{rec})
+	if err != nil {
+		t.Fatal(err)
+	}
+	streamedRows := 0
+	err = QueryFromReaderBatchesContext(context.Background(), sess, streamInput,
+		func(expr string) string { return "SELECT id FROM " + expr + " WHERE id IS NOT NULL" },
+		func(batch arrow.RecordBatch) error {
+			ids := batch.Column(0).(*array.Int64)
+			for i := 0; i < ids.Len(); i++ {
+				if ids.Value(i) != 7 {
+					t.Fatalf("unexpected streamed id: %d", ids.Value(i))
+				}
+				streamedRows++
+			}
+			return nil
+		})
+	streamInput.Release()
+	if err != nil || streamedRows != 1 {
+		t.Fatalf("streamed Arrow query rows=%d err=%v", streamedRows, err)
+	}
 	primitiveSchema := arrow.NewSchema([]arrow.Field{
 		{Name: "i32", Type: arrow.PrimitiveTypes.Int32},
 		{Name: "f64", Type: arrow.PrimitiveTypes.Float64},

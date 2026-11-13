@@ -27,14 +27,14 @@ var (
 	ErrSourceConsumed = errors.New("chdbarrow: Arrow reader can only be scanned once")
 )
 
-// Source is a one-shot, in-memory SQL source registered on one Session. Query
-// is the only supported way to scan it: the generated name is process-wide in
-// core, but this module can only track queries made through this Source. Close
-// waits for an active native query, unregisters, then releases the borrowed C
+// Source is a one-shot, in-memory SQL source registered on one Session. Its
+// query methods are the only supported way to scan it: the generated name is
+// process-wide in core, but this module can only track queries made through
+// this Source. Close waits for an active native query, unregisters, then releases the borrowed C
 // Stream. If Close happens while the SQL builder is running, the query is not
 // started and returns ErrSourceClosed.
 // Session.Close also closes any live Sources. Callers must not use an expression
-// captured from Query's callback in another connection or after Query returns.
+// captured from a query builder in another connection or after its query returns.
 type Source struct {
 	mu       sync.Mutex
 	lease    *nativearrow.Lease
@@ -131,6 +131,7 @@ func RegisterReaderContext(ctx context.Context, sess *chdb.Session, reader array
 // Query executes exactly one synchronous SQL statement that scans this source
 // at most once. build receives an arrowstream('...') expression valid only for
 // this call. This method does not support an asynchronous/lazy result; use
+// QueryBatchesContext for incremental typed output from this source, or
 // QueryReader separately for queries without a Source dependency.
 func (s *Source) Query(build func(source string) string, format string) ([]byte, error) {
 	if format == "" {
