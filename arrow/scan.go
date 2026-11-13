@@ -21,6 +21,12 @@ import (
 // Cancellation is checked at batch boundaries, not during a blocked native
 // query, fetch, input Next, or consume call.
 func QueryFromReaderBatchesContext(ctx context.Context, sess *chdb.Session, reader array.RecordReader, build func(string) string, consume func(arrow.RecordBatch) error) (err error) {
+	return QueryFromReaderBatchesParamsContext(ctx, sess, reader, build, nil, consume)
+}
+
+// QueryFromReaderBatchesParamsContext is QueryFromReaderBatchesContext with
+// per-call, server-side named parameters for {name:Type} SQL placeholders.
+func QueryFromReaderBatchesParamsContext(ctx context.Context, sess *chdb.Session, reader array.RecordReader, build func(string) string, params []Parameter, consume func(arrow.RecordBatch) error) (err error) {
 	if reader == nil || build == nil || consume == nil {
 		return errors.New("chdbarrow: nil reader, query builder or batch consumer")
 	}
@@ -29,7 +35,7 @@ func QueryFromReaderBatchesContext(ctx context.Context, sess *chdb.Session, read
 		return err
 	}
 	defer func() { err = errors.Join(err, source.Close()) }()
-	return source.QueryBatchesContext(ctx, build, consume)
+	return source.QueryBatchesParamsContext(ctx, build, params, consume)
 }
 
 // QueryBatchesContext executes one synchronous query over this one-shot source
@@ -39,8 +45,18 @@ func QueryFromReaderBatchesContext(ctx context.Context, sess *chdb.Session, read
 // An error from consume stops the scan and cancels the native result handle.
 // Batches are borrowed until consume returns; Retain/Release to keep one.
 func (s *Source) QueryBatchesContext(ctx context.Context, build func(string) string, consume func(arrow.RecordBatch) error) error {
+	return s.QueryBatchesParamsContext(ctx, build, nil, consume)
+}
+
+// QueryBatchesParamsContext binds values through the native engine, never by
+// SQL interpolation. The same one-shot source and callback lifetime apply.
+func (s *Source) QueryBatchesParamsContext(ctx context.Context, build func(string) string, params []Parameter, consume func(arrow.RecordBatch) error) error {
 	if consume == nil {
 		return errors.New("chdbarrow: nil batch consumer")
+	}
+	bindings, err := nativeParams(params)
+	if err != nil {
+		return err
 	}
 	if ctx == nil {
 		ctx = context.Background()
@@ -49,10 +65,14 @@ func (s *Source) QueryBatchesContext(ctx context.Context, build func(string) str
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		if err := requireArrowEngine(conn.Capabilities(), true, false, true); err != nil {
+		capabilities := conn.Capabilities()
+		if err := requireArrowEngine(capabilities, true, false, true); err != nil {
 			return err
 		}
-		stream, err := conn.QueryArrowStream(query, nil)
+		if err := requireParamBinding(capabilities, bindings); err != nil {
+			return err
+		}
+		stream, err := conn.QueryArrowStreamParams(query, nil, bindings)
 		if err != nil {
 			return err
 		}

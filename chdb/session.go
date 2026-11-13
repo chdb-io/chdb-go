@@ -188,6 +188,60 @@ func (s *Session) Query(queryStr string, outputFormats ...string) (result chdbpu
 	return s.conn.Query(queryStr, outputFormat)
 }
 
+// QueryParameter binds a ClickHouse {name:Type} placeholder for one call.
+// Value is parsed as Type by libchdb; it is not interpolated into SQL.
+type QueryParameter struct {
+	Name, Value string
+}
+
+func nativeQueryParams(params []QueryParameter) []nativearrow.Parameter {
+	out := make([]nativearrow.Parameter, len(params))
+	for i, p := range params {
+		out[i] = nativearrow.Parameter{Name: p.Name, Value: p.Value}
+	}
+	return out
+}
+
+// QueryParams executes a formatted query with per-call server-side bindings.
+// An older engine without the binding ABI returns an error rather than
+// interpolating values into SQL.
+func (s *Session) QueryParams(query, format string, params []QueryParameter) (chdbpurego.ChdbResult, error) {
+	if s == nil {
+		return nil, fmt.Errorf("chdb: nil session")
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.closed || s.conn == nil {
+		return nil, fmt.Errorf("chdb: query on a closed session")
+	}
+	c, ok := s.conn.(interface {
+		QueryWithParams(string, string, []nativearrow.Parameter) (chdbpurego.ChdbResult, error)
+	})
+	if !ok {
+		return nil, fmt.Errorf("chdb: native parameter binding unavailable")
+	}
+	return c.QueryWithParams(query, format, nativeQueryParams(params))
+}
+
+// QueryStreamParams is the streaming counterpart of QueryParams.
+func (s *Session) QueryStreamParams(query, format string, params []QueryParameter) (chdbpurego.ChdbStreamResult, error) {
+	if s == nil {
+		return nil, fmt.Errorf("chdb: nil session")
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.closed || s.conn == nil {
+		return nil, fmt.Errorf("chdb: query on a closed session")
+	}
+	c, ok := s.conn.(interface {
+		QueryStreamingWithParams(string, string, []nativearrow.Parameter) (chdbpurego.ChdbStreamResult, error)
+	})
+	if !ok {
+		return nil, fmt.Errorf("chdb: native parameter binding unavailable")
+	}
+	return c.QueryStreamingWithParams(query, format, nativeQueryParams(params))
+}
+
 // QueryStream calls `query_conn` function with the current connection and a default output format of "CSV" if not provided.
 // The result is a stream of data that can be read in chunks.
 // This is useful for large datasets that cannot be loaded into memory all at once.

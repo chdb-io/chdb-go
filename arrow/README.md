@@ -152,6 +152,24 @@ registered source; call `Source.Close` afterward and check its error. This
 interface does not promise an end-to-end memory bound inside the native SQL
 engine, whose query plan may need to buffer data (for example, a global sort).
 
+For ClickHouse `{name:Type}` placeholders, use `Parameter{Name: "name",
+Value: "..."}` with `QueryReaderParams` or
+`QueryFromReaderBatchesParamsContext`. The native engine parses each value as
+the type declared in SQL; values are not inserted into the SQL string.
+Parameters apply to one query only, and require an engine with the streaming
+Arrow parameter ABI (`GetCapabilities(sess).ParamBinding`). Positional `?`
+arguments in the existing `database/sql` driver are a separate interpolation
+path, not this native binding path.
+
+For applications already using `database/sql`, obtain a `*sql.Conn` with
+`db.Conn(ctx)` and call `QueryFromReaderBatchesSQLContext` with the same
+reader, query builder, parameters, and consumer. It runs the entire scan
+inside that connection's `Raw` scope, releasing the Arrow source and result
+before returning the connection to the pool. Import `chdb/driver` to register
+the SQL driver. Do not retain the underlying session or run the callback
+asynchronously. This interface is intentionally synchronous; a lazy Arrow
+reader cannot safely outlive `sql.Conn.Raw`.
+
 `Source.QueryContext`, `Source.QueryTableContext`,
 `Source.QueryTableWithOptionsContext`, `QueryTableContext`, and
 `QueryTableWithOptionsContext` check their context before and after the native

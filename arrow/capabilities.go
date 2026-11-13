@@ -17,6 +17,7 @@ type Capabilities struct {
 	Input              bool
 	TableOutput        bool
 	ReaderOutput       bool
+	ParamBinding       bool
 }
 
 func GetCapabilities(sess *chdb.Session) (Capabilities, error) {
@@ -29,6 +30,7 @@ func GetCapabilities(sess *chdb.Session) (Capabilities, error) {
 			Input:              c.Input,
 			TableOutput:        c.TableOutput,
 			ReaderOutput:       c.ReaderOutput,
+			ParamBinding:       c.ParamBinding,
 		}
 		return nil
 	})
