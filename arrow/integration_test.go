@@ -59,7 +59,7 @@ func TestQueryBatchWithCore(t *testing.T) {
 	ids := b.Field(0).(*array.Int64Builder)
 	labels := b.Field(1).(*array.StringBuilder)
 	ids.Append(7)
-	labels.Append("héllo café")
+	labels.Append("héllo 中文")
 	ids.AppendNull()
 	labels.AppendNull()
 	rec := b.NewRecordBatch()
@@ -273,7 +273,7 @@ func TestQueryBatchWithCore(t *testing.T) {
 		t.Fatalf("typed result changed after source Close: %d", got)
 	}
 	labelsOut := typedFromSource.Column(1).Data().Chunk(0).(*array.String)
-	if labelsOut.Value(0) != "héllo café" || !labelsOut.IsNull(1) {
+	if labelsOut.Value(0) != "héllo 中文" || !labelsOut.IsNull(1) {
 		typedFromSource.Release()
 		t.Fatal("typed UTF-8 or null bitmap changed after source Close")
 	}
