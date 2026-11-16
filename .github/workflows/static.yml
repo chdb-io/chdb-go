@@ -104,6 +104,7 @@ jobs:
           go test -race -tags chdb_static -timeout=180s ./...
           CHDB_STATIC_DIR="$RUNNER_TEMP/chdb-static" bash .github/scripts/verify-static-as-user.sh
           go work init . ./arrow
+          export CHDB_ARROW_TEST_STATIC=1
           (cd arrow && go vet -tags chdb_static ./...)
           (cd arrow && GOEXPERIMENT=cgocheck2 GODEBUG=cgocheck=1 go test -count=5 -tags chdb_static -timeout=180s ./...)
           (cd arrow && go test -race -tags chdb_static -timeout=180s ./...)
