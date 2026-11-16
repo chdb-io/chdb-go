@@ -6,11 +6,25 @@ as typed Arrow data. Input and output use the Arrow C Data interface, not an
 Arrow IPC file. No end-to-end zero-copy guarantee is made: input buffers are
 copied into native-owned memory before the engine reads them.
 
+Arrow C Data passes in-memory column buffers and release callbacks between libraries; Arrow Inter-Process Communication (IPC) encodes data as a byte stream or file. A typed Arrow result preserves the Arrow schema and column types instead of returning formatted text.
+
 The ordinary `github.com/chdb-io/chdb-go/v2` module remains Go 1.21 and
 cgo-free. Only programs importing `github.com/chdb-io/chdb-go/v2/arrow` take
 on the Arrow Go and cgo requirements. These are two independently versioned
 Go modules in the same repository; a version of the main module is not an
 Arrow module version.
+
+## Arrow documentation in this Go binding
+
+| What you need | Where to look |
+| --- | --- |
+| Install the optional module and compatible engine | [Install and run](#install-and-run) below |
+| Query an Arrow batch or one-shot reader as an in-memory SQL source | [Query an Arrow batch in memory](#query-an-arrow-batch-in-memory) and the reader / synchronous pipeline examples below |
+| Return a typed table or fetch typed batches; bulk-insert into a table | [Read typed SQL results](#read-typed-sql-results), [Insert batches](#insert-batches-into-an-existing-table), and the [runnable quickstart](examples/quickstart/main.go) |
+| Choose between this module and Arrow Database Connectivity (ADBC) | ADBC is a separate standard driver-manager API for results and bulk ingest. Use this module for a `RecordBatch` / `RecordReader` as a temporary SQL `FROM` source; general ADBC `BindStream` binds query parameters instead. |
+| Check lifecycle, cancellation, types, and native behavior | This guide's ownership notes; [integration tests](integration_test.go), [source tests](source_test.go), [reader tests](reader_test.go), and the [core contract](https://github.com/chdb-io/chdb-core/blob/main/docs/NATIVE_ARROW_BINDING_CONTRACT.md) |
+
+The root package's `chdb-purego/arrow.go` concerns formatted Arrow output bytes, not this optional module's typed direct input/output API. This page is the entry point; keep detailed examples and tests next to the implementation.
 
 ## Install and run
 
