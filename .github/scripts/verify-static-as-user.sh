@@ -60,7 +60,9 @@ export CGO_ENABLED=1
 export CGO_CFLAGS="-DCHDB_STATIC_HEADER=\"$CHDB_STATIC_DIR/chdb.h\""
 case "$(uname -s)-$(uname -m)" in
   Darwin-arm64|Darwin-x86_64) export CGO_LDFLAGS="-Wl,-force_load,$CHDB_STATIC_DIR/libchdb.a" ;;
-  Linux-x86_64|Linux-aarch64) export CGO_LDFLAGS="-Wl,--whole-archive $CHDB_STATIC_DIR/libchdb.a -Wl,--no-whole-archive" ;;
+  Linux-x86_64|Linux-aarch64)
+    export CGO_LDFLAGS_ALLOW='-Wl,(--whole-archive|--no-whole-archive)|-l:libchdb[.]a'
+    export CGO_LDFLAGS="-L$CHDB_STATIC_DIR" ;;
   *) echo 'unsupported static consumer platform' >&2; exit 2 ;;
 esac
 ulimit -c 0

@@ -8,7 +8,11 @@ package chdbpurego
 
 /*
 #cgo darwin LDFLAGS: -liconv -framework CoreFoundation -framework Security
-#cgo linux LDFLAGS: -lc -lm -lrt -lpthread -ldl
+// Keep the archive reference in this one cgo package. CGO_LDFLAGS is
+// aggregated for every cgo package in the executable; putting whole-archive
+// there loads libchdb.a several times and produces duplicate definitions.
+// -l: names the .a exactly, even if a shared library is on another search path.
+#cgo linux LDFLAGS: -Wl,--whole-archive -l:libchdb.a -Wl,--no-whole-archive -lc -lm -lrt -lpthread -ldl
 #include <stdlib.h>
 #ifndef CHDB_STATIC_HEADER
 #error "chdb_static requires CGO_CFLAGS to define CHDB_STATIC_HEADER as the archive's matching chdb.h path"
