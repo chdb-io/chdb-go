@@ -21,15 +21,23 @@ import (
 )
 
 // Opt in only with a finished, matching core build that includes the Arrow
-// registration ownership fixes. Never run this against an in-progress build.
+// registration ownership fixes. Dynamic tests select a library file; static
+// tests use the engine already linked into the executable and must not set
+// CHDB_LIB_PATH. Never run this against an in-progress build.
 func TestQueryBatchWithCore(t *testing.T) {
 	path := os.Getenv("CHDB_ARROW_TEST_LIB")
-	if path == "" {
+	static := os.Getenv("CHDB_ARROW_TEST_STATIC") == "1"
+	if static && path != "" {
+		t.Fatal("CHDB_ARROW_TEST_STATIC and CHDB_ARROW_TEST_LIB cannot be combined")
+	}
+	if !static && path == "" {
 		t.Skip("set CHDB_ARROW_TEST_LIB to a finished PR #323-compatible libchdb")
 	}
-	t.Setenv("CHDB_LIB_PATH", path)
+	if !static {
+		t.Setenv("CHDB_LIB_PATH", path)
+	}
 	if version, err := chdb.EngineVersion(); err == nil {
-		t.Logf("libchdb version: %s", version)
+		t.Logf("chdb engine version: %s", version)
 	}
 	sess, err := chdb.NewSession(":memory:")
 	if err != nil {

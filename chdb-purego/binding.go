@@ -1,6 +1,7 @@
 package chdbpurego
 
 import (
+	"errors"
 	"sync"
 	"syscall"
 	"unsafe"
@@ -136,6 +137,9 @@ var (
 	loadOnce   sync.Once
 	loadedPath string
 	loadErr    error
+	// Set only by the chdb_static build. Keeping the selection here leaves
+	// the connection and result implementation shared by both native adapters.
+	staticBindings func() error
 )
 
 // ensureLoaded resolves and loads libchdb, binding its symbols, at most once
@@ -147,6 +151,13 @@ var (
 // engine — the process is dead before main runs.
 func ensureLoaded() error {
 	loadOnce.Do(func() {
+		if staticBindings != nil {
+			loadErr = staticBindings()
+			if loadErr == nil {
+				engineLoaded.Store(true)
+			}
+			return
+		}
 		handle, path, err := openLibrary()
 		if err != nil {
 			loadErr = err
@@ -169,13 +180,21 @@ func ensureLoaded() error {
 //
 // The path is absolute for every location this package resolves itself. It is a
 // bare library name in the one case where the dynamic loader was asked to find
-// the library instead, since what it settled on is not reported back.
+// the library instead, since what it settled on is not reported back. With
+// chdb_static there is no loaded file, so it returns ErrStaticallyLinked.
 func LoadedLibraryPath() (string, error) {
+	if staticBindings != nil {
+		return "", ErrStaticallyLinked
+	}
 	if err := ensureLoaded(); err != nil {
 		return "", err
 	}
 	return loadedPath, nil
 }
+
+// ErrStaticallyLinked means the selected build has no libchdb file to load
+// at runtime. The engine is part of the executable instead.
+var ErrStaticallyLinked = errors.New("chdb: libchdb is statically linked; there is no loaded library path")
 
 func bindSymbols(libchdb uintptr) {
 	purego.RegisterLibFunc(&queryStable, libchdb, "query_stable")

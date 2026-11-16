@@ -55,6 +55,13 @@ that do not import it remain cgo-free; programs that do need Go 1.23+, cgo,
 and a chdb-core engine with the Arrow C ABI. See the [Arrow module guide](arrow/README.md)
 for installation, supported usage, and resource lifetimes.
 
+### Experimental static engine build
+
+An opt-in `chdb_static` + cgo build can link `libchdb.a` into the executable
+instead of looking for a dynamic engine at runtime. Ordinary builds remain
+purego-based. See the [static linking guide](docs/static-linking.md) for the
+verified platforms, build inputs, and system-library limitations.
+
 ### Where the engine is loaded from
 
 `chdb-go` opens `libchdb` at runtime. It is looked up in this order:

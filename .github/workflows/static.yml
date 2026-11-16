@@ -1,0 +1,134 @@
+name: Optional static chDB engine
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'chdb-purego/**'
+      - 'chdb/**'
+      - 'arrow/**'
+      - 'chdb.h'
+      - '.github/scripts/verify-static-as-user.sh'
+      - '.github/testdata/static-consumer.go'
+      - 'docs/static-linking.md'
+      - '.github/workflows/static.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'chdb-purego/**'
+      - 'chdb/**'
+      - 'arrow/**'
+      - 'chdb.h'
+      - '.github/scripts/verify-static-as-user.sh'
+      - '.github/testdata/static-consumer.go'
+      - 'docs/static-linking.md'
+      - '.github/workflows/static.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  static:
+    strategy:
+      fail-fast: false
+      # macos-15 is the existing arm64 runner in chdb.yml; macos-15-intel
+      # is its current Intel counterpart. Do not use retired macos-13/14.
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            asset: linux-x86_64-libchdb-static.tar.gz
+            sha256: c6cf61c01c7e98b6ae6d14d8c7d68470db8b03655298f9467ae7b2ab14f42591
+            arch: x86_64
+          - os: ubuntu-22.04-arm
+            asset: linux-aarch64-libchdb-static.tar.gz
+            sha256: 46cfbb553c1b10129f9794684e1c3b555522bc95910cc72c8ce0923c1ebd10f0
+            arch: aarch64
+          - os: macos-15
+            asset: macos-arm64-libchdb-static.tar.gz
+            sha256: 6874980084ceb5f726a1495b93f0af9d2ca50b56dc6680aa593a23b4422b6cc0
+            arch: arm64
+          - os: macos-15-intel
+            asset: macos-x86_64-libchdb-static.tar.gz
+            sha256: d1d6063fb24a51a6a043f623b8fe18787e74e6937e22ffd2d0f9dcf1e0000a37
+            arch: x86_64
+    runs-on: ${{ matrix.os }}
+    env:
+      CHDB_CORE_TAG: v26.11.1
+      CHDB_REQUIRE_DURABLE_ABI: '1'
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.2'
+      - name: Download and authenticate static release
+        env:
+          ASSET: ${{ matrix.asset }}
+          EXPECTED_SHA256: ${{ matrix.sha256 }}
+          EXPECTED_ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = "$EXPECTED_ARCH"
+          mkdir -p "$RUNNER_TEMP/chdb-static"
+          gh release download "$CHDB_CORE_TAG" -R chdb-io/chdb-core -p "$ASSET" -D "$RUNNER_TEMP/chdb-static"
+          cd "$RUNNER_TEMP/chdb-static"
+          if [ "$RUNNER_OS" = macOS ]; then
+            actual=$(shasum -a 256 "$ASSET" | cut -d ' ' -f 1)
+          else
+            actual=$(sha256sum "$ASSET" | cut -d ' ' -f 1)
+          fi
+          test "$actual" = "$EXPECTED_SHA256"
+          tar -xzf "$ASSET"
+          test -s libchdb.a
+          test -s chdb.h
+          grep -Fq '#define CHDB_VERSION "26.11.1"' chdb.h
+      - name: Build, exercise and audit the static executable
+        run: |
+          set -euo pipefail
+          ulimit -c 0
+          export CGO_ENABLED=1
+          export CGO_CFLAGS="-DCHDB_STATIC_HEADER=\"$RUNNER_TEMP/chdb-static/chdb.h\""
+          if [ "$RUNNER_OS" = macOS ]; then
+            export CGO_LDFLAGS="-Wl,-force_load,$RUNNER_TEMP/chdb-static/libchdb.a"
+          else
+            export CGO_LDFLAGS_ALLOW='-Wl,(--whole-archive|--no-whole-archive)|-l:libchdb[.]a'
+            export CGO_LDFLAGS="-L$RUNNER_TEMP/chdb-static"
+          fi
+          go build -trimpath -tags chdb_static -o "$RUNNER_TEMP/chdb-static/chdb-go-static" .
+          if LC_ALL=C grep -a -q -F "$RUNNER_TEMP/chdb-static" "$RUNNER_TEMP/chdb-static/chdb-go-static"; then
+            echo 'static binary contains the archive location from the builder' >&2
+            exit 1
+          fi
+          GOEXPERIMENT=cgocheck2 go test -tags chdb_static -timeout=180s ./...
+          go test -race -tags chdb_static -timeout=180s ./...
+          CHDB_STATIC_DIR="$RUNNER_TEMP/chdb-static" bash .github/scripts/verify-static-as-user.sh
+          go work init . ./arrow
+          export CHDB_ARROW_TEST_STATIC=1
+          (cd arrow && go vet -tags chdb_static ./...)
+          (cd arrow && GOEXPERIMENT=cgocheck2 GODEBUG=cgocheck=1 go test -count=5 -tags chdb_static -timeout=180s ./...)
+          (cd arrow && go test -race -tags chdb_static -timeout=180s ./...)
+          env -u CHDB_LIB_PATH "$RUNNER_TEMP/chdb-static/chdb-go-static" 'SELECT 42' CSV | grep -qx 42
+          if [ "$RUNNER_OS" = macOS ]; then
+            otool -L "$RUNNER_TEMP/chdb-static/chdb-go-static" | tee "$RUNNER_TEMP/chdb-static/dependencies.txt"
+            if grep -E 'libchdb\.(so|dylib)' "$RUNNER_TEMP/chdb-static/dependencies.txt"; then exit 1; fi
+          else
+            readelf -d "$RUNNER_TEMP/chdb-static/chdb-go-static" | tee "$RUNNER_TEMP/chdb-static/dependencies.txt"
+            readelf -V "$RUNNER_TEMP/chdb-static/chdb-go-static" > "$RUNNER_TEMP/chdb-static/symbol-versions.txt"
+            if grep -E '\(NEEDED\).*libchdb\.so' "$RUNNER_TEMP/chdb-static/dependencies.txt"; then exit 1; fi
+            # Run the same binary, without recompiling or installing libchdb,
+            # on the selected baseline and a newer glibc userland.
+            for image in ubuntu:22.04 ubuntu:24.04; do
+              docker run --rm -v "$RUNNER_TEMP/chdb-static:/chdb:ro" "$image" \
+                /chdb/chdb-go-static 'SELECT 42' CSV | grep -qx 42
+            done
+          fi
+      - name: Keep dependency report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: static-dependencies-${{ matrix.os }}
+          path: |
+            ${{ runner.temp }}/chdb-static/dependencies.txt
+            ${{ runner.temp }}/chdb-static/symbol-versions.txt
+          if-no-files-found: ignore
