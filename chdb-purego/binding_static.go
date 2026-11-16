@@ -2,7 +2,7 @@
 
 package chdbpurego
 
-// The static adapter targets the complete v26.11.0-rc.3 C ABI. Unlike the
+// The static adapter targets the complete v26.11.1 C ABI. Unlike the
 // dynamic adapter it cannot safely mix optional symbols from another loaded
 // engine; an older archive fails at link time instead.
 

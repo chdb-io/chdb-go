@@ -38,23 +38,23 @@ jobs:
         include:
           - os: ubuntu-22.04
             asset: linux-x86_64-libchdb-static.tar.gz
-            sha256: c3edc9a0d0ed5df62136b9fb642f40c7f56802eaa5bc1c9b499ecd916f1fd524
+            sha256: c6cf61c01c7e98b6ae6d14d8c7d68470db8b03655298f9467ae7b2ab14f42591
             arch: x86_64
           - os: ubuntu-22.04-arm
             asset: linux-aarch64-libchdb-static.tar.gz
-            sha256: 5d874ec81a96715830db2439ac824f0219fc9fbf348b88eefdbec58b8d5b2a96
+            sha256: 46cfbb553c1b10129f9794684e1c3b555522bc95910cc72c8ce0923c1ebd10f0
             arch: aarch64
           - os: macos-15
             asset: macos-arm64-libchdb-static.tar.gz
-            sha256: 20e215f2d7e9ea1dc98bae47d61dc13bcf76fc19ca86ed05b410410e91f3c047
+            sha256: 6874980084ceb5f726a1495b93f0af9d2ca50b56dc6680aa593a23b4422b6cc0
             arch: arm64
           - os: macos-15-intel
             asset: macos-x86_64-libchdb-static.tar.gz
-            sha256: f70e8ce130e0625cd75906fa8593a9c3b03014864a7d7e61ce7e2a07ec901a53
+            sha256: d1d6063fb24a51a6a043f623b8fe18787e74e6937e22ffd2d0f9dcf1e0000a37
             arch: x86_64
     runs-on: ${{ matrix.os }}
     env:
-      CHDB_CORE_TAG: v26.11.0-rc.3
+      CHDB_CORE_TAG: v26.11.1
       CHDB_REQUIRE_DURABLE_ABI: '1'
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -82,7 +82,7 @@ jobs:
           tar -xzf "$ASSET"
           test -s libchdb.a
           test -s chdb.h
-          grep -Fq '#define CHDB_VERSION "26.11.0-rc.3"' chdb.h
+          grep -Fq '#define CHDB_VERSION "26.11.1"' chdb.h
       - name: Build, exercise and audit the static executable
         run: |
           set -euo pipefail

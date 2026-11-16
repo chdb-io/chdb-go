@@ -51,7 +51,7 @@ func TestWALSegmentRoundTrip(t *testing.T) {
 func TestWALLineBytesAgreesWithTheEncoder(t *testing.T) {
 	statements := []string{
 		"INSERT INTO t VALUES (1)",
-		"INSERT INTO t VALUES ('unicode: 数据库')",
+		"INSERT INTO t VALUES ('unicode: café Ω')",
 		"INSERT INTO t VALUES ('a\nb')",
 	}
 	var budget int64
