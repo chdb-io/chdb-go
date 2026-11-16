@@ -1,6 +1,7 @@
 package chdbpurego
 
 import (
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -180,6 +181,12 @@ func TestLibPathEnvOverrideIsTerminal(t *testing.T) {
 // confirm which engine a binary resolved.
 func TestLoadedLibraryPathIsReportable(t *testing.T) {
 	path, err := LoadedLibraryPath()
+	if staticBindings != nil {
+		if path != "" || !errors.Is(err, ErrStaticallyLinked) {
+			t.Fatalf("static engine reported a runtime library path %q, error %v", path, err)
+		}
+		return
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
