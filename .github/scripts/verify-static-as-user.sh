@@ -66,7 +66,7 @@ case "$(uname -s)-$(uname -m)" in
   *) echo 'unsupported static consumer platform' >&2; exit 2 ;;
 esac
 ulimit -c 0
-go build -trimpath -tags chdb_static -o consumer .
+go build -trimpath -tags chdb_static,chdb_static_manual -o consumer .
 for path in "$root" "$consumer" "$CHDB_STATIC_DIR"; do
   if LC_ALL=C grep -a -q -F "$path" consumer; then
     echo "static consumer contains build path: $path" >&2

@@ -95,19 +95,19 @@ jobs:
             export CGO_LDFLAGS_ALLOW='-Wl,(--whole-archive|--no-whole-archive)|-l:libchdb[.]a'
             export CGO_LDFLAGS="-L$RUNNER_TEMP/chdb-static"
           fi
-          go build -trimpath -tags chdb_static -o "$RUNNER_TEMP/chdb-static/chdb-go-static" .
+          go build -trimpath -tags chdb_static,chdb_static_manual -o "$RUNNER_TEMP/chdb-static/chdb-go-static" .
           if LC_ALL=C grep -a -q -F "$RUNNER_TEMP/chdb-static" "$RUNNER_TEMP/chdb-static/chdb-go-static"; then
             echo 'static binary contains the archive location from the builder' >&2
             exit 1
           fi
-          GOEXPERIMENT=cgocheck2 go test -tags chdb_static -timeout=180s ./...
-          go test -race -tags chdb_static -timeout=180s ./...
+          GOEXPERIMENT=cgocheck2 go test -tags chdb_static,chdb_static_manual -timeout=180s ./...
+          go test -race -tags chdb_static,chdb_static_manual -timeout=180s ./...
           CHDB_STATIC_DIR="$RUNNER_TEMP/chdb-static" bash .github/scripts/verify-static-as-user.sh
           go work init . ./arrow
           export CHDB_ARROW_TEST_STATIC=1
-          (cd arrow && go vet -tags chdb_static ./...)
-          (cd arrow && GOEXPERIMENT=cgocheck2 GODEBUG=cgocheck=1 go test -count=5 -tags chdb_static -timeout=180s ./...)
-          (cd arrow && go test -race -tags chdb_static -timeout=180s ./...)
+          (cd arrow && go vet -tags chdb_static,chdb_static_manual ./...)
+          (cd arrow && GOEXPERIMENT=cgocheck2 GODEBUG=cgocheck=1 go test -count=5 -tags chdb_static,chdb_static_manual -timeout=180s ./...)
+          (cd arrow && go test -race -tags chdb_static,chdb_static_manual -timeout=180s ./...)
           env -u CHDB_LIB_PATH "$RUNNER_TEMP/chdb-static/chdb-go-static" 'SELECT 42' CSV | grep -qx 42
           if [ "$RUNNER_OS" = macOS ]; then
             otool -L "$RUNNER_TEMP/chdb-static/chdb-go-static" | tee "$RUNNER_TEMP/chdb-static/dependencies.txt"

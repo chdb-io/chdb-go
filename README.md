@@ -62,6 +62,10 @@ instead of looking for a dynamic engine at runtime. Ordinary builds remain
 purego-based. See the [static linking guide](docs/static-linking.md) for the
 verified platforms, build inputs, and system-library limitations.
 
+Native Go module packaging and Vercel Blob publication/discovery staging are
+available, but no opt-in static module is published yet. See the
+[module staging and publication guide](docs/static-module-publishing.md).
+
 ### Where the engine is loaded from
 
 `chdb-go` opens `libchdb` at runtime. It is looked up in this order:

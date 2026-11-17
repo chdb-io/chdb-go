@@ -1,0 +1,152 @@
+name: Static engine Go modules (no publication)
+
+on:
+  pull_request:
+    paths:
+      - 'internal/staticbundle/**'
+      - 'internal/enginetag/**'
+      - 'scripts/staticbundle/**'
+      - 'chdb-purego/**'
+      - 'chdb/**'
+      - 'arrow/**'
+      - 'static-release.json'
+      - 'static-publication.json'
+      - 'go.mod'
+      - 'go.sum'
+      - 'deploy/module-origin/**'
+      - 'deploy/vercel-modules/**'
+      - '.github/workflows/static-modules.yml'
+  push:
+    branches: [main, 'codex/static-modules-*']
+    paths:
+      - 'internal/staticbundle/**'
+      - 'internal/enginetag/**'
+      - 'scripts/staticbundle/**'
+      - 'chdb-purego/**'
+      - 'chdb/**'
+      - 'arrow/**'
+      - 'static-release.json'
+      - 'static-publication.json'
+      - 'go.mod'
+      - 'go.sum'
+      - 'deploy/module-origin/**'
+      - 'deploy/vercel-modules/**'
+      - '.github/workflows/static-modules.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.2'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: go test -race ./internal/staticbundle ./internal/enginetag ./scripts/staticbundle
+      - run: node --test deploy/module-origin/worker.test.mjs
+
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            platform: linux-amd64
+          - os: ubuntu-22.04-arm
+            platform: linux-arm64
+          - os: macos-15
+            platform: darwin-arm64
+          - os: macos-15-intel
+            platform: darwin-amd64
+    runs-on: ${{ matrix.os }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.2'
+      - name: Fetch the pinned release (packager authenticates its SHA-256)
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          set -euo pipefail
+          engine=$(jq -r .engine static-release.json)
+          asset=$(jq -r --arg p "$PLATFORM" '.platforms[$p].asset' static-release.json)
+          gh release download "$engine" -R chdb-io/chdb-core -p "$asset" -D "$RUNNER_TEMP"
+          go run ./scripts/staticbundle package \
+            -platform "$PLATFORM" -archive "$RUNNER_TEMP/$asset" \
+            -publication-plan static-publication.json -phase validation \
+            -out "$RUNNER_TEMP/native"
+      - name: External static and Arrow consumers, offline rebuild, and purego isolation
+        run: |
+          set -euo pipefail
+          ulimit -c 0
+          go run ./scripts/staticbundle assemble \
+            -publication-plan static-publication.json -phase validation \
+            -input "$RUNNER_TEMP/native" -allow-partial -out "$RUNNER_TEMP/assembled"
+          go run ./scripts/staticbundle verify \
+            -publication-plan static-publication.json -phase validation \
+            -bundle "$RUNNER_TEMP/assembled" -out "$RUNNER_TEMP/consumer-check"
+      - name: Linux packaged executable runtime baseline (no installed libchdb)
+        if: runner.os == 'Linux'
+        run: |
+          set -euo pipefail
+          engine=$(jq -r '.engine | ltrimstr("v")' static-release.json)
+          readelf -V "$RUNNER_TEMP/consumer-check/consumer/consumer" > "$RUNNER_TEMP/consumer-check/symbol-versions.txt"
+          for image in ubuntu:22.04 ubuntu:24.04; do
+            actual=$(docker run --rm -v "$RUNNER_TEMP/consumer-check/consumer:/chdb:ro" "$image" \
+              /chdb/consumer 'SELECT 42')
+            test "$actual" = "$engine:42"
+          done
+      - name: Retain native modules for four-platform assembly
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.platform }}
+          path: ${{ runner.temp }}/native
+          compression-level: 0
+          retention-days: 7
+      - name: Retain runtime dependency audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: module-dependencies-${{ matrix.platform }}
+          path: |
+            ${{ runner.temp }}/consumer-check/dependencies.txt
+            ${{ runner.temp }}/consumer-check/symbol-versions.txt
+          if-no-files-found: ignore
+
+  assemble:
+    needs: [unit, native]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.2'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: native-*
+          path: ${{ runner.temp }}/native-platforms
+      - name: Assemble all verified platforms, without uploading to an origin
+        run: |
+          set -euo pipefail
+          inputs="$RUNNER_TEMP/native-platforms"
+          go run ./scripts/staticbundle assemble \
+            -publication-plan static-publication.json -phase validation \
+            -input "$inputs/native-darwin-amd64,$inputs/native-darwin-arm64,$inputs/native-linux-amd64,$inputs/native-linux-arm64" \
+            -out "$RUNNER_TEMP/complete"
+          go run ./scripts/staticbundle plan -publication-plan static-publication.json \
+            -phase validation -bundle "$RUNNER_TEMP/complete"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: staged-static-modules-NOT-PUBLISHED
+          path: ${{ runner.temp }}/complete
+          compression-level: 0
+          retention-days: 7

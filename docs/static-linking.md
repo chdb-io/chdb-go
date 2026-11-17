@@ -12,6 +12,33 @@ query, root Go test suite with `cgocheck2`, and Arrow integration suite.
 The four-target CI matrix must run against v26.11.1 before its other targets
 or runtime baselines can be reported as verified for this release.
 
+## Opt-in Go modules (staged, not yet published)
+
+The repository now includes a native-module packager, Vercel Blob publication
+adapter, and a small static module-discovery site. They split each authenticated
+release archive into relocatable `.syso`
+files, distribute those across size-bounded native modules, and generate one
+small `<authorized-prefix>/static` module that selects the target's payloads.
+The root module has no dependency on these modules, including under build tags.
+
+After publication, an application will add the generated static module and
+blank-import `<authorized-prefix>/static`, then build with:
+
+```sh
+CGO_ENABLED=1 go build -tags chdb_static -o myapp .
+```
+
+No native-library paths, download script, or `CGO_LDFLAGS_ALLOW` are needed in
+this mode. The static adapter carries the authenticated v26.11.1 header and
+checks the linked engine version before binding it. Do not combine the module
+payloads with manual archive linker flags: that would link the engine twice.
+
+The final public module identity and compatible published root bindings version
+have not been selected here. The Vercel probe project/store is for staged public
+download validation, not a published engine release. There is no published
+static module to `go get` yet. See [native-module staging and publication](static-module-publishing.md)
+for local commands, validation, and the remaining public-release gates.
+
 ## Where the native library comes from
 
 The [chdb-core v26.11.1 release](https://github.com/chdb-io/chdb-core/releases/tag/v26.11.1)
@@ -25,22 +52,17 @@ is a published, non-prerelease release with static archives and matching
 | `darwin/arm64` | `macos-arm64-libchdb-static.tar.gz` | `6874980084ceb5f726a1495b93f0af9d2ca50b56dc6680aa593a23b4422b6cc0` |
 | `darwin/amd64` | `macos-x86_64-libchdb-static.tar.gz` | `d1d6063fb24a51a6a043f623b8fe18787e74e6937e22ffd2d0f9dcf1e0000a37` |
 
-For this PR, the static archive is **not in the `chdb-go/v2` module**. Download
+The static archive is **not in the `chdb-go/v2` module**. For manual linking, download
 the matching release asset once at build time, verify its digest, and point
 cgo at its `libchdb.a` and `chdb.h`. A normal `go get` cannot run a download
 script during `go build`. Copying all four native archives into the root Go
 module would also make purego users download them. The repository's
 `update_libchdb.sh` installs shared libraries, not this static archive.
 
-Removing the explicit download step would require versioned native Go modules
-per platform, selected by build-tagged imports and cgo directives, while the
-root module stays small and purego by default. DuckDB's Go bindings use that model:
-their native archives are published separately because they exceed GitHub's
-file-size limit. This PR does **not** publish chdb-core archives as Go modules
-or claim that `go get` alone enables static linking. A Rust `build.rs` can
-fetch an archive automatically for Cargo; Go builds do not execute an
-equivalent dependency build script. The explicit release-asset workflow below
-works without a new module publisher.
+The staging implementation above removes that download step once its generated
+modules are published. Until then, the explicit release-asset workflow below
+works independently of a module origin. Go builds do not execute dependency
+download hooks equivalent to a Rust `build.rs`.
 
 ## Build an application
 
@@ -63,7 +85,7 @@ grep -Fq '#define CHDB_VERSION "26.11.1"' "$CHDB_STATIC_DIR/chdb.h"
 CGO_ENABLED=1 \
   CGO_CFLAGS="-DCHDB_STATIC_HEADER=\"$CHDB_STATIC_DIR/chdb.h\"" \
   CGO_LDFLAGS="-Wl,-force_load,$CHDB_STATIC_DIR/libchdb.a" \
-  go build -trimpath -tags chdb_static -o myapp .
+  go build -trimpath -tags chdb_static,chdb_static_manual -o myapp .
 otool -L ./myapp
 ```
 
@@ -76,13 +98,14 @@ CGO_ENABLED=1 \
   CGO_CFLAGS="-DCHDB_STATIC_HEADER=\"$CHDB_STATIC_DIR/chdb.h\"" \
   CGO_LDFLAGS_ALLOW='-Wl,(--whole-archive|--no-whole-archive)|-l:libchdb[.]a' \
   CGO_LDFLAGS="-L$CHDB_STATIC_DIR" \
-  go build -trimpath -tags chdb_static -o myapp .
+  go build -trimpath -tags chdb_static,chdb_static_manual -o myapp .
 readelf -d ./myapp
 readelf -V ./myapp
 ```
 
-On macOS, `-force_load` retains engine code reached through static
-registration. On Linux, the adapter's `#cgo` directive uses
+`chdb_static_manual` selects manual archive linking; omit it when importing the
+generated static module. On macOS, `-force_load` retains engine code reached
+through static registration. On Linux, the manual adapter's `#cgo` directive uses
 `-l:libchdb.a`, which selects the archive rather than a nearby shared
 library. Do not repeat the whole-archive flags in `CGO_LDFLAGS`: Go
 aggregates that variable across cgo packages, which can duplicate the
