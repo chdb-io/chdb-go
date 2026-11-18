@@ -7,6 +7,7 @@ package staticbundle
 import (
 	"archive/tar"
 	"archive/zip"
+	"bytes"
 	"compress/flate"
 	"compress/gzip"
 	"context"
@@ -228,11 +229,23 @@ func Package(ctx context.Context, o Options) (Bundle, error) {
 		}
 		for i, m := range ms {
 			name := fmt.Sprintf("m%06d.o", i)
+			var source io.Reader = io.NewSectionReader(f, m.offset, m.size)
+			if strings.HasPrefix(o.Platform, "darwin-") {
+				data, err := io.ReadAll(source)
+				if err != nil {
+					return err
+				}
+				data, err = anchorMachOSections(data, name)
+				if err != nil {
+					return fmt.Errorf("anchor %s: %w", m.name, err)
+				}
+				source = bytes.NewReader(data)
+			}
 			dest, err := os.Create(filepath.Join(objdir, name))
 			if err != nil {
 				return err
 			}
-			_, copyErr := io.Copy(dest, io.NewSectionReader(f, m.offset, m.size))
+			_, copyErr := io.Copy(dest, source)
 			closeErr := dest.Close()
 			if copyErr != nil {
 				return copyErr

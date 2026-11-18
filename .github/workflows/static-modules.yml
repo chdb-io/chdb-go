@@ -16,6 +16,7 @@ on:
       - 'deploy/module-origin/**'
       - 'deploy/vercel-modules/**'
       - '.github/workflows/static-modules.yml'
+      - '.github/scripts/prepare-arrow-workspace.sh'
   push:
     branches: [main, 'codex/static-modules-*']
     paths:
@@ -32,6 +33,7 @@ on:
       - 'deploy/module-origin/**'
       - 'deploy/vercel-modules/**'
       - '.github/workflows/static-modules.yml'
+      - '.github/scripts/prepare-arrow-workspace.sh'
   workflow_dispatch:
     inputs:
       platform_set:
@@ -96,6 +98,8 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.23.2'
+      - name: Native packager regression tests (including Mach-O weak atoms)
+        run: go test -race ./internal/staticbundle
       - name: Fetch the pinned release (packager authenticates its SHA-256)
         env:
           PLATFORM: ${{ matrix.platform }}

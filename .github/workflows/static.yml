@@ -9,6 +9,7 @@ on:
       - 'arrow/**'
       - 'chdb.h'
       - '.github/scripts/verify-static-as-user.sh'
+      - '.github/scripts/prepare-arrow-workspace.sh'
       - '.github/testdata/static-consumer.go'
       - 'docs/static-linking.md'
       - '.github/workflows/static.yml'
@@ -20,6 +21,7 @@ on:
       - 'arrow/**'
       - 'chdb.h'
       - '.github/scripts/verify-static-as-user.sh'
+      - '.github/scripts/prepare-arrow-workspace.sh'
       - '.github/testdata/static-consumer.go'
       - 'docs/static-linking.md'
       - '.github/workflows/static.yml'
@@ -103,7 +105,8 @@ jobs:
           GOEXPERIMENT=cgocheck2 go test -tags chdb_static,chdb_static_manual -timeout=180s ./...
           go test -race -tags chdb_static,chdb_static_manual -timeout=180s ./...
           CHDB_STATIC_DIR="$RUNNER_TEMP/chdb-static" bash .github/scripts/verify-static-as-user.sh
-          go work init . ./arrow
+          export GOWORK="$RUNNER_TEMP/chdb-arrow.work"
+          bash .github/scripts/prepare-arrow-workspace.sh
           export CHDB_ARROW_TEST_STATIC=1
           (cd arrow && go vet -tags chdb_static,chdb_static_manual ./...)
           (cd arrow && GOEXPERIMENT=cgocheck2 GODEBUG=cgocheck=1 go test -count=5 -tags chdb_static,chdb_static_manual -timeout=180s ./...)

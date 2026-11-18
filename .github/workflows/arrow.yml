@@ -10,6 +10,7 @@ on:
       - 'chdb/session.go'
       - 'internal/nativearrow/**'
       - '.github/workflows/arrow.yml'
+      - '.github/scripts/prepare-arrow-workspace.sh'
   push:
     branches: [main]
     paths:
@@ -19,6 +20,7 @@ on:
       - 'chdb/session.go'
       - 'internal/nativearrow/**'
       - '.github/workflows/arrow.yml'
+      - '.github/scripts/prepare-arrow-workspace.sh'
 
 permissions:
   contents: read
@@ -57,7 +59,8 @@ jobs:
           echo "CHDB_ARROW_TEST_LIB=$RUNNER_TEMP/chdb-core/libchdb.so" >> "$GITHUB_ENV"
       - name: Test optional module with in-repository root dependency
         run: |
-          go work init . ./arrow
+          export GOWORK="$RUNNER_TEMP/chdb-arrow.work"
+          bash .github/scripts/prepare-arrow-workspace.sh
           cd arrow
           go vet ./...
           GOEXPERIMENT=cgocheck2 GODEBUG=cgocheck=1 go test -count=5 -timeout=180s ./...

@@ -30,6 +30,19 @@ be published as a complete engine bundle. A green macOS run is not evidence of
 Linux readiness. Failed macOS consumers retain native backtraces/build metadata
 and the generated native modules for diagnosis; no core dumps are uploaded.
 
+Before Darwin prelinking, the packager gives anonymous section-leading data
+local boundary symbols. This prevents `ld -r` from attaching a following
+object's constants to a preceding weak symbol, which could replace the data
+or lose its SIMD alignment during the final link. Both Mac runners execute a
+small Intel Mach-O regression that checks the linked constant bytes and
+alignment without running a translated executable.
+
+The source-only Arrow workflows use
+`.github/scripts/prepare-arrow-workspace.sh` with a temporary `GOWORK` file.
+It replaces Arrow's exact required root version with the checkout, so these
+tests do not require an unpublished RC tag. This replacement never enters a
+source `go.mod`, a packaged module, or the external-consumer verification.
+
 ```sh
 go run ./scripts/staticbundle release-plan \
   -publication-plan static-publication.json -phase validation
