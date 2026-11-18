@@ -33,11 +33,43 @@ on:
       - 'deploy/vercel-modules/**'
       - '.github/workflows/static-modules.yml'
   workflow_dispatch:
+    inputs:
+      platform_set:
+        description: 'macos validates both Macs independently; all also tests Linux once core issue 342 is resolved'
+        type: choice
+        options: [macos, all]
+        default: macos
+
+run-name: Static modules (${{ inputs.platform_set || 'macos' }}, no publication)
 
 permissions:
   contents: read
 
 jobs:
+  platforms:
+    runs-on: ubuntu-22.04
+    outputs:
+      matrix: ${{ steps.select.outputs.matrix }}
+      selection: ${{ steps.select.outputs.selection }}
+    steps:
+      - id: select
+        name: Select validation scope without waiting for Linux split artifacts
+        env:
+          PLATFORM_SET: ${{ inputs.platform_set || 'macos' }}
+        run: |
+          set -euo pipefail
+          mac='[{"os":"macos-15","platform":"darwin-arm64"},{"os":"macos-15-intel","platform":"darwin-amd64"}]'
+          case "$PLATFORM_SET" in
+            macos) matrix=$(jq -cn --argjson mac "$mac" '{include:$mac}') ;;
+            all) matrix=$(jq -cn --argjson mac "$mac" '{include:($mac + [{os:"ubuntu-22.04",platform:"linux-amd64"},{os:"ubuntu-22.04-arm",platform:"linux-arm64"}])}') ;;
+            *) echo 'Unknown platform set' >&2; exit 2 ;;
+          esac
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "selection=$PLATFORM_SET" >> "$GITHUB_OUTPUT"
+          if [ "$PLATFORM_SET" = macos ]; then
+            echo 'macOS-only validation. Linux split artifacts are tracked by chdb-io/chdb-core#342. This run cannot establish four-platform release readiness.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
   unit:
     runs-on: ubuntu-22.04
     steps:
@@ -52,18 +84,10 @@ jobs:
       - run: node --test deploy/module-origin/worker.test.mjs
 
   native:
+    needs: platforms
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-22.04
-            platform: linux-amd64
-          - os: ubuntu-22.04-arm
-            platform: linux-arm64
-          - os: macos-15
-            platform: darwin-arm64
-          - os: macos-15-intel
-            platform: darwin-amd64
+      matrix: ${{ fromJSON(needs.platforms.outputs.matrix) }}
     runs-on: ${{ matrix.os }}
     env:
       GH_TOKEN: ${{ github.token }}
@@ -94,6 +118,24 @@ jobs:
           go run ./scripts/staticbundle verify \
             -publication-plan static-publication.json -phase validation \
             -bundle "$RUNNER_TEMP/assembled" -out "$RUNNER_TEMP/consumer-check"
+      - name: Capture a native macOS consumer failure
+        if: failure() && runner.os == 'macOS'
+        timeout-minutes: 3
+        run: |
+          set -uo pipefail
+          ulimit -c 0
+          check="$RUNNER_TEMP/consumer-check"
+          binary="$check/consumer/consumer"
+          if [ -x "$binary" ]; then
+            go version -m "$binary" > "$check/consumer-build.txt" 2>&1
+            otool -L "$binary" > "$check/dependencies.txt" 2>&1
+            # Use the native runner, not a translated process. Retain a small
+            # backtrace rather than uploading core dumps or environment values.
+            lldb --no-lldbinit --batch \
+              -o 'settings set target.disable-aslr false' \
+              -k 'thread backtrace all' -o run -- "$binary" \
+              > "$check/native-backtrace.txt" 2>&1 || true
+          fi
       - name: Linux packaged executable runtime baseline (no installed libchdb)
         if: runner.os == 'Linux'
         run: |
@@ -106,6 +148,7 @@ jobs:
             test "$actual" = "$engine:42"
           done
       - name: Retain native modules for four-platform assembly
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: native-${{ matrix.platform }}
@@ -120,10 +163,12 @@ jobs:
           path: |
             ${{ runner.temp }}/consumer-check/dependencies.txt
             ${{ runner.temp }}/consumer-check/symbol-versions.txt
+            ${{ runner.temp }}/consumer-check/consumer-build.txt
+            ${{ runner.temp }}/consumer-check/native-backtrace.txt
           if-no-files-found: ignore
 
   assemble:
-    needs: [unit, native]
+    needs: [unit, native, platforms]
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -134,19 +179,30 @@ jobs:
         with:
           pattern: native-*
           path: ${{ runner.temp }}/native-platforms
-      - name: Assemble all verified platforms, without uploading to an origin
+      - name: Assemble the selected verified platforms, without uploading to an origin
+        env:
+          PLATFORM_SET: ${{ needs.platforms.outputs.selection }}
         run: |
           set -euo pipefail
           inputs="$RUNNER_TEMP/native-platforms"
-          go run ./scripts/staticbundle assemble \
-            -publication-plan static-publication.json -phase validation \
-            -input "$inputs/native-darwin-amd64,$inputs/native-darwin-arm64,$inputs/native-linux-amd64,$inputs/native-linux-arm64" \
-            -out "$RUNNER_TEMP/complete"
-          go run ./scripts/staticbundle plan -publication-plan static-publication.json \
-            -phase validation -bundle "$RUNNER_TEMP/complete"
+          selected="$inputs/native-darwin-amd64,$inputs/native-darwin-arm64"
+          if [ "$PLATFORM_SET" = all ]; then
+            go run ./scripts/staticbundle assemble \
+              -publication-plan static-publication.json -phase validation \
+              -input "$selected,$inputs/native-linux-amd64,$inputs/native-linux-arm64" \
+              -out "$RUNNER_TEMP/assembled"
+            go run ./scripts/staticbundle plan -publication-plan static-publication.json \
+              -phase validation -bundle "$RUNNER_TEMP/assembled"
+          else
+            go run ./scripts/staticbundle assemble \
+              -publication-plan static-publication.json -phase validation \
+              -input "$selected" -allow-partial -out "$RUNNER_TEMP/assembled"
+            test "$(jq -r .complete "$RUNNER_TEMP/assembled/bundle.json")" = false
+            echo 'Both macOS platforms validated; assembled bundle remains partial and non-publishable. Linux awaits core issue 342.' >> "$GITHUB_STEP_SUMMARY"
+          fi
       - uses: actions/upload-artifact@v4
         with:
-          name: staged-static-modules-NOT-PUBLISHED
-          path: ${{ runner.temp }}/complete
+          name: staged-static-modules-${{ needs.platforms.outputs.selection }}-NOT-PUBLISHED
+          path: ${{ runner.temp }}/assembled
           compression-level: 0
           retention-days: 7

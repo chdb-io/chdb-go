@@ -16,10 +16,19 @@ creates a tag, provisions a domain or publishes an artifact.
 
 RC snapshots use `static-ci.example/chdb`, not the production namespace. These
 snapshots test the checkout's source under the planned RC versions; they are
-not proof that those tags exist remotely. The four-platform workflow packages
-the pinned native assets, runs external static/Arrow consumers, offline/vendor
-builds and pointer/race checks, then assembles CI-only artifacts. No workflow
+not proof that those tags exist remotely. The workflow currently defaults to
+both macOS architectures so validation can proceed independently of Linux core
+artifact work in chdb-io/chdb-core#342. Its `platform_set=all` manual option
+retains the four-platform path for use once compatible Linux assets are pinned.
+It packages the pinned native assets, runs external static/Arrow consumers,
+offline/vendor builds and pointer/race checks, then assembles CI-only artifacts.
+No workflow
 publishes engine modules, creates tags or deploys a site.
+
+A macOS-only aggregate uses `-allow-partial`, retains `complete=false` and cannot
+be published as a complete engine bundle. A green macOS run is not evidence of
+Linux readiness. Failed macOS consumers retain native backtraces/build metadata
+and the generated native modules for diagnosis; no core dumps are uploaded.
 
 ```sh
 go run ./scripts/staticbundle release-plan \
@@ -47,7 +56,9 @@ for development. Outputs must not exist and must be outside the checkout.
 
 ## RC publication and stable promotion
 
-1. Push a reviewed source commit to a dedicated test branch and pass native CI.
+1. Push a reviewed source commit to a dedicated test branch and pass macOS native
+   CI first. Resume all-platform CI when core issue #342 supplies consumable Linux
+   artifacts; four-platform success remains required before a complete release.
    A Git push needs fresh confirmation and uploads temporary Actions artifacts.
 2. Publish the root `v2.5.0-rc.2` tag, then the `arrow/v0.1.0-rc.1` tag. Arrow's
    checked-in dependency is prepared for root `v2.5.0-rc.2`; an external Arrow RC

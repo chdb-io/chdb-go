@@ -140,14 +140,18 @@ compatible root release remain required gates, not consequences of a tiny
 probe's success.
 
 The `Static engine Go modules (no publication)` workflow runs on pull requests,
-main, and dedicated `codex/static-modules-*` test branches. It uses native
-Linux amd64/arm64 and macOS arm64/Intel runners. Each runner authenticates and
+main, and dedicated `codex/static-modules-*` test branches. It currently defaults
+to macOS arm64/Intel; manual `platform_set=all` also selects native Linux
+amd64/arm64. Linux split artifacts are tracked by chdb-io/chdb-core#342.
+Each selected runner authenticates and
 repackages its pinned v26.11.1 archive, then tests an external static consumer,
 vendor/offline builds, and the Arrow quickstart plus its integration tests under
 `cgocheck2` and the race detector against the packaged `.syso` modules. Linux
 also executes its packaged binary on Ubuntu 22.04 and 24.04 without libchdb.
-The final job assembles all four platforms and retains the bundle as a temporary
-Actions artifact; it never uploads to Blob or deploys the discovery site.
+The final job assembles the selected platforms and retains the bundle as a
+temporary Actions artifact. A macOS-only bundle stays partial/non-publishable;
+only the all-platform path can be complete. It never uploads to Blob or deploys
+the discovery site.
 
 These checks intentionally use synthetic local bindings/Arrow versions and a
 file proxy with checksum-database verification disabled. They establish native
