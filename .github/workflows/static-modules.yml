@@ -74,11 +74,15 @@ jobs:
 
   unit:
     runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        go: ['1.21.13', '1.23.2']
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.23.2'
+          go-version: ${{ matrix.go }}
       - uses: actions/setup-node@v4
         with:
           node-version: '22'

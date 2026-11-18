@@ -41,7 +41,9 @@ func TestArrowCIWorkspaceResolvesUnpublishedRootOffline(t *testing.T) {
 	}
 	repo := filepath.Join(d, "repo")
 	rootMod := "module example.com/root/v2\n\ngo 1.21\n"
-	arrowMod := "module example.com/root/v2/arrow\n\ngo 1.23.0\n\nrequire example.com/root/v2 v2.99.0-unpublished\n"
+	// This fixture tests workspace resolution, not Arrow APIs. Keep it usable
+	// with the root module's Go 1.21 minimum; real Arrow CI uses Go 1.23.2.
+	arrowMod := "module example.com/root/v2/arrow\n\ngo 1.21\n\nrequire example.com/root/v2 v2.99.0-unpublished\n"
 	put(t, filepath.Join(repo, "go.mod"), []byte(rootMod))
 	put(t, filepath.Join(repo, "root.go"), []byte("package root\nconst Value = 42\n"))
 	put(t, filepath.Join(repo, "arrow", "go.mod"), []byte(arrowMod))
@@ -51,7 +53,7 @@ func TestArrowCIWorkspaceResolvesUnpublishedRootOffline(t *testing.T) {
 		t.Fatal(err)
 	}
 	work := filepath.Join(d, "go.work")
-	env := append(cleanEnv(os.Environ(), "GOWORK", "GOPROXY", "GOSUMDB", "GOFLAGS", "GOOS", "GOARCH"), "GOWORK="+work, "GOPROXY=off", "GOSUMDB=off")
+	env := append(cleanEnv(os.Environ(), "GOWORK", "GOPROXY", "GOSUMDB", "GOFLAGS", "GOOS", "GOARCH", "GOTOOLCHAIN"), "GOWORK="+work, "GOPROXY=off", "GOSUMDB=off", "GOTOOLCHAIN=local")
 	cmd := exec.Command("bash", helper, repo)
 	cmd.Env = env
 	if output, err := cmd.CombinedOutput(); err != nil {

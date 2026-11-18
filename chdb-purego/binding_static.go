@@ -8,7 +8,7 @@ package chdbpurego
 
 /*
 #cgo darwin LDFLAGS: -liconv -framework CoreFoundation -framework Security
-#cgo linux LDFLAGS: -lc -lm -lrt -lpthread -ldl
+#cgo linux,!chdb_static_manual LDFLAGS: -lc -lm -lrt -lpthread -ldl
 #include <stdlib.h>
 #ifndef CHDB_STATIC_HEADER
 #include "static_chdb.h"

@@ -109,7 +109,10 @@ through static registration. On Linux, the manual adapter's `#cgo` directive use
 `-l:libchdb.a`, which selects the archive rather than a nearby shared
 library. Do not repeat the whole-archive flags in `CGO_LDFLAGS`: Go
 aggregates that variable across cgo packages, which can duplicate the
-archive at link time. Check that `otool -L` or `readelf -d` does not list a
+archive at link time. The manual directive keeps system libraries such as
+`-lm` after the archive so GNU ld's `--as-needed` processing retains them.
+Module mode keeps its system-library flags without adding a manual archive.
+Check that `otool -L` or `readelf -d` does not list a
 shared `libchdb`; run the same executable on each operating-system version
 you intend to support. A Linux glibc binary does not imply musl support.
 
