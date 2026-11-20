@@ -9,6 +9,7 @@ on:
       - 'arrow/**'
       - 'chdb.h'
       - '.github/scripts/verify-static-as-user.sh'
+      - '.github/scripts/prepare-arrow-workspace.sh'
       - '.github/testdata/static-consumer.go'
       - 'docs/static-linking.md'
       - '.github/workflows/static.yml'
@@ -20,6 +21,7 @@ on:
       - 'arrow/**'
       - 'chdb.h'
       - '.github/scripts/verify-static-as-user.sh'
+      - '.github/scripts/prepare-arrow-workspace.sh'
       - '.github/testdata/static-consumer.go'
       - 'docs/static-linking.md'
       - '.github/workflows/static.yml'
@@ -38,23 +40,23 @@ jobs:
         include:
           - os: ubuntu-22.04
             asset: linux-x86_64-libchdb-static.tar.gz
-            sha256: c6cf61c01c7e98b6ae6d14d8c7d68470db8b03655298f9467ae7b2ab14f42591
+            sha256: 7f7ff849da2f8dea820fc3914d23697e8c49e7ca483600257b66945256c2896b
             arch: x86_64
           - os: ubuntu-22.04-arm
             asset: linux-aarch64-libchdb-static.tar.gz
-            sha256: 46cfbb553c1b10129f9794684e1c3b555522bc95910cc72c8ce0923c1ebd10f0
+            sha256: 87b0046248df34044d130d303194635528c69fd4a9f684ce0d5508c705bf1f06
             arch: aarch64
           - os: macos-15
             asset: macos-arm64-libchdb-static.tar.gz
-            sha256: 6874980084ceb5f726a1495b93f0af9d2ca50b56dc6680aa593a23b4422b6cc0
+            sha256: c60fa51f4e6d4538441ab9372b4c9b38d235af015d5bc3c40c896e7c79642b64
             arch: arm64
           - os: macos-15-intel
             asset: macos-x86_64-libchdb-static.tar.gz
-            sha256: d1d6063fb24a51a6a043f623b8fe18787e74e6937e22ffd2d0f9dcf1e0000a37
+            sha256: c9c160467da5a1a63775d627de05fb20fd697a163f78f8bde518eed7d299b726
             arch: x86_64
     runs-on: ${{ matrix.os }}
     env:
-      CHDB_CORE_TAG: v26.11.1
+      CHDB_CORE_TAG: v26.11.2-rc.1
       CHDB_REQUIRE_DURABLE_ABI: '1'
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -82,7 +84,7 @@ jobs:
           tar -xzf "$ASSET"
           test -s libchdb.a
           test -s chdb.h
-          grep -Fq '#define CHDB_VERSION "26.11.1"' chdb.h
+          grep -Fq '#define CHDB_VERSION "26.11.2-rc.1"' chdb.h
       - name: Build, exercise and audit the static executable
         run: |
           set -euo pipefail
@@ -95,19 +97,20 @@ jobs:
             export CGO_LDFLAGS_ALLOW='-Wl,(--whole-archive|--no-whole-archive)|-l:libchdb[.]a'
             export CGO_LDFLAGS="-L$RUNNER_TEMP/chdb-static"
           fi
-          go build -trimpath -tags chdb_static -o "$RUNNER_TEMP/chdb-static/chdb-go-static" .
+          go build -trimpath -tags chdb_static,chdb_static_manual -o "$RUNNER_TEMP/chdb-static/chdb-go-static" .
           if LC_ALL=C grep -a -q -F "$RUNNER_TEMP/chdb-static" "$RUNNER_TEMP/chdb-static/chdb-go-static"; then
             echo 'static binary contains the archive location from the builder' >&2
             exit 1
           fi
-          GOEXPERIMENT=cgocheck2 go test -tags chdb_static -timeout=180s ./...
-          go test -race -tags chdb_static -timeout=180s ./...
+          GOEXPERIMENT=cgocheck2 go test -tags chdb_static,chdb_static_manual -timeout=180s ./...
+          go test -race -tags chdb_static,chdb_static_manual -timeout=180s ./...
           CHDB_STATIC_DIR="$RUNNER_TEMP/chdb-static" bash .github/scripts/verify-static-as-user.sh
-          go work init . ./arrow
+          export GOWORK="$RUNNER_TEMP/chdb-arrow.work"
+          bash .github/scripts/prepare-arrow-workspace.sh
           export CHDB_ARROW_TEST_STATIC=1
-          (cd arrow && go vet -tags chdb_static ./...)
-          (cd arrow && GOEXPERIMENT=cgocheck2 GODEBUG=cgocheck=1 go test -count=5 -tags chdb_static -timeout=180s ./...)
-          (cd arrow && go test -race -tags chdb_static -timeout=180s ./...)
+          (cd arrow && go vet -tags chdb_static,chdb_static_manual ./...)
+          (cd arrow && GOEXPERIMENT=cgocheck2 GODEBUG=cgocheck=1 go test -count=5 -tags chdb_static,chdb_static_manual -timeout=180s ./...)
+          (cd arrow && go test -race -tags chdb_static,chdb_static_manual -timeout=180s ./...)
           env -u CHDB_LIB_PATH "$RUNNER_TEMP/chdb-static/chdb-go-static" 'SELECT 42' CSV | grep -qx 42
           if [ "$RUNNER_OS" = macOS ]; then
             otool -L "$RUNNER_TEMP/chdb-static/chdb-go-static" | tee "$RUNNER_TEMP/chdb-static/dependencies.txt"

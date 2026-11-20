@@ -1,0 +1,9 @@
+{
+  "team": "replace-team",
+  "team_id": "team_REPLACE",
+  "project": "replace-go-module-project",
+  "project_id": "prj_REPLACE",
+  "store_id": "store_REPLACE",
+  "blob_base_url": "https://replace.public.blob.vercel-storage.com",
+  "site_origin": "https://go.example.com"
+}

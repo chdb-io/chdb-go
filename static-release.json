@@ -1,0 +1,13 @@
+{
+  "engine": "v26.11.2-rc.1",
+  "packaging": 1,
+  "time": "2026-11-20T00:00:00Z",
+  "header_sha256": "dee46580f8fb1034763ecd2be4d163efd402f7bcec259eee03991cd62e91de99",
+  "source_commit": "59a7f688d1fc8d895115e104f09a2c4071490d6a",
+  "platforms": {
+    "darwin-arm64": {"asset": "macos-arm64-libchdb-static.tar.gz", "sha256": "c60fa51f4e6d4538441ab9372b4c9b38d235af015d5bc3c40c896e7c79642b64"},
+    "darwin-amd64": {"asset": "macos-x86_64-libchdb-static.tar.gz", "sha256": "c9c160467da5a1a63775d627de05fb20fd697a163f78f8bde518eed7d299b726"},
+    "linux-amd64": {"asset": "linux-x86_64-libchdb-static-split.tar.gz", "sha256": "1843bd7e29dd79cc6acb6427099e9fff7793f433203f87bef6d249534cefe34b"},
+    "linux-arm64": {"asset": "linux-aarch64-libchdb-static-split.tar.gz", "sha256": "16020252214e4c025e6375d2e7137565b5863052b275f94537599fe8089562ae"}
+  }
+}
