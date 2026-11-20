@@ -7,20 +7,18 @@ creates a tag, provisions a domain or publishes an artifact.
 
 | Layer | Validation | Stable release |
 | --- | --- | --- |
-| chdb-core | v26.11.1 | v26.11.1, unchanged |
+| chdb-core | v26.11.2-rc.1 | next stable chdb-core, re-pinned and re-validated |
 | Root bindings | v2.5.0-rc.2 | v2.5.0 |
 | Arrow module tag | arrow/v0.1.0-rc.1 | arrow/v0.1.0 |
-| Native engine module version | v0.261101.1, local CI namespace only | v0.261101.1 at the permanent namespace |
+| Native engine module version | v0.261102.0-rc.1.1, local CI namespace only | derived from the stable engine, at the permanent namespace |
 
 ## Local and CI validation
 
 RC snapshots use `static-ci.example/chdb`, not the production namespace. These
 snapshots test the checkout's source under the planned RC versions; they are
-not proof that those tags exist remotely. The workflow currently defaults to
-both macOS architectures so validation can proceed independently of Linux core
-artifact work in chdb-io/chdb-core#342. Its `platform_set=all` manual option
-retains the four-platform path for use once compatible Linux assets are pinned.
-It packages the pinned native assets, runs external static/Arrow consumers,
+not proof that those tags exist remotely. The workflow runs all four targets
+by default and must assemble a complete bundle; a manual `platform_set=macos`
+run is for Mac-only debugging. It packages the pinned native assets, runs external static/Arrow consumers,
 offline/vendor builds and pointer/race checks, then assembles CI-only artifacts.
 No workflow
 publishes engine modules, creates tags or deploys a site.
@@ -69,9 +67,8 @@ for development. Outputs must not exist and must be outside the checkout.
 
 ## RC publication and stable promotion
 
-1. Push a reviewed source commit to a dedicated test branch and pass macOS native
-   CI first. Resume all-platform CI when core issue #342 supplies consumable Linux
-   artifacts; four-platform success remains required before a complete release.
+1. Push a reviewed source commit to a dedicated test branch and pass the
+   four-platform native CI; it is required before a complete release.
    A Git push needs fresh confirmation and uploads temporary Actions artifacts.
 2. Publish the root `v2.5.0-rc.2` tag, then the `arrow/v0.1.0-rc.1` tag. Arrow's
    checked-in dependency is prepared for root `v2.5.0-rc.2`; an external Arrow RC

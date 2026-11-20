@@ -37,12 +37,12 @@ on:
   workflow_dispatch:
     inputs:
       platform_set:
-        description: 'macos validates both Macs independently; all also tests Linux once core issue 342 is resolved'
+        description: 'all is the release gate; macos skips Linux for quicker Mac-only debugging and is never publishable'
         type: choice
-        options: [macos, all]
-        default: macos
+        options: [all, macos]
+        default: all
 
-run-name: Static modules (${{ inputs.platform_set || 'macos' }}, no publication)
+run-name: Static modules (${{ inputs.platform_set || 'all' }}, no publication)
 
 permissions:
   contents: read
@@ -55,9 +55,9 @@ jobs:
       selection: ${{ steps.select.outputs.selection }}
     steps:
       - id: select
-        name: Select validation scope without waiting for Linux split artifacts
+        name: Select validation scope (all four platforms unless dispatched otherwise)
         env:
-          PLATFORM_SET: ${{ inputs.platform_set || 'macos' }}
+          PLATFORM_SET: ${{ inputs.platform_set || 'all' }}
         run: |
           set -euo pipefail
           mac='[{"os":"macos-15","platform":"darwin-arm64"},{"os":"macos-15-intel","platform":"darwin-amd64"}]'
@@ -69,7 +69,7 @@ jobs:
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
           echo "selection=$PLATFORM_SET" >> "$GITHUB_OUTPUT"
           if [ "$PLATFORM_SET" = macos ]; then
-            echo 'macOS-only validation. Linux split artifacts are tracked by chdb-io/chdb-core#342. This run cannot establish four-platform release readiness.' >> "$GITHUB_STEP_SUMMARY"
+            echo 'macOS-only debugging run. It cannot establish four-platform release readiness.' >> "$GITHUB_STEP_SUMMARY"
           fi
 
   unit:
@@ -199,6 +199,7 @@ jobs:
               -publication-plan static-publication.json -phase validation \
               -input "$selected,$inputs/native-linux-amd64,$inputs/native-linux-arm64" \
               -out "$RUNNER_TEMP/assembled"
+            test "$(jq -r .complete "$RUNNER_TEMP/assembled/bundle.json")" = true
             go run ./scripts/staticbundle plan -publication-plan static-publication.json \
               -phase validation -bundle "$RUNNER_TEMP/assembled"
           else
@@ -206,7 +207,7 @@ jobs:
               -publication-plan static-publication.json -phase validation \
               -input "$selected" -allow-partial -out "$RUNNER_TEMP/assembled"
             test "$(jq -r .complete "$RUNNER_TEMP/assembled/bundle.json")" = false
-            echo 'Both macOS platforms validated; assembled bundle remains partial and non-publishable. Linux awaits core issue 342.' >> "$GITHUB_STEP_SUMMARY"
+            echo 'Both macOS platforms validated; the assembled bundle is partial and not publishable.' >> "$GITHUB_STEP_SUMMARY"
           fi
       - uses: actions/upload-artifact@v4
         with:
