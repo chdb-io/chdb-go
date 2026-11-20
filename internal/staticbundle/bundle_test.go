@@ -125,8 +125,11 @@ func tinyRelease(t *testing.T) (Options, string) {
 	header := []byte("#define CHDB_VERSION \"26.11.1\"\n")
 	put(t, filepath.Join(repo, "chdb-purego", "static_chdb.h"), header)
 	put(t, filepath.Join(repo, "LICENSE.txt"), []byte("test license\n"))
+	platform := runtime.GOOS + "-" + runtime.GOARCH
+	split := strings.HasPrefix(platform, "linux-")
+	var objects [][]byte
 	ar := []byte("!<arch>\n")
-	for _, n := range []string{"first", "second"} {
+	for i, n := range []string{"first", "second"} {
 		p := filepath.Join(d, n+".c")
 		put(t, p, []byte("int "+n+"(void) { return 42; }\n"))
 		obj := filepath.Join(d, n+".o")
@@ -137,15 +140,29 @@ func tinyRelease(t *testing.T) (Options, string) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		ar = append(ar, arMember("duplicate.o/", data)...)
+		// macOS members share a name, as real archives' do. Linux split
+		// archives name each shard, and the manifest lists them in order.
+		name := "duplicate.o/"
+		if split {
+			name = fmt.Sprintf("part_%03d.o/", i)
+		}
+		ar = append(ar, arMember(name, data)...)
+		objects = append(objects, data)
+	}
+	entries := []struct {
+		name string
+		b    []byte
+	}{{"libchdb.a", ar}, {"chdb.h", header}}
+	if split {
+		entries = append(entries, struct {
+			name string
+			b    []byte
+		}{splitManifestName, splitManifestJSON(t, testSplitManifest(platform, "26.11.1", testCommit, ar, objects))})
 	}
 	var buf bytes.Buffer
 	gz := gzip.NewWriter(&buf)
 	tw := tar.NewWriter(gz)
-	for _, e := range []struct {
-		name string
-		b    []byte
-	}{{"libchdb.a", ar}, {"chdb.h", header}} {
+	for _, e := range entries {
 		if err := tw.WriteHeader(&tar.Header{Name: e.name, Mode: 0644, Size: int64(len(e.b))}); err != nil {
 			t.Fatal(err)
 		}
@@ -161,8 +178,7 @@ func tinyRelease(t *testing.T) (Options, string) {
 	}
 	path := filepath.Join(d, "release.tar.gz")
 	put(t, path, buf.Bytes())
-	platform := runtime.GOOS + "-" + runtime.GOARCH
-	r := Release{Engine: "v26.11.1", Packaging: 1, Time: time.Date(2026, 11, 17, 0, 0, 0, 0, time.UTC), HeaderSHA256: digest(header), Platforms: map[string]Asset{platform: {Name: "release.tar.gz", SHA256: digest(buf.Bytes())}}}
+	r := Release{Engine: "v26.11.1", Packaging: 1, Time: time.Date(2026, 11, 17, 0, 0, 0, 0, time.UTC), HeaderSHA256: digest(header), SourceCommit: testCommit, Platforms: map[string]Asset{platform: {Name: "release.tar.gz", SHA256: digest(buf.Bytes())}}}
 	return Options{Repo: repo, Archive: path, Platform: platform, Prefix: "go.example.com/chdb", Bindings: "v2.99.0-test", Release: r, Output: filepath.Join(d, "native")}, d
 }
 func TestPackageAndAssembleNativeObjects(t *testing.T) {
@@ -171,7 +187,11 @@ func TestPackageAndAssembleNativeObjects(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if b.Platforms[0].Objects != 2 || b.Platforms[0].Shards != 1 {
+	shards := 1 // macOS prelinks the two members into one shard
+	if strings.HasPrefix(o.Platform, "linux-") {
+		shards = 2 // Linux ships chdb-core's shards as they are
+	}
+	if b.Platforms[0].Objects != 2 || b.Platforms[0].Shards != shards {
 		t.Fatalf("lost duplicate-named objects: %+v", b)
 	}
 	if _, err = ReadBundle(o.Output); err != nil {

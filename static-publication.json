@@ -2,8 +2,8 @@
   "schema": 1,
   "site_origin": "https://go.chdb.io",
   "module_prefix": "go.chdb.io/chdb",
-  "engine": "v26.11.1",
-  "static_version": "v0.261101.1",
+  "engine": "v26.11.2-rc.1",
+  "static_version": "v0.261102.0-rc.1.1",
   "validation": {
     "module_prefix": "static-ci.example/chdb",
     "bindings": "v2.5.0-rc.2",

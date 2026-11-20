@@ -12,7 +12,7 @@ extern "C" {
 
 #define CHDB_EXPORT __attribute__((visibility("default")))
 
-#define CHDB_VERSION "26.11.1"
+#define CHDB_VERSION "26.11.2-rc.1"
 
 /**
  * Returns the version of the linked chDB library.

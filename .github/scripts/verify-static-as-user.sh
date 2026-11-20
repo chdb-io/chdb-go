@@ -81,5 +81,7 @@ case "$(uname -s)" in
     readelf -d consumer
     if readelf -d consumer | grep -Eq '\(NEEDED\).*libchdb\.so'; then exit 1; fi ;;
 esac
-env -u CHDB_LIB_PATH ./consumer | grep -qx '26.11.1:42'
+engine=$(sed -n 's/^#define CHDB_VERSION "\(.*\)"$/\1/p' "$CHDB_STATIC_DIR/chdb.h")
+test -n "$engine"
+env -u CHDB_LIB_PATH ./consumer | grep -qxF "$engine:42"
 echo 'static module-proxy consumer passed'

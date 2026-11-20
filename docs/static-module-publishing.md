@@ -64,14 +64,17 @@ The root bindings module never imports the static entry module, even under
 `chdb_static`. This keeps native modules out of default purego consumers'
 `go mod tidy`. Static consumers' tidy/vendor may collect other platforms too;
 only normal target builds select a single platform. This is not a promise of
-one-platform downloads for every Go command.
+one-platform downloads for every Go command. `go mod vendor` and offline
+`-mod=vendor` builds work, but a vendor directory holds native files over
+100 MiB, so it cannot be committed as is to an ordinary GitHub repository.
 
 ## Pinned, reproducible packaging
 
 `static-release.json` records upstream assets, SHA-256 digests, engine release,
-packaging revision, timestamp and the exact adapter-header digest. The module
-version uses `internal/enginetag`, e.g. engine v26.11.1, packaging 1 becomes
-v0.261101.1. Change the packaging revision whenever any published bytes change.
+packaging revision, timestamp, the exact adapter-header digest and the
+chdb-core source commit. The module version uses `internal/enginetag`, e.g.
+engine v26.11.1, packaging 1 becomes v0.261101.1, and engine v26.11.2-rc.1
+becomes v0.261102.0-rc.1.1. Change the packaging revision whenever any published bytes change.
 
 On each target's native runner:
 
@@ -81,14 +84,19 @@ On each target's native runner:
 2. Read ordinary GNU/BSD/Darwin archives by member offset. Preserve duplicate
    object filenames rather than allowing `ar x` to overwrite them. Reject thin
    archives, bitcode, wrong architectures and malformed inputs.
-3. Group approximately 64 MiB of objects per relocatable `.syso`. On Darwin,
-   use `ld -r -keep_private_externs` and preserve the strictest input deployment
-   target. On Linux, use native `ld -r --build-id=none`. Inputs are object files,
-   so no consumer `--whole-archive`/`-force_load` flag is needed.
-4. Check final `.syso` sizes, recursively split oversized groups, then pack
-   modules below 384 MiB uncompressed. Individual native files are at most
-   90 MiB; both module zip and uncompressed contents remain below Go's 500 MiB
-   ceiling. Those checks include the final symbol tables, not just source-object
+3. On Darwin, group approximately 64 MiB of objects per relocatable `.syso`
+   with `ld -r -keep_private_externs`, preserve the strictest input deployment
+   target, and recursively split oversized groups. On Linux, use chdb-core's
+   split archive (`*-libchdb-static-split.tar.gz`, chdb-io/chdb-core#342): its
+   `libchdb-split.json` must match the pinned engine version, source commit and
+   architecture, and the archive's members must match the manifest's link
+   order, sizes and SHA-256 digests. Each member is copied to one `.syso`
+   unchanged; it is never relinked, renamed or stripped. Inputs are object
+   files, so no consumer `--whole-archive`/`-force_load` flag is needed.
+4. Pack modules below 384 MiB uncompressed. Individual native files are at most
+   256 MiB (chdb-core's Linux shards come out near 200 MiB), so a module holds
+   at most one such shard beside a smaller one; both module zip and
+   uncompressed contents remain below Go's 500 MiB ceiling. Those checks include the final symbol tables, not just source-object
    sizes. Copy the repository license into each module.
 5. Emit `.info`, `.mod`, `.zip` and a digest/size inventory in `bundle.json`.
    Do not overwrite existing staging directories or place binaries in the repo.

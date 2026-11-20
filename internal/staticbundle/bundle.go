@@ -32,7 +32,12 @@ import (
 
 const RootModule = "github.com/chdb-io/chdb-go/v2"
 const MaxModuleBytes int64 = 384 << 20
-const MaxFileBytes int64 = 90 << 20
+
+// MaxFileBytes bounds one native file. chdb-core's split Linux shards are cut
+// from at most 192 MiB of input and can come out near 200 MiB; 256 MiB leaves
+// headroom, and MaxModuleBytes still never fits two such shards in one module.
+// Go's own limit is 500 MiB per module zip and per uncompressed module.
+const MaxFileBytes int64 = 256 << 20
 const objectBudget int64 = 64 << 20
 
 var Platforms = []string{"darwin-amd64", "darwin-arm64", "linux-amd64", "linux-arm64"}
@@ -48,6 +53,7 @@ type Release struct {
 	Packaging    int              `json:"packaging"`
 	Time         time.Time        `json:"time"`
 	HeaderSHA256 string           `json:"header_sha256"`
+	SourceCommit string           `json:"source_commit"`
 	Platforms    map[string]Asset `json:"platforms"`
 }
 type File struct {
@@ -92,8 +98,8 @@ func ReadRelease(path string) (Release, error) {
 	if _, err = enginetag.Module(r.Engine, r.Packaging); err != nil {
 		return r, err
 	}
-	if r.Time.IsZero() || !isDigest(r.HeaderSHA256) {
-		return r, fmt.Errorf("release must pin time and header SHA-256")
+	if r.Time.IsZero() || !isDigest(r.HeaderSHA256) || !isCommit(r.SourceCommit) {
+		return r, fmt.Errorf("release must pin time, header SHA-256 and source commit")
 	}
 	for _, p := range Platforms {
 		a, ok := r.Platforms[p]
@@ -210,37 +216,59 @@ func Package(ctx context.Context, o Options) (Bundle, error) {
 	if strings.HasPrefix(o.Platform, "darwin-") && minimum == 0 {
 		return b, fmt.Errorf("missing macOS deployment target")
 	}
-	objdir := filepath.Join(work, "objects")
-	if err = os.Mkdir(objdir, 0755); err != nil {
+	manifest := filepath.Join(work, splitManifestName)
+	_, statErr := os.Stat(manifest)
+	split := strings.HasPrefix(o.Platform, "linux-")
+	if split && statErr != nil {
+		return b, fmt.Errorf("%s needs chdb-core's split static archive with %s", o.Platform, splitManifestName)
+	}
+	if !split && statErr == nil {
+		return b, fmt.Errorf("%s is only expected in the split Linux archive", splitManifestName)
+	}
+	var shards []string
+	if split {
+		m, err := readSplitManifest(manifest, o.Platform, o.Release)
+		if err != nil {
+			return b, err
+		}
+		if err = checkSplitArchive(m, f, objects); err != nil {
+			return b, err
+		}
+		if shards, err = copySplitShards(work, o.Platform, f, objects); err != nil {
+			return b, err
+		}
+	} else if shards, err = prelinkShards(ctx, work, o.Platform, f, objects, minimum, sdk); err != nil {
 		return b, err
+	}
+	return finishPackage(o, a, v, license, notices, metadataBytes, len(objects), shards)
+}
+
+// prelinkShards merges macOS archive members into relocatable shards. Linux
+// shards come prebuilt from chdb-core and are never relinked.
+func prelinkShards(ctx context.Context, work, platform string, f *os.File, objects []member, minimum, sdk uint32) ([]string, error) {
+	objdir := filepath.Join(work, "objects")
+	if err := os.Mkdir(objdir, 0755); err != nil {
+		return nil, err
 	}
 	var shards []string
 	var emit func([]member) error
 	emit = func(ms []member) error {
-		var args []string
-		if strings.HasPrefix(o.Platform, "darwin-") {
-			arch := "arm64"
-			if strings.HasSuffix(o.Platform, "amd64") {
-				arch = "x86_64"
-			}
-			args = []string{"-r", "-keep_private_externs", "-arch", arch, "-platform_version", "macos", osVersion(minimum), osVersion(maxVersion(sdk, minimum))}
-		} else {
-			args = []string{"-r", "--build-id=none"}
+		arch := "arm64"
+		if strings.HasSuffix(platform, "amd64") {
+			arch = "x86_64"
 		}
+		args := []string{"-r", "-keep_private_externs", "-arch", arch, "-platform_version", "macos", osVersion(minimum), osVersion(maxVersion(sdk, minimum))}
 		for i, m := range ms {
 			name := fmt.Sprintf("m%06d.o", i)
-			var source io.Reader = io.NewSectionReader(f, m.offset, m.size)
-			if strings.HasPrefix(o.Platform, "darwin-") {
-				data, err := io.ReadAll(source)
-				if err != nil {
-					return err
-				}
-				data, err = anchorMachOSections(data, name)
-				if err != nil {
-					return fmt.Errorf("anchor %s: %w", m.name, err)
-				}
-				source = bytes.NewReader(data)
+			data, err := io.ReadAll(io.NewSectionReader(f, m.offset, m.size))
+			if err != nil {
+				return err
 			}
+			data, err = anchorMachOSections(data, name)
+			if err != nil {
+				return fmt.Errorf("anchor %s: %w", m.name, err)
+			}
+			source := bytes.NewReader(data)
 			dest, err := os.Create(filepath.Join(objdir, name))
 			if err != nil {
 				return err
@@ -255,12 +283,12 @@ func Package(ctx context.Context, o Options) (Bundle, error) {
 			}
 			args = append(args, name)
 		}
-		out := filepath.Join(work, fmt.Sprintf("p%04d_%s.syso", len(shards), strings.ReplaceAll(o.Platform, "-", "_")))
+		out := filepath.Join(work, fmt.Sprintf("p%04d_%s.syso", len(shards), strings.ReplaceAll(platform, "-", "_")))
 		args = append(args, "-o", out)
 		cmd := exec.CommandContext(ctx, "ld", args...)
 		cmd.Dir = objdir
 		if output, err := cmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("prelink %s: %w\n%s", o.Platform, err, output)
+			return fmt.Errorf("prelink %s: %w\n%s", platform, err, output)
 		}
 		st, err := os.Stat(out)
 		if err != nil {
@@ -283,7 +311,7 @@ func Package(ctx context.Context, o Options) (Bundle, error) {
 		if err != nil {
 			return err
 		}
-		_, _, err = checkObject(check, o.Platform)
+		_, _, err = checkObject(check, platform)
 		check.Close()
 		if err != nil {
 			return err
@@ -295,22 +323,26 @@ func Package(ctx context.Context, o Options) (Bundle, error) {
 	var size int64
 	for i, m := range objects {
 		if i > start && size+m.size > objectBudget {
-			if err = emit(objects[start:i]); err != nil {
-				return b, err
+			if err := emit(objects[start:i]); err != nil {
+				return nil, err
 			}
 			start = i
 			size = 0
 		}
 		size += m.size
 	}
-	if err = emit(objects[start:]); err != nil {
-		return b, err
+	if err := emit(objects[start:]); err != nil {
+		return nil, err
 	}
-	b = Bundle{Schema: 1, Prefix: o.Prefix, Engine: o.Release.Engine, Version: v, Bindings: o.Bindings, Time: o.Release.Time, HeaderSHA256: o.Release.HeaderSHA256}
+	return shards, nil
+}
+
+func finishPackage(o Options, a Asset, v string, license []byte, notices map[string][]byte, metadataBytes int64, objects int, shards []string) (Bundle, error) {
+	b := Bundle{Schema: 1, Prefix: o.Prefix, Engine: o.Release.Engine, Version: v, Bindings: o.Bindings, Time: o.Release.Time, HeaderSHA256: o.Release.HeaderSHA256}
 	b.Notices = noticeInventory(notices)
-	n := Native{Platform: o.Platform, Objects: len(objects), Shards: len(shards), SourceSHA256: a.SHA256}
+	n := Native{Platform: o.Platform, Objects: objects, Shards: len(shards), SourceSHA256: a.SHA256}
 	groups := [][]string{{}}
-	size = 0
+	var size int64
 	for _, p := range shards {
 		st, err := os.Stat(p)
 		if err != nil {
@@ -345,6 +377,17 @@ func Package(ctx context.Context, o Options) (Bundle, error) {
 	return b, writeJSON(filepath.Join(o.Output, "bundle.json"), b)
 }
 
+// releaseMembers is every file a chdb-core static tarball may carry, with its
+// size limit. LICENSE.txt is accepted but not shipped: modules carry the
+// repository's LICENSE. Anything else is rejected, never skipped.
+var releaseMembers = map[string]int64{
+	"libchdb.a":       4 << 30,
+	"chdb.h":          16 << 20,
+	"chdb.hpp":        16 << 20,
+	splitManifestName: maxSplitManifestBytes,
+	"LICENSE.txt":     16 << 20,
+}
+
 func extract(path, dir, headerSHA string) error {
 	f, err := os.Open(path)
 	if err != nil {
@@ -366,7 +409,8 @@ func extract(path, dir, headerSHA string) error {
 		if err != nil {
 			return err
 		}
-		if h.Typeflag != tar.TypeReg || h.Name != "libchdb.a" && h.Name != "chdb.h" && h.Name != "chdb.hpp" || h.Size < 0 || h.Size > 4<<30 {
+		limit, ok := releaseMembers[h.Name]
+		if h.Typeflag != tar.TypeReg || !ok || h.Size < 0 || h.Size > limit {
 			return fmt.Errorf("unexpected release member %q", h.Name)
 		}
 		if seen[h.Name] {

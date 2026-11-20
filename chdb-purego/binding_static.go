@@ -2,9 +2,11 @@
 
 package chdbpurego
 
-// The static adapter targets the complete v26.11.1 C ABI. Unlike the
-// dynamic adapter it cannot safely mix optional symbols from another loaded
-// engine; an older archive fails at link time instead.
+// The static adapter targets the complete C ABI of the header it is compiled
+// with: static_chdb.h, pinned by static-release.json, unless
+// CHDB_STATIC_HEADER names another. Unlike the dynamic adapter it cannot safely
+// mix optional symbols from another loaded engine; an older archive fails at
+// link time, and an engine of another version fails bindStatic.
 
 /*
 #cgo darwin LDFLAGS: -liconv -framework CoreFoundation -framework Security
@@ -15,6 +17,8 @@ package chdbpurego
 #else
 #include CHDB_STATIC_HEADER
 #endif
+
+static const char *chdb_static_header_version(void) { return CHDB_VERSION; }
 
 // chdb_connection is a pointer typedef. The shared Go code holds its
 // internal_data (the real chdb_conn), and the close call holds the pointer to
@@ -89,8 +93,8 @@ func bindStatic() error {
 	if registeredEngine() != nil {
 		return fmt.Errorf("chdb: lib/embedded cannot be used with chdb_static")
 	}
-	if version := C.GoString(C.chdb_version()); version != "26.11.1" {
-		return fmt.Errorf("chdb: static adapter requires engine 26.11.1, linked %s", version)
+	if version, header := C.GoString(C.chdb_version()), C.GoString(C.chdb_static_header_version()); version != header {
+		return fmt.Errorf("chdb: static adapter requires engine %s, linked %s", header, version)
 	}
 	// Everything below is a real cgo call, not a purego call to a symbol
 	// resolved from the executable. The link must include the exact .a file.

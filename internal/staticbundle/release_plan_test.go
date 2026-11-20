@@ -21,7 +21,7 @@ func selectedPlan(t *testing.T) (PublicationPlan, Release) {
 
 func TestSelectedReleaseIdentities(t *testing.T) {
 	p, _ := selectedPlan(t)
-	if p.Prefix != "go.chdb.io/chdb" || p.SiteOrigin != "https://go.chdb.io" || p.StaticVersion != "v0.261101.1" || p.Release.Bindings != "v2.5.0" || p.Release.Arrow != "v0.1.0" || p.Validation.Bindings != "v2.5.0-rc.2" || p.Validation.Arrow != "v0.1.0-rc.1" {
+	if p.Prefix != "go.chdb.io/chdb" || p.SiteOrigin != "https://go.chdb.io" || p.StaticVersion != "v0.261102.0-rc.1.1" || p.Release.Bindings != "v2.5.0" || p.Release.Arrow != "v0.1.0" || p.Validation.Bindings != "v2.5.0-rc.2" || p.Validation.Arrow != "v0.1.0-rc.1" {
 		t.Fatalf("unexpected selected release: %+v", p)
 	}
 	for _, phase := range []string{"validation", "release"} {
