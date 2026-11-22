@@ -59,16 +59,39 @@ func ReadPublicationPlan(filename string, release Release) (PublicationPlan, err
 	return p, nil
 }
 
+// Phases: validation snapshots the checkout under the planned RC versions in
+// the non-public CI namespace. public-rc publishes those same RC versions at the
+// permanent namespace, and only for a prerelease static version, so it never
+// takes the stable identity. release publishes the stable versions, and only
+// for a stable engine.
+const (
+	PhaseValidation = "validation"
+	PhasePublicRC   = "public-rc"
+	PhaseRelease    = "release"
+)
+
 func (p PublicationPlan) Select(phase string) (string, BindingVersions, error) {
+	prerelease := strings.Contains(p.StaticVersion, "-")
 	switch phase {
-	case "validation":
+	case PhaseValidation:
 		return p.Validation.Prefix, p.Validation.BindingVersions, nil
-	case "release":
+	case PhasePublicRC:
+		if !prerelease {
+			return "", BindingVersions{}, fmt.Errorf("public-rc needs a prerelease static version; %s is the stable identity", p.StaticVersion)
+		}
+		return p.Prefix, p.Validation.BindingVersions, nil
+	case PhaseRelease:
+		if prerelease {
+			return "", BindingVersions{}, fmt.Errorf("release needs a stable engine; %s pins prerelease %s", p.Engine, p.StaticVersion)
+		}
 		return p.Prefix, p.Release, nil
 	default:
-		return "", BindingVersions{}, fmt.Errorf("phase must be validation or release")
+		return "", BindingVersions{}, fmt.Errorf("phase must be validation, public-rc or release")
 	}
 }
+
+// Public reports whether a phase publishes at the permanent namespace.
+func Public(phase string) bool { return phase == PhasePublicRC || phase == PhaseRelease }
 
 func (p PublicationPlan) CheckBundle(b Bundle, phase string) error {
 	prefix, versions, err := p.Select(phase)
@@ -76,7 +99,7 @@ func (p PublicationPlan) CheckBundle(b Bundle, phase string) error {
 		return err
 	}
 	if b.Prefix != prefix || b.Bindings != versions.Bindings || b.Engine != p.Engine || b.Version != p.StaticVersion {
-		return fmt.Errorf("bundle differs from selected %s publication plan; do not publish a validation snapshot under a stable identity", phase)
+		return fmt.Errorf("bundle differs from selected %s publication plan; do not publish a validation snapshot or RC under another identity", phase)
 	}
 	return nil
 }
