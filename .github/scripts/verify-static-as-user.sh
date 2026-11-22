@@ -66,7 +66,7 @@ case "$(uname -s)-$(uname -m)" in
   *) echo 'unsupported static consumer platform' >&2; exit 2 ;;
 esac
 ulimit -c 0
-go build -trimpath -tags chdb_static -o consumer .
+go build -trimpath -tags chdb_static,chdb_static_manual -o consumer .
 for path in "$root" "$consumer" "$CHDB_STATIC_DIR"; do
   if LC_ALL=C grep -a -q -F "$path" consumer; then
     echo "static consumer contains build path: $path" >&2
@@ -81,5 +81,7 @@ case "$(uname -s)" in
     readelf -d consumer
     if readelf -d consumer | grep -Eq '\(NEEDED\).*libchdb\.so'; then exit 1; fi ;;
 esac
-env -u CHDB_LIB_PATH ./consumer | grep -qx '26.11.1:42'
+engine=$(sed -n 's/^#define CHDB_VERSION "\(.*\)"$/\1/p' "$CHDB_STATIC_DIR/chdb.h")
+test -n "$engine"
+env -u CHDB_LIB_PATH ./consumer | grep -qxF "$engine:42"
 echo 'static module-proxy consumer passed'

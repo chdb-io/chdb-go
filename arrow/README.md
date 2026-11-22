@@ -47,12 +47,18 @@ go get github.com/chdb-io/chdb-go/v2/arrow@latest
 CGO_ENABLED=1 go run .
 ```
 
-The `@latest` command requires a published Arrow-module tag (of the form
-`arrow/vX.Y.Z`); the main module's `v2.4.0` tag alone does not publish it.
-The Arrow module currently requires the main module at `v2.4.0` or later.
+For a tagged Arrow release, publish a separate tag of the form `arrow/vX.Y.Z`;
+the main module's `v2.4.0` tag alone does not publish that Arrow version. If no
+Arrow tags exist, Go's `@latest` may resolve the default branch to a
+pseudo-version instead. For reproducible pre-release testing, request an exact
+compatible commit rather than relying on a moving default branch.
+This checkout prepares `arrow/v0.1.0-rc.1` with root bindings
+`v2.5.0-rc.2`. These are planned release versions, not a claim that tags have
+already been published. See the [release plan](../docs/static-release-plan.md).
+Before tagging `arrow/v0.1.0`, update its root dependency to stable `v2.5.0`.
 
 Download the dynamic library for your platform from the
-[chdb-core releases](https://github.com/chdb-io/chdb-core/releases/tag/v26.11.0-rc.3).
+[chdb-core releases](https://github.com/chdb-io/chdb-core/releases/tag/v26.11.1).
 The release assets are named `linux-x86_64-libchdb.tar.gz`,
 `linux-aarch64-libchdb.tar.gz`, `macos-x86_64-libchdb.tar.gz`, and
 `macos-arm64-libchdb.tar.gz`. For example, from a directory where you want
@@ -60,7 +66,7 @@ to keep the library:
 
 ```sh
 asset=macos-arm64-libchdb.tar.gz  # replace with your platform's asset above
-base=https://github.com/chdb-io/chdb-core/releases/download/v26.11.0-rc.3
+base=https://github.com/chdb-io/chdb-core/releases/download/v26.11.1
 curl -fL -o "$asset" "$base/$asset"
 curl -fL -o SHA256SUMS "$base/SHA256SUMS"
 if command -v sha256sum >/dev/null; then

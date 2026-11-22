@@ -1,0 +1,9 @@
+{
+  // Example only. Supply an authorized hostname and bucket before deployment.
+  "name": "chdb-go-module-origin",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-11-17",
+  "workers_dev": false,
+  "vars": { "MODULE_PREFIX": "go.example.com/chdb" },
+  "r2_buckets": [{ "binding": "MODULES", "bucket_name": "REPLACE_WITH_AUTHORIZED_BUCKET" }]
+}

@@ -27,6 +27,10 @@ libchdb.tar.gz
 # Go workspace file
 go.work
 
+# Local Vercel project links, prebuilt output, and short-lived OIDC credentials.
+.vercel/
+.env.local
+
 ### GoLand ###
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio, WebStorm and Rider
 # Reference: https://intellij-support.jetbrains.com/hc/en-us/articles/206544839
