@@ -11,9 +11,9 @@ case "${GOWORK:-}" in
 esac
 
 root=$(go mod edit -json "$repo/go.mod" | jq -er '.Module.Path')
-version=$(go mod edit -json "$repo/arrow/go.mod" | jq -er --arg root "$root" \
+version=$(go mod edit -json "$repo/v2/arrow/go.mod" | jq -er --arg root "$root" \
   '.Require[] | select(.Path == $root) | .Version')
-go work init "$repo" "$repo/arrow"
+go work init "$repo" "$repo/v2/arrow"
 # A use directive alone still allows Go to request the required root version's
 # module graph. Replace that exact unpublished version, not all versions of a
 # workspace module (which Go rejects). Published-consumer tests use no replace.

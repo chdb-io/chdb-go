@@ -12,7 +12,7 @@ There are three phases (`-phase`):
 | Module prefix | `static-ci.example/chdb` | `go.chdb.io/chdb` | `go.chdb.io/chdb` |
 | chdb-core | v26.11.2-rc.1 | v26.11.2-rc.1 | next stable chdb-core, re-pinned and re-validated |
 | Root bindings | v2.5.0-rc.2 (checkout snapshot) | v2.5.0-rc.2 (published tag) | v2.5.0 |
-| Arrow module tag | arrow/v0.1.0-rc.1 (checkout snapshot) | arrow/v0.1.0-rc.1 (published tag) | arrow/v0.1.0 |
+| Arrow module tag | v2/arrow/v0.1.0-rc.1 (checkout snapshot) | v2/arrow/v0.1.0-rc.1 (published tag) | v2/arrow/v0.1.0 |
 | Static engine module version | v0.261102.0-rc.1.1 | v0.261102.0-rc.1.1 | derived from the stable engine |
 
 `public-rc` uses the validation RC versions at the permanent namespace, so the
@@ -80,7 +80,7 @@ for development. Outputs must not exist and must be outside the checkout.
    four-platform native CI; it is required before a complete release.
    A Git push needs fresh confirmation and uploads temporary Actions artifacts.
 2. After the static adapter is on main, publish the root `v2.5.0-rc.2` tag from
-   it, then the `arrow/v0.1.0-rc.1` tag. (`v2.5.0-rc.1` already exists and
+   it, then the `v2/arrow/v0.1.0-rc.1` tag. (`v2.5.0-rc.1` already exists and
    predates the static adapter, so it cannot serve.) Arrow's checked-in
    dependency is prepared for root `v2.5.0-rc.2`; an external Arrow RC must
    resolve the published root without a workspace or `replace`.
@@ -99,7 +99,7 @@ for development. Outputs must not exist and must be outside the checkout.
    `static-release.json` and pass the four-platform CI again, then tag the
    tested root as `v2.5.0`. Update Arrow's root
    requirement to `v2.5.0`, refresh its real `go.sum` from the published root,
-   validate it externally, then tag `arrow/v0.1.0`. Do not fabricate checksums
+   validate it externally, then tag `v2/arrow/v0.1.0`. Do not fabricate checksums
    before the root version exists.
 7. Package/assemble using `-phase release -notices /absolute/prepared/materials`.
    The stable entry requires **v2.5.0**, not its RC. Validate this bundle locally

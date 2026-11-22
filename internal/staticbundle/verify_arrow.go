@@ -19,7 +19,7 @@ func verifyArrow(ctx context.Context, repo, work string, b Bundle, env []string,
 	generated := map[string][]byte{
 		"zz_static_bundle_test.go": []byte(fmt.Sprintf("package chdbarrow\nimport _ %q\n", b.Prefix+"/static")),
 	}
-	if err := snapshotModule(filepath.Join(repo, "arrow"), work, module, arrowVersion, generated); err != nil {
+	if err := snapshotModule(filepath.Join(repo, ArrowDir), work, module, arrowVersion, generated); err != nil {
 		return err
 	}
 	if err := writeList(work, module, arrowVersion); err != nil {
@@ -34,7 +34,7 @@ func verifyArrow(ctx context.Context, repo, work string, b Bundle, env []string,
 	if err := os.WriteFile(filepath.Join(consumer, "go.mod"), []byte(mod), 0644); err != nil {
 		return err
 	}
-	code, err := os.ReadFile(filepath.Join(repo, "arrow", "examples", "quickstart", "main.go"))
+	code, err := os.ReadFile(filepath.Join(repo, ArrowDir, "examples", "quickstart", "main.go"))
 	if err != nil {
 		return err
 	}

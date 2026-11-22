@@ -46,8 +46,8 @@ func TestArrowCIWorkspaceResolvesUnpublishedRootOffline(t *testing.T) {
 	arrowMod := "module example.com/root/v2/arrow\n\ngo 1.21\n\nrequire example.com/root/v2 v2.99.0-unpublished\n"
 	put(t, filepath.Join(repo, "go.mod"), []byte(rootMod))
 	put(t, filepath.Join(repo, "root.go"), []byte("package root\nconst Value = 42\n"))
-	put(t, filepath.Join(repo, "arrow", "go.mod"), []byte(arrowMod))
-	put(t, filepath.Join(repo, "arrow", "arrow.go"), []byte("package arrow\nimport root \"example.com/root/v2\"\nvar Value = root.Value\n"))
+	put(t, filepath.Join(repo, "v2", "arrow", "go.mod"), []byte(arrowMod))
+	put(t, filepath.Join(repo, "v2", "arrow", "arrow.go"), []byte("package arrow\nimport root \"example.com/root/v2\"\nvar Value = root.Value\n"))
 	helper, err := filepath.Abs("../../.github/scripts/prepare-arrow-workspace.sh")
 	if err != nil {
 		t.Fatal(err)
@@ -61,7 +61,7 @@ func TestArrowCIWorkspaceResolvesUnpublishedRootOffline(t *testing.T) {
 	}
 	for _, args := range [][]string{{"list", "-m", "all"}, {"test", "./..."}} {
 		cmd = exec.Command("go", args...)
-		cmd.Dir, cmd.Env = filepath.Join(repo, "arrow"), env
+		cmd.Dir, cmd.Env = filepath.Join(repo, "v2", "arrow"), env
 		if output, err := cmd.CombinedOutput(); err != nil {
 			data, _ := os.ReadFile(work)
 			t.Fatalf("offline %v: %v\n%s\nworkspace:\n%s", args, err, output, data)
@@ -71,7 +71,7 @@ func TestArrowCIWorkspaceResolvesUnpublishedRootOffline(t *testing.T) {
 	if err != nil || !strings.Contains(string(data), "example.com/root/v2 v2.99.0-unpublished => "+repo) {
 		t.Fatalf("missing version-specific workspace replacement: %v\n%s", err, data)
 	}
-	for path, want := range map[string]string{"go.mod": rootMod, "arrow/go.mod": arrowMod} {
+	for path, want := range map[string]string{"go.mod": rootMod, "v2/arrow/go.mod": arrowMod} {
 		got, err := os.ReadFile(filepath.Join(repo, path))
 		if err != nil || string(got) != want {
 			t.Fatalf("CI helper modified source %s: %v\n%s", path, err, got)

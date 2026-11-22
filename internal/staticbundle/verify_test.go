@@ -15,10 +15,10 @@ func snapshotFixture(t *testing.T) (string, string) {
 	repo := filepath.Join(dir, "repo")
 	put(t, filepath.Join(repo, "go.mod"), []byte("module "+RootModule+"\n\ngo 1.21\n"))
 	put(t, filepath.Join(repo, "root.go"), []byte("package root\n"))
-	put(t, filepath.Join(repo, "arrow", "go.mod"), []byte("module "+RootModule+"/arrow\n\ngo 1.23.0\n"))
-	put(t, filepath.Join(repo, "arrow", "batch.go"), []byte("package chdbarrow\n"))
-	put(t, filepath.Join(repo, "arrow", "nested", "go.mod"), []byte("module example.com/nested\n"))
-	put(t, filepath.Join(repo, "arrow", "nested", "payload.syso"), []byte("excluded nested payload"))
+	put(t, filepath.Join(repo, ArrowDir, "go.mod"), []byte("module "+RootModule+"/arrow\n\ngo 1.23.0\n"))
+	put(t, filepath.Join(repo, ArrowDir, "batch.go"), []byte("package chdbarrow\n"))
+	put(t, filepath.Join(repo, ArrowDir, "nested", "go.mod"), []byte("module example.com/nested\n"))
+	put(t, filepath.Join(repo, ArrowDir, "nested", "payload.syso"), []byte("excluded nested payload"))
 	cmd := exec.Command("git", "init", "-q")
 	cmd.Dir = repo
 	if output, err := cmd.CombinedOutput(); err != nil {
@@ -61,7 +61,7 @@ func TestIndependentArrowVerificationSnapshot(t *testing.T) {
 	}
 	module := RootModule + "/arrow"
 	generated := "package chdbarrow\nimport _ \"static-ci.example/chdb/static\"\n"
-	if err := snapshotModule(filepath.Join(repo, "arrow"), out, module, arrowSnapshotVersion,
+	if err := snapshotModule(filepath.Join(repo, ArrowDir), out, module, arrowSnapshotVersion,
 		map[string][]byte{"zz_static_bundle_test.go": []byte(generated)}); err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestIndependentArrowVerificationSnapshot(t *testing.T) {
 	if len(files) != 3 || files[module+"@"+arrowSnapshotVersion+"/zz_static_bundle_test.go"] != generated {
 		t.Fatalf("unexpected Arrow snapshot: %v", files)
 	}
-	if _, err := os.Stat(filepath.Join(repo, "arrow", "zz_static_bundle_test.go")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(repo, ArrowDir, "zz_static_bundle_test.go")); !os.IsNotExist(err) {
 		t.Fatalf("verification changed source checkout: %v", err)
 	}
 }
@@ -84,11 +84,11 @@ func TestSnapshotRefusesSourceIdentityPayloadAndInjectionConflicts(t *testing.T)
 			case "identity":
 				module = "example.com/not-arrow"
 			case "native payload":
-				put(t, filepath.Join(repo, "arrow", "payload.syso"), []byte("not a source file"))
+				put(t, filepath.Join(repo, ArrowDir, "payload.syso"), []byte("not a source file"))
 			case "generated collision":
 				extra["batch.go"] = []byte("package replaced\n")
 			}
-			if err := snapshotModule(filepath.Join(repo, "arrow"), out, module, arrowSnapshotVersion, extra); err == nil {
+			if err := snapshotModule(filepath.Join(repo, ArrowDir), out, module, arrowSnapshotVersion, extra); err == nil {
 				t.Fatal("accepted invalid source snapshot")
 			}
 		})

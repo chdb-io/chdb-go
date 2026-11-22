@@ -52,7 +52,7 @@ The CLI resolves the engine the same way, so it needs one installed on the machi
 
 Arrow Go input and typed output are available in a separate module. Programs
 that do not import it remain cgo-free; programs that do need Go 1.23+, cgo,
-and a chdb-core engine with the Arrow C ABI. See the [Arrow module guide](arrow/README.md)
+and a chdb-core engine with the Arrow C ABI. See the [Arrow module guide](v2/arrow/README.md)
 for installation, supported usage, and resource lifetimes.
 
 ### Experimental static engine build
