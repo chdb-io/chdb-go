@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'arrow/**'
+      - 'v2/arrow/**'
       - 'chdb-purego/arrow.go'
       - 'chdb-purego/binding.go'
       - 'chdb/session.go'
@@ -14,7 +14,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'arrow/**'
+      - 'v2/arrow/**'
       - 'chdb-purego/arrow.go'
       - 'chdb-purego/binding.go'
       - 'chdb/session.go'
@@ -61,7 +61,7 @@ jobs:
         run: |
           export GOWORK="$RUNNER_TEMP/chdb-arrow.work"
           bash .github/scripts/prepare-arrow-workspace.sh
-          cd arrow
+          cd v2/arrow
           go vet ./...
           GOEXPERIMENT=cgocheck2 GODEBUG=cgocheck=1 go test -count=5 -timeout=180s ./...
           go test -race -timeout=180s ./...

@@ -31,6 +31,13 @@ import (
 )
 
 const RootModule = "github.com/chdb-io/chdb-go/v2"
+
+// ArrowDir holds the Arrow module, github.com/chdb-io/chdb-go/v2/arrow. Go finds
+// a nested module's source and tags (v2/arrow/vX.Y.Z) in the directory its path
+// names below the repository root, and a /v2 that is not the last element is a
+// directory name, not a major version. The path keeps /v2 so the module may
+// import the root module's internal packages.
+const ArrowDir = "v2/arrow"
 const MaxModuleBytes int64 = 384 << 20
 
 // MaxFileBytes bounds one native file. chdb-core's split Linux shards are cut

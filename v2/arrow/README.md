@@ -47,15 +47,18 @@ go get github.com/chdb-io/chdb-go/v2/arrow@latest
 CGO_ENABLED=1 go run .
 ```
 
-For a tagged Arrow release, publish a separate tag of the form `arrow/vX.Y.Z`;
+The module lives in `v2/arrow/` because Go looks for a nested module in the
+directory its path names: `github.com/chdb-io/chdb-go/v2/arrow` maps to
+`v2/arrow/`. For a tagged Arrow release, publish a separate tag of the form
+`v2/arrow/vX.Y.Z`;
 the main module's `v2.4.0` tag alone does not publish that Arrow version. If no
 Arrow tags exist, Go's `@latest` may resolve the default branch to a
 pseudo-version instead. For reproducible pre-release testing, request an exact
 compatible commit rather than relying on a moving default branch.
-This checkout prepares `arrow/v0.1.0-rc.1` with root bindings
+This checkout prepares `v2/arrow/v0.1.0-rc.1` with root bindings
 `v2.5.0-rc.2`. These are planned release versions, not a claim that tags have
-already been published. See the [release plan](../docs/static-release-plan.md).
-Before tagging `arrow/v0.1.0`, update its root dependency to stable `v2.5.0`.
+already been published. See the [release plan](../../docs/static-release-plan.md).
+Before tagging `v2/arrow/v0.1.0`, update its root dependency to stable `v2.5.0`.
 
 Download the dynamic library for your platform from the
 [chdb-core releases](https://github.com/chdb-io/chdb-core/releases/tag/v26.11.1).
@@ -87,9 +90,9 @@ downloads its pinned engine into that directory. An installed engine is not
 upgraded by `go get`. The separately versioned `lib/embedded` module currently
 carries an older engine: a program that imports it needs `CHDB_LIB_PATH` set
 to a compatible library to override the embedded copy. See the main
-[engine loading guide](../README.md#where-the-engine-is-loaded-from).
+[engine loading guide](../../README.md#where-the-engine-is-loaded-from).
 
-From this repository's `arrow` directory, run the
+From this repository's `v2/arrow` directory, run the
 [complete quickstart](examples/quickstart/main.go) with:
 
 ```sh

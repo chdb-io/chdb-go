@@ -165,7 +165,7 @@ artifacts still requires approval for the Git push/remote operation.
 Before a public engine release, select a permanent authorized domain and pin the
 exact tested source commit. Root bindings and the nested Arrow module need
 independently resolvable versions. For a user-facing release, publish a new root
-tag containing this module-compatible adapter and an `arrow/vX.Y.Z` tag with the
+tag containing this module-compatible adapter and a `v2/arrow/vX.Y.Z` tag with the
 root dependency updated to the compatible release. A fixed commit/pseudo-version
 can be used for pre-release testing; `main` is not a reproducible version pin.
 No root release tag is a substitute for the Arrow module's independent version.

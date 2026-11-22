@@ -6,7 +6,7 @@ on:
     paths:
       - 'chdb-purego/**'
       - 'chdb/**'
-      - 'arrow/**'
+      - 'v2/arrow/**'
       - 'chdb.h'
       - '.github/scripts/verify-static-as-user.sh'
       - '.github/scripts/prepare-arrow-workspace.sh'
@@ -18,7 +18,7 @@ on:
     paths:
       - 'chdb-purego/**'
       - 'chdb/**'
-      - 'arrow/**'
+      - 'v2/arrow/**'
       - 'chdb.h'
       - '.github/scripts/verify-static-as-user.sh'
       - '.github/scripts/prepare-arrow-workspace.sh'
@@ -108,9 +108,9 @@ jobs:
           export GOWORK="$RUNNER_TEMP/chdb-arrow.work"
           bash .github/scripts/prepare-arrow-workspace.sh
           export CHDB_ARROW_TEST_STATIC=1
-          (cd arrow && go vet -tags chdb_static,chdb_static_manual ./...)
-          (cd arrow && GOEXPERIMENT=cgocheck2 GODEBUG=cgocheck=1 go test -count=5 -tags chdb_static,chdb_static_manual -timeout=180s ./...)
-          (cd arrow && go test -race -tags chdb_static,chdb_static_manual -timeout=180s ./...)
+          (cd v2/arrow && go vet -tags chdb_static,chdb_static_manual ./...)
+          (cd v2/arrow && GOEXPERIMENT=cgocheck2 GODEBUG=cgocheck=1 go test -count=5 -tags chdb_static,chdb_static_manual -timeout=180s ./...)
+          (cd v2/arrow && go test -race -tags chdb_static,chdb_static_manual -timeout=180s ./...)
           env -u CHDB_LIB_PATH "$RUNNER_TEMP/chdb-static/chdb-go-static" 'SELECT 42' CSV | grep -qx 42
           if [ "$RUNNER_OS" = macOS ]; then
             otool -L "$RUNNER_TEMP/chdb-static/chdb-go-static" | tee "$RUNNER_TEMP/chdb-static/dependencies.txt"
