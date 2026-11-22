@@ -5,12 +5,21 @@ The selected domain is `go.chdb.io`, with module prefix `go.chdb.io/chdb`.
 `static-release.json` pins the existing engine assets and header. Neither file
 creates a tag, provisions a domain or publishes an artifact.
 
-| Layer | Validation | Stable release |
-| --- | --- | --- |
-| chdb-core | v26.11.2-rc.1 | next stable chdb-core, re-pinned and re-validated |
-| Root bindings | v2.5.0-rc.2 | v2.5.0 |
-| Arrow module tag | arrow/v0.1.0-rc.1 | arrow/v0.1.0 |
-| Native engine module version | v0.261102.0-rc.1.1, local CI namespace only | derived from the stable engine, at the permanent namespace |
+There are three phases (`-phase`):
+
+| Layer | `validation` (CI only) | `public-rc` | `release` (stable) |
+| --- | --- | --- | --- |
+| Module prefix | `static-ci.example/chdb` | `go.chdb.io/chdb` | `go.chdb.io/chdb` |
+| chdb-core | v26.11.2-rc.1 | v26.11.2-rc.1 | next stable chdb-core, re-pinned and re-validated |
+| Root bindings | v2.5.0-rc.2 (checkout snapshot) | v2.5.0-rc.2 (published tag) | v2.5.0 |
+| Arrow module tag | arrow/v0.1.0-rc.1 (checkout snapshot) | arrow/v0.1.0-rc.1 (published tag) | arrow/v0.1.0 |
+| Static engine module version | v0.261102.0-rc.1.1 | v0.261102.0-rc.1.1 | derived from the stable engine |
+
+`public-rc` uses the validation RC versions at the permanent namespace, so the
+public RC depends on exactly what CI validated. It accepts only a prerelease
+static version, so it never takes a stable identity; `release` accepts only a
+stable engine. Both public phases need `-notices`, and every Blob or publish
+command must name one of them: the default `validation` phase never uploads.
 
 ## Local and CI validation
 
@@ -70,30 +79,39 @@ for development. Outputs must not exist and must be outside the checkout.
 1. Push a reviewed source commit to a dedicated test branch and pass the
    four-platform native CI; it is required before a complete release.
    A Git push needs fresh confirmation and uploads temporary Actions artifacts.
-2. Publish the root `v2.5.0-rc.2` tag, then the `arrow/v0.1.0-rc.1` tag. Arrow's
-   checked-in dependency is prepared for root `v2.5.0-rc.2`; an external Arrow RC
-   must resolve the published root without a workspace or `replace`.
+2. After the static adapter is on main, publish the root `v2.5.0-rc.2` tag from
+   it, then the `arrow/v0.1.0-rc.1` tag. (`v2.5.0-rc.1` already exists and
+   predates the static adapter, so it cannot serve.) Arrow's checked-in
+   dependency is prepared for root `v2.5.0-rc.2`; an external Arrow RC must
+   resolve the published root without a workspace or `replace`.
 3. Validate the final domain with a newly generated tiny probe. The previous
    `*.vercel.app` report is not acceptance evidence for `go.chdb.io`. Domain
    attachment/DNS, Blob upload and discovery deployment are separate writes.
 4. Prepare the license/notice and source/relink delivery material described in
    [static distribution materials](static-distribution-materials.md). Re-run
    size and native tests when adding those bytes.
-5. After RC acceptance, tag the tested root as `v2.5.0`. Update Arrow's root
+5. Package/assemble the public RC with `-phase public-rc -notices
+   /absolute/prepared/materials`. Its static entry requires the published
+   `v2.5.0-rc.2`. Upload and deploy it only after exact, separately confirmed
+   inventories, then run the public cold-cache, default proxy/checksum and
+   offline acceptance on all four targets.
+6. After RC acceptance and a stable chdb-core release, re-pin
+   `static-release.json` and pass the four-platform CI again, then tag the
+   tested root as `v2.5.0`. Update Arrow's root
    requirement to `v2.5.0`, refresh its real `go.sum` from the published root,
    validate it externally, then tag `arrow/v0.1.0`. Do not fabricate checksums
    before the root version exists.
-6. Package/assemble using `-phase release -notices /absolute/prepared/materials`.
+7. Package/assemble using `-phase release -notices /absolute/prepared/materials`.
    The stable entry requires **v2.5.0**, not its RC. Validate this bundle locally
    before presenting an exact Blob upload inventory for confirmation.
-7. Run real public default-proxy/checksum and offline acceptance on the stable
+8. Run real public default-proxy/checksum and offline acceptance on the stable
    bundle and supported runners before announcing it as available to users.
 
 The stable static version is immutable. Do not first publish
-`go.chdb.io/chdb/static@v0.261101.1` requiring `v2.5.0-rc.2`, then overwrite its
-ZIP or go.mod to require `v2.5.0`. Validation and release have different module
-paths, and only the final stable dependency graph is published at the permanent
-path. Fixes after that publication need a new packaging revision.
+a static version requiring `v2.5.0-rc.2`, then overwrite its ZIP or go.mod to
+require `v2.5.0`. The public RC (`v0.261102.0-rc.1.1`, requiring the root RC)
+and the stable release (a stable engine version, requiring `v2.5.0`) are
+different versions at the permanent path; neither replaces the other. Fixes after that publication need a new packaging revision.
 
 Publishing a Git tag makes a Go version discoverable; creating a GitHub Release
 is a different action. The existing `release.yml` responds to GitHub Release

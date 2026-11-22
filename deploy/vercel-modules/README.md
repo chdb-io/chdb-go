@@ -132,7 +132,9 @@ Keep the existing package/assemble/native-consumer checks. Package for the
 chosen stable namespace and a compatible published root bindings release;
 do not reuse the synthetic local bindings version in a public release.
 
-`blob-plan` and `blob-site` also accept a complete engine `bundle.json`.
+`blob-plan` and `blob-site` also accept a complete engine `bundle.json`. With
+`-publication-plan`, an engine bundle needs `-phase public-rc` or
+`-phase release`; the default `validation` phase refuses every Blob command.
 `blob-publish` additionally requires `-probe-report` pointing to the passed
 `public-verification.json` for the **same** site/store/namespace. Partial engine
 bundles remain non-publishable. Four-platform tests, upstream notices, and the

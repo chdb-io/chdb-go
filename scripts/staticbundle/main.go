@@ -45,7 +45,7 @@ func mainErr() error {
 	previousCatalog := fs.String("previous-catalog", "", "previously deployed catalog.json to preserve older versions in the new site")
 	probeReport := fs.String("probe-report", "", "passed public tiny-module verification report, required before engine Blob uploads")
 	publicationPath := fs.String("publication-plan", "", "selected publication JSON, relative to repo; local validation and stable publication are separate")
-	phase := fs.String("phase", "validation", "publication plan phase: validation or release")
+	phase := fs.String("phase", "validation", "publication plan phase: validation, public-rc or release")
 	notices := fs.String("notices", "", "prepared release notice directory; required for public engine publication")
 	if err := fs.Parse(os.Args[2:]); err != nil {
 		return err
@@ -96,15 +96,14 @@ func mainErr() error {
 		publication = &p
 		if *bundle != "" && os.Args[1] != "verify-public" {
 			if _, err := os.Stat(filepath.Join(*bundle, "bundle.json")); err == nil {
+				if (strings.HasPrefix(os.Args[1], "blob-") || os.Args[1] == "publish") && !staticbundle.Public(*phase) {
+					return fmt.Errorf("%s uploads to the permanent namespace; pass -phase public-rc or -phase release", os.Args[1])
+				}
 				b, err := staticbundle.ReadBundle(*bundle)
 				if err != nil {
 					return err
 				}
-				checkedPhase := *phase
-				if strings.HasPrefix(os.Args[1], "blob-") || os.Args[1] == "publish" {
-					checkedPhase = "release"
-				}
-				if err = p.CheckBundle(b, checkedPhase); err != nil {
+				if err = p.CheckBundle(b, *phase); err != nil {
 					return err
 				}
 			}
@@ -122,7 +121,7 @@ func mainErr() error {
 			Bindings string                       `json:"selected_bindings"`
 			Arrow    string                       `json:"selected_arrow"`
 			Notice   string                       `json:"notice"`
-		}{*publication, *phase, *prefix, *bindings, arrowVersion, "LOCAL PLAN ONLY. RC snapshots use the CI namespace. Publish stable static entry only after stable root bindings resolve; never overwrite the selected static version to change its RC dependency. No tags, DNS, uploads or deployments are performed."})
+		}{*publication, *phase, *prefix, *bindings, arrowVersion, "LOCAL PLAN ONLY. validation snapshots use the CI namespace. public-rc publishes a prerelease static version at the permanent namespace only after its RC root (and Arrow) tags resolve publicly; release publishes a stable engine only after stable root bindings resolve. Never overwrite a published static version to change its dependencies. No tags, DNS, uploads or deployments are performed."})
 	case "probe":
 		if *out == "" {
 			return fmt.Errorf("probe requires -out and -module-prefix")
@@ -175,8 +174,8 @@ func mainErr() error {
 		if *archive == "" || *out == "" {
 			return fmt.Errorf("package requires -archive and -out")
 		}
-		if publication != nil && *phase == "release" && *notices == "" {
-			return fmt.Errorf("release packaging requires prepared -notices; use validation phase for development without them")
+		if publication != nil && staticbundle.Public(*phase) && *notices == "" {
+			return fmt.Errorf("%s packaging requires prepared -notices; use validation phase for development without them", *phase)
 		}
 		r, err := staticbundle.ReadRelease(*releasePath)
 		if err != nil {

@@ -25,11 +25,41 @@ func planArgs(t *testing.T) []string {
 	return []string{"-repo", repo, "-publication-plan", "static-publication.json"}
 }
 
-func TestReleaseCLIRequiresNoticeInputsBeforePackaging(t *testing.T) {
+func TestPublicCLIRequiresNoticeInputsBeforePackaging(t *testing.T) {
 	args := append([]string{"package"}, planArgs(t)...)
-	args = append(args, "-phase", "release", "-archive", "unused.tar.gz", "-out", filepath.Join(t.TempDir(), "unused"))
+	args = append(args, "-phase", "public-rc", "-archive", "unused.tar.gz", "-out", filepath.Join(t.TempDir(), "unused"))
 	if err := runCLI(t, args...); err == nil || !strings.Contains(err.Error(), "requires prepared -notices") {
-		t.Fatalf("release notice gate not applied before native packaging: %v", err)
+		t.Fatalf("public RC notice gate not applied before native packaging: %v", err)
+	}
+}
+
+// The checked-in plan pins an RC engine, so the stable release phase must
+// refuse it before any packaging starts.
+func TestReleaseCLIRefusesRCEngine(t *testing.T) {
+	args := append([]string{"package"}, planArgs(t)...)
+	args = append(args, "-phase", "release", "-notices", t.TempDir(), "-archive", "unused.tar.gz", "-out", filepath.Join(t.TempDir(), "unused"))
+	if err := runCLI(t, args...); err == nil || !strings.Contains(err.Error(), "release needs a stable engine") {
+		t.Fatalf("release phase accepted an RC engine: %v", err)
+	}
+}
+
+// Uploads must name a public phase; the default validation phase never
+// reaches the permanent namespace, not even by being re-checked as release.
+func TestBlobCLIRequiresExplicitPublicPhase(t *testing.T) {
+	bundle := t.TempDir()
+	if err := os.WriteFile(filepath.Join(bundle, "bundle.json"), []byte("{}"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join(t.TempDir(), "target.json")
+	if err := os.WriteFile(target, []byte("{}"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	for _, command := range []string{"blob-plan", "blob-site", "blob-publish", "publish"} {
+		args := append([]string{command}, planArgs(t)...)
+		args = append(args, "-bundle", bundle, "-blob-target", target)
+		if err := runCLI(t, args...); err == nil || !strings.Contains(err.Error(), "pass -phase public-rc or -phase release") {
+			t.Fatalf("%s ran in the validation phase: %v", command, err)
+		}
 	}
 }
 
