@@ -1,0 +1,1051 @@
+{
+  "schema": 1,
+  "engine": "v26.11.2-rc.1",
+  "core_commit": "59a7f688d1fc8d895115e104f09a2c4071490d6a",
+  "core_repository": "https://github.com/chdb-io/chdb-core",
+  "core_commit_verified": true,
+  "packager": {
+    "repository": "https://github.com/chdb-io/chdb-go",
+    "commit": "55744f0a70a4a5336d501e7a5dba837436136a28",
+    "paths": [
+      "internal/staticbundle",
+      "scripts/staticbundle",
+      "static-release.json"
+    ]
+  },
+  "platforms": {
+    "darwin-amd64": {
+      "asset": "macos-x86_64-libchdb-static.tar.gz",
+      "sha256": "c9c160467da5a1a63775d627de05fb20fd697a163f78f8bde518eed7d299b726"
+    },
+    "darwin-arm64": {
+      "asset": "macos-arm64-libchdb-static.tar.gz",
+      "sha256": "c60fa51f4e6d4538441ab9372b4c9b38d235af015d5bc3c40c896e7c79642b64"
+    },
+    "linux-amd64": {
+      "asset": "linux-x86_64-libchdb-static-split.tar.gz",
+      "sha256": "1843bd7e29dd79cc6acb6427099e9fff7793f433203f87bef6d249534cefe34b"
+    },
+    "linux-arm64": {
+      "asset": "linux-aarch64-libchdb-static-split.tar.gz",
+      "sha256": "16020252214e4c025e6375d2e7137565b5863052b275f94537599fe8089562ae"
+    }
+  },
+  "header_sha256": "dee46580f8fb1034763ecd2be4d163efd402f7bcec259eee03991cd62e91de99",
+  "build_scripts_at_core_commit": [
+    "chdb/build.sh",
+    "chdb/build_linux_arm64.sh",
+    "chdb/build_mac_arm64.sh",
+    "chdb/build_mac_on_linux.sh",
+    "chdb/build/build_static_lib.sh",
+    "chdb/build/build_static_lib_mac_on_linux.sh",
+    "chdb/build/create_static_libchdb.py",
+    "chdb/build/prelink_static_lib.sh",
+    "chdb/build/split_static_lib.py",
+    "chdb/build/split_static_lib_text.py",
+    "chdb/build/check_static_lib_hermetic.sh",
+    "chdb/build/rename_static_lib_symbols_macos.py",
+    ".github/workflows/build_linux_x86_wheels.yml",
+    ".github/workflows/build_linux_arm64_wheels-gh.yml",
+    ".github/workflows/build_macos_x86_wheels.yml",
+    ".github/workflows/build_macos_arm64_wheels.yml"
+  ],
+  "lgpl_components": [
+    {
+      "path": "contrib/mariadb-connector-c",
+      "url": "https://github.com/ClickHouse/mariadb-connector-c",
+      "commit": "b3c09ab333c2ef9277291e721871a2bafca6e8bf",
+      "commit_verified_at_url": true,
+      "name": "MariaDB Connector/C",
+      "license": "LGPL-2.1 (COPYING.LIB); some files LGPL-2.0-or-later",
+      "platforms": "all"
+    },
+    {
+      "path": "contrib/libgsasl",
+      "url": "https://github.com/ClickHouse/libgsasl",
+      "commit": "2d16b4e0d9435bec4546875ef07d36383bb993a5",
+      "commit_verified_at_url": true,
+      "name": "GNU SASL",
+      "license": "LGPL-2.1-or-later",
+      "platforms": "linux"
+    }
+  ],
+  "source_delivery": {
+    "status": "commit-links",
+    "statement": "The corresponding source is the core commit and the submodule commits listed here, at their public repository URLs. Each url was checked to serve its exact commit (commit_verified_at_url). This includes the LGPL components MariaDB Connector/C and GNU SASL. No separate source archive is published."
+  },
+  "components": [
+    {
+      "path": "contrib/AMQP-CPP",
+      "url": "https://github.com/ClickHouse/AMQP-CPP",
+      "commit": "4fccd7f84318fe3a022c63a5b621a831c99e3a32",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/FP16",
+      "url": "https://github.com/Maratyszcza/FP16.git",
+      "commit": "0a92994d729ff76a58f692d3028ca1b64b145d91",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/Jieba-CPP",
+      "url": "https://github.com/amosbird/Jieba-CPP",
+      "commit": "6b1d1776f0c09a17a6fd4d2e1efcb876f1bf7834",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/MeCab",
+      "url": "https://github.com/taku910/mecab",
+      "commit": "61b90ba6e669dc2d7d533d4a80d206f3b31d52b1",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/NuRaft",
+      "url": "https://github.com/ClickHouse/NuRaft",
+      "commit": "884294e9dbee183b53601bbe2c8c5753cec1a3db",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/SHA3IUF",
+      "url": "https://github.com/brainhub/SHA3IUF.git",
+      "commit": "fc8504750a5c2174a1874094dd05e6a0d8797753",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/SimSIMD",
+      "url": "https://github.com/ClickHouse/SimSIMD.git",
+      "commit": "e81e1c2de244061a476eaa7ac4db9ca01df4feed",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/StringZilla",
+      "url": "https://github.com/ClickHouse/StringZilla.git",
+      "commit": "15c292ec71db5c0e3d05f3bd693a6b5ec9429db8",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/abseil-cpp",
+      "url": "https://github.com/abseil/abseil-cpp.git",
+      "commit": "2065f4ded0558c6f89fee67c8e5228feb4eb960e",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/ai-sdk-cpp",
+      "url": "https://github.com/ClickHouse/ai-sdk-cpp",
+      "commit": "ab06ef70baba81ba4ecf1ece038bbae96e74d4af",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/antlr4-cpp-runtime",
+      "url": "https://github.com/antlr/antlr4.git",
+      "commit": "b91cecf6d06600433a12a12271a7985d2845d7aa",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/arrow",
+      "url": "https://github.com/chdb-io/arrow.git",
+      "commit": "363af92ec194c0fb8c8536c8e1570e4ec6e9cb40",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/arrow-testing",
+      "url": "https://github.com/apache/arrow-testing",
+      "commit": "9ff285c88565f0f6abc855918c6a342e70e4909c",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/avro",
+      "url": "https://github.com/ClickHouse/avro",
+      "commit": "4df3dab49badd93fec847a072b784d4dcf7e5350",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/aws",
+      "url": "https://github.com/ClickHouse/aws-sdk-cpp",
+      "commit": "c1d5b5f6e8476c31cc511efa9919b17cf9c5c314",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/aws-c-auth",
+      "url": "https://github.com/awslabs/aws-c-auth",
+      "commit": "4b5d524bf1a511b05e0fffe5bdc51800770b9427",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/aws-c-cal",
+      "url": "https://github.com/awslabs/aws-c-cal",
+      "commit": "8aa2a48a09f93c65d4cf06388e143a6584de6321",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/aws-c-common",
+      "url": "https://github.com/awslabs/aws-c-common.git",
+      "commit": "d06a38e88b3afef2a5cc0445d0b68d9d4e349fbc",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/aws-c-compression",
+      "url": "https://github.com/awslabs/aws-c-compression",
+      "commit": "d8264e64f698341eb03039b96b4f44702a9b3f83",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/aws-c-event-stream",
+      "url": "https://github.com/awslabs/aws-c-event-stream",
+      "commit": "51bef3c44e1058b1689751539170b2e0f589ccdb",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/aws-c-http",
+      "url": "https://github.com/awslabs/aws-c-http",
+      "commit": "8aefd899fc3210bfd0e3fd414011a3cb708bf6e4",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/aws-c-io",
+      "url": "https://github.com/ClickHouse/aws-c-io",
+      "commit": "ad2b310237ca87b67b1d0f6c9bc4b865d44cf45c",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/aws-c-mqtt",
+      "url": "https://github.com/awslabs/aws-c-mqtt",
+      "commit": "e35b9ca3f9fcbf1a972c831c5e79046ce56959d1",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/aws-c-s3",
+      "url": "https://github.com/awslabs/aws-c-s3",
+      "commit": "226c3e6937e3d5f7db9e10651f7bd20575e98187",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/aws-c-sdkutils",
+      "url": "https://github.com/awslabs/aws-c-sdkutils",
+      "commit": "a1cc19f53b63658f1b1400b36f199eafeeb895a6",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/aws-checksums",
+      "url": "https://github.com/awslabs/aws-checksums",
+      "commit": "1d5f2f1f3e5d013aae8810878ceb5b3f6f258c4e",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/aws-crt-cpp",
+      "url": "https://github.com/ClickHouse/aws-crt-cpp",
+      "commit": "fb9638dc096ae5b472947adee958ac2b9bd75ba1",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/azure",
+      "url": "https://github.com/ClickHouse/azure-sdk-for-cpp",
+      "commit": "20f8b46b878718b4536a88888a182f60f665465a",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/boost",
+      "url": "https://github.com/ClickHouse/boost",
+      "commit": "030f1d17436e5ef1ccf8d2e3cec3674d9c385370",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/brotli",
+      "url": "https://github.com/ClickHouse/brotli",
+      "commit": "2d9c9b61f4e7d3523c9dfb62e48fe91aaf86e812",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/bs-thread-pool",
+      "url": "https://github.com/bshoshany/thread-pool.git",
+      "commit": "097aa718f25d44315cadb80b407144ad455ee4f9",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/bzip2",
+      "url": "https://github.com/ClickHouse/bzip2",
+      "commit": "bf905ea2251191ff9911ae7ec0cfc35d41f9f7f6",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/c-ares",
+      "url": "https://github.com/c-ares/c-ares.git",
+      "commit": "bc91829cce983a35ec01f5dbc05465858a3df469",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/capnproto",
+      "url": "https://github.com/ClickHouse/capnproto",
+      "commit": "7fababf324f50e6a68be9415294ec2a4c3543208",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/cccl",
+      "url": "https://github.com/NVIDIA/cccl.git",
+      "commit": "8e3d27c96daf85e269168f255a4f4b34f4169e8f",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/cctz",
+      "url": "https://github.com/ClickHouse/cctz",
+      "commit": "fa5fe114a87a34c055853adf54dde305979acea0",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/chdig",
+      "url": "https://github.com/azat/chdig.git",
+      "commit": "a28e1072f6e2aeb98116ae6f6ecda06d57e877ff",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/cld2",
+      "url": "https://github.com/ClickHouse/cld2",
+      "commit": "b19c9d5bee6622c1b1efd33264ccca6a76fb0430",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/clickstack",
+      "url": "https://github.com/ClickHouse/clickhouse-clickstack.git",
+      "commit": "f5232dc36db0f151c6a19a770710fbeebfd9051b",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/corrosion",
+      "url": "https://github.com/corrosion-rs/corrosion",
+      "commit": "c4840742d23d1c1a187152e2c5ae65886b9c9007",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/cppkafka",
+      "url": "https://github.com/ClickHouse/cppkafka",
+      "commit": "01ea85530b2c156db2dcadb4117f30e1faf93b09",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/crc32-s390x",
+      "url": "https://github.com/linux-on-ibm-z/crc32-s390x",
+      "commit": "30980583bf9ed3fa193abb83a1849705ff457f70",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/crc32-vpmsum",
+      "url": "https://github.com/antonblanchard/crc32-vpmsum.git",
+      "commit": "452155439389311fc7d143621eaf56a258e02476",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/crc32c",
+      "url": "https://github.com/ClickHouse/crc32c",
+      "commit": "8e39af2c7f8b23d1a0c2a6367b3313149c20b520",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/croaring",
+      "url": "https://github.com/RoaringBitmap/CRoaring",
+      "commit": "20495fec4d1622b93284033a160f67d21a5aa8bb",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/cuCollections",
+      "url": "https://github.com/NVIDIA/cuCollections.git",
+      "commit": "8ed532dc0ba3ba664d1d41027269908ddcde04c8",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/cucascade",
+      "url": "https://github.com/NVIDIA/cuCascade.git",
+      "commit": "a37c33b95d032224587dc0f253236b78fdb1d07b",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/cudf",
+      "url": "https://github.com/rapidsai/cudf.git",
+      "commit": "cb228a751a64c45e0789f6d17c6f4145448519b8",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/cyrus-sasl",
+      "url": "https://github.com/ClickHouse/cyrus-sasl",
+      "commit": "e6466edfd638cc5073debe941c53345b18a09512",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/darts-clone",
+      "url": "https://github.com/s-yata/darts-clone",
+      "commit": "87b71afd6cf784953e3c08f24c64203397f3b724",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/datasketches-cpp",
+      "url": "https://github.com/ClickHouse/datasketches-cpp",
+      "commit": "5b5524f55d121225a7909c2851271327684585d7",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/delta-kernel-rs",
+      "url": "https://github.com/ClickHouse/delta-kernel-rs.git",
+      "commit": "88ff5a947478215d285783b42aafe6f3d04aca58",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/dlpack",
+      "url": "https://github.com/dmlc/dlpack.git",
+      "commit": "365b823cedb281cd0240ca601aba9b78771f91a3",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/dmlc-core",
+      "url": "https://github.com/dmlc/dmlc-core",
+      "commit": "4baa84e627849e675a3f99c92990ef9c39e4269e",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/double-conversion",
+      "url": "https://github.com/google/double-conversion",
+      "commit": "9dd6227ee3e29807183e56877f0282aeb40b8b1e",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/fast_float",
+      "url": "https://github.com/ClickHouse/fast_float",
+      "commit": "236eba4d6b11852e16bd5b0166a0319d65496e0a",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/fastops",
+      "url": "https://github.com/ClickHouse/fastops",
+      "commit": "e2fbb015ae99e031eaf0223cd2d5d09ca63cfedb",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/flatbuffers",
+      "url": "https://github.com/google/flatbuffers",
+      "commit": "7e163021e59cca4f8e1e35a7c828b5c6b7915953",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/fmtlib",
+      "url": "https://github.com/ClickHouse/fmt",
+      "commit": "6f1b0812b84a51c7053191cdb392fcd0b7338fb0",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/gdeflate",
+      "url": "https://github.com/ClickHouse/libdeflate.git",
+      "commit": "038f6f59c1d2a1e285b384ffd8d37cba56db66dd",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/google-benchmark",
+      "url": "https://github.com/google/benchmark",
+      "commit": "a6b4a9f00b36c19af9997d68a1cf6e0b5b3d032c",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/google-cloud-cpp",
+      "url": "https://github.com/ClickHouse/google-cloud-cpp.git",
+      "commit": "499787a71646ee5f7d9a845aee79a1b0663c947d",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/google-protobuf",
+      "url": "https://github.com/protocolbuffers/protobuf.git",
+      "commit": "f377bfefc5e2cfab68b816903c25b23e091c439d",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/googletest",
+      "url": "https://github.com/google/googletest",
+      "commit": "063de7e9578f82b369302001269680b4b1553359",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/grpc",
+      "url": "https://github.com/ClickHouse/grpc",
+      "commit": "68b2fe0b2b1318f18aadee9027e86e8ceaa20af2",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/h3",
+      "url": "https://github.com/ClickHouse/h3",
+      "commit": "a98c060583faaad33d55a85e1e88be54c8863859",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/heks",
+      "url": "https://github.com/ClickHouse/heks.git",
+      "commit": "ec14498a6ec2c8f00a3b76cf57e9e26c1ad7362c",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/hive-metastore",
+      "url": "https://github.com/ClickHouse/hive-metastore",
+      "commit": "809a77d435ce218d9b000733f19489c606fc567b",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/icu",
+      "url": "https://github.com/ClickHouse/icu",
+      "commit": "b29faa6d4e46f10d230b93a3c33885e7ec71bd41",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/icudata",
+      "url": "https://github.com/ClickHouse/icudata",
+      "commit": "e3ae5bcb2b24f17cd9336c4f1b25f36ed636d839",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/idna",
+      "url": "https://github.com/ClickHouse/idna",
+      "commit": "262e46f3865975151683f0f60d3d6228cbe9dcb5",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/ipcrypt2",
+      "url": "https://github.com/jedisct1/ipcrypt2.git",
+      "commit": "07fd2e1ef3bf6e7d689b6d1c46ff48f67df20888",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/isa-l",
+      "url": "https://github.com/ClickHouse/isa-l.git",
+      "commit": "9f2b68f05752097f0f16632fc4a9a86950831efd",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/jemalloc",
+      "url": "https://github.com/ClickHouse/jemalloc",
+      "commit": "9e5a679b18b9c8d6b7f6fc319cb63808e88bc5ba",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/jwt-cpp",
+      "url": "https://github.com/Thalhammer/jwt-cpp",
+      "commit": "b0ea29a58fc852a67d4e896d266880c2c63b0c4c",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/krb5",
+      "url": "https://github.com/ClickHouse/krb5",
+      "commit": "857c2d1edd7a4218b84594768587aa53fd63da9e",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/kvikio",
+      "url": "https://github.com/rapidsai/kvikio.git",
+      "commit": "5c2b9755b182de46e5838c6a5aabf5899a2938b2",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/lemmagen-c",
+      "url": "https://github.com/ClickHouse/lemmagen-c",
+      "commit": "59537bdcf57bbed17913292cb4502d15657231f1",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/libarchive",
+      "url": "https://github.com/libarchive/libarchive.git",
+      "commit": "27cbc7827172698143e440801fc0ba39ccb4f1f5",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/libbcrypt",
+      "url": "https://github.com/rg3/libbcrypt.git",
+      "commit": "8aa32ad94ebe06b76853b0767c910c9fbf7ccef4",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/libcotp",
+      "url": "https://github.com/paolostivanin/libcotp.git",
+      "commit": "2ffa6281ff4219636354df08b12c1a5aadd12ab4",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/libcpuid",
+      "url": "https://github.com/anrieff/libcpuid",
+      "commit": "7ac123e3c13013ff6cd2d8c4ec1881177d71357f",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/libdeflate",
+      "url": "https://github.com/ClickHouse/libdeflate",
+      "commit": "65d215e89ba0cd536f6585834cf507d816cb1a2f",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/libdivide",
+      "url": "https://github.com/ridiculousfish/libdivide",
+      "commit": "ea0fb1ad79a116cd561595c930bcaf33147b3e6c",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/libfiu",
+      "url": "https://github.com/ClickHouse/libfiu.git",
+      "commit": "74bc382193df83d829f9e5b99d7f17a841c5cf74",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/libgsasl",
+      "url": "https://github.com/ClickHouse/libgsasl",
+      "commit": "2d16b4e0d9435bec4546875ef07d36383bb993a5",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/libhdfs3",
+      "url": "https://github.com/ClickHouse/libhdfs3",
+      "commit": "28a9868bc15749d899669e117e0c6eb9f5350923",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/libpqxx",
+      "url": "https://github.com/ClickHouse/libpqxx",
+      "commit": "24a31c3f3a9317131b1326c7b87f42053a5f4489",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/libprotobuf-mutator",
+      "url": "https://github.com/google/libprotobuf-mutator",
+      "commit": "dc4ced337a9fb4047e2dc727268fbac55ca82f73",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/librdkafka",
+      "url": "https://github.com/ClickHouse/librdkafka",
+      "commit": "c58ce6331fb871bfb4b15758cfd3283dd0a512fd",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/librseq",
+      "url": "https://github.com/compudj/librseq.git",
+      "commit": "2ca6d3775a750b180b5c82b999aa5b46f3fea1a7",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/librtcx",
+      "url": "https://github.com/rapidsai/librtcx.git",
+      "commit": "da8150f0a83e22953e598844dbebff6791681de7",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/libssh",
+      "url": "https://github.com/ClickHouse/libssh.git",
+      "commit": "c0083428b0c7f97f7b6a9c212d630c49b72a2d7a",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/libstemmer_c",
+      "url": "https://github.com/ClickHouse/libstemmer_c",
+      "commit": "e138ee768ef8935d1957769e73850ca8c795efde",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/libucontext",
+      "url": "https://github.com/kaniini/libucontext",
+      "commit": "49e671dd52ff6791295d8161ad3b6da7dc5f6f9d",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/liburing",
+      "url": "https://github.com/axboe/liburing",
+      "commit": "d41bf9220ec39277ff235379e9089d9e0fd6c2a5",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/libuv",
+      "url": "https://github.com/ClickHouse/libuv",
+      "commit": "4a1645680dd3da44407e789859426404281fc4f8",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/libxml2",
+      "url": "https://github.com/GNOME/libxml2",
+      "commit": "96498992efa48d52b0e8b83058bd88dbdaf153c1",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/llvm-project",
+      "url": "https://github.com/ClickHouse/llvm-project",
+      "commit": "fa3910d62714b59592f64dfd33e9e3d0dc5926e4",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/lz4",
+      "url": "https://github.com/lz4/lz4",
+      "commit": "ebb370ca83af193212df4dcbadcc5d87bc0de2f0",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/magic_enum",
+      "url": "https://github.com/Neargye/magic_enum",
+      "commit": "1384769c66bd16ec9bb1353f45fe8ec8ccc12dbd",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/mapbox-geometry",
+      "url": "https://github.com/ClickHouse/geometry.hpp",
+      "commit": "12ac5412bf85571852ad1cd7c30456faef8d6464",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/mariadb-connector-c",
+      "url": "https://github.com/ClickHouse/mariadb-connector-c",
+      "commit": "b3c09ab333c2ef9277291e721871a2bafca6e8bf",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/miniselect",
+      "url": "https://github.com/danlark1/miniselect",
+      "commit": "44d09dcb4dc2583e36f14602020fe8c58ff69129",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/minizip-ng",
+      "url": "https://github.com/zlib-ng/minizip-ng",
+      "commit": "7b2387161c542fa9f427352dcdef76097d0d692b",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/mongo-c-driver",
+      "url": "https://github.com/ClickHouse/mongo-c-driver",
+      "commit": "a629595f0e72e64ac19a70f042b2577c4f84de4b",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/mongo-cxx-driver",
+      "url": "https://github.com/ClickHouse/mongo-cxx-driver.git",
+      "commit": "fa9ee6ed008e84b9562a7a55d70681de8a6bc1c6",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/morton-nd",
+      "url": "https://github.com/morton-nd/morton-nd",
+      "commit": "3795491a4aa3cdc916c8583094683f0d68df5bc0",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/msgpack-c",
+      "url": "https://github.com/ClickHouse/msgpack-c",
+      "commit": "6b0d778ae059cfb77e26f2a011e99b17a8563c23",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/musl",
+      "url": "https://github.com/ClickHouse/musl",
+      "commit": "7ad08176102e0661e31cd5c7f320b81f30ec2c5a",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/nanoarrow",
+      "url": "https://github.com/apache/arrow-nanoarrow.git",
+      "commit": "a579fbf5d192e85b6249935e117de7d02a6dc4e9",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/nats-io",
+      "url": "https://github.com/ClickHouse/nats.c",
+      "commit": "b88704dfeb55e0f1dee165b9c1daccb90d5816d4",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/nlohmann-json",
+      "url": "https://github.com/ClickHouse/json",
+      "commit": "4438a2a0cda77bf4cd74652423e03363e003a0cc",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/nvtx",
+      "url": "https://github.com/NVIDIA/NVTX.git",
+      "commit": "69c9949150ac1c310758a304082228a36d5e4758",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/openldap",
+      "url": "https://github.com/openldap/openldap",
+      "commit": "b9c1d8f93d7a532b6b17a32b52dfc14530e139f7",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/openssl",
+      "url": "https://github.com/ClickHouse/openssl.git",
+      "commit": "e20d8f40abcba2d733450a5c426490246f636368",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/optimized-routines",
+      "url": "https://github.com/ARM-software/optimized-routines",
+      "commit": "4be260a5117480382690c6d8c300bc784e927d76",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/parquet-testing",
+      "url": "https://github.com/apache/parquet-testing",
+      "commit": "56653c437c8092f704a092d0d1d4e600124cd49f",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/pcodec",
+      "url": "https://github.com/ClickHouse/pcodec.git",
+      "commit": "35424f0fc3aa61328940774c1b915e1356092a5a",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/pocketfft",
+      "url": "https://github.com/mreineck/pocketfft.git",
+      "commit": "f4c1aa8aa9ce79ad39e80f2c9c41b92ead90fda3",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/postgres",
+      "url": "https://github.com/ClickHouse/postgres.git",
+      "commit": "c7649becd213231466df7e679154e8ac0f744788",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/pybind11",
+      "url": "https://github.com/chdb-io/mrbind-pybind11.git",
+      "commit": "1f5acd64a0fc0ff4e148569c14404a98207225a2",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/pybind11-upstream",
+      "url": "https://github.com/pybind/pybind11.git",
+      "commit": "45fab4087eaaff234227a10cf7845e8b07f28a98",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/rapidjson",
+      "url": "https://github.com/ClickHouse/rapidjson",
+      "commit": "04dc6714905247b4529310e0cf73a03a3b8148df",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/rapids-logger",
+      "url": "https://github.com/rapidsai/rapids-logger.git",
+      "commit": "1124de618517654cce3636d69d022ee76e9df4b0",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/re2",
+      "url": "https://github.com/ClickHouse/re2",
+      "commit": "1f24555c97150767d65aa77fde8ddd029d2bb97c",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/replxx",
+      "url": "https://github.com/ClickHouse/replxx",
+      "commit": "191e04e43b1ed72289adfe7d2b3fd59b4fb4e78b",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/rmm",
+      "url": "https://github.com/rapidsai/rmm.git",
+      "commit": "9d8414834dd331a0e5449329b458d4c2ffee58eb",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/rocksdb",
+      "url": "https://github.com/ClickHouse/rocksdb",
+      "commit": "7d4d9327af02f4d3ac0a028817d11e4a8a0cce90",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/rust_vendor",
+      "url": "https://github.com/ClickHouse/rust_vendor.git",
+      "commit": "a48591e1104225c734a168a1a4bde5d9eb7e105e",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/s2geometry",
+      "url": "https://github.com/ClickHouse/s2geometry",
+      "commit": "5409e159ec6e0334022395ed33ed24e60c69b6ae",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/silk",
+      "url": "https://github.com/ClickHouse/silk.git",
+      "commit": "dbf6d2b3e081f73cb0a6d04316c1834e6f2bceff",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/simdcomp",
+      "url": "https://github.com/fast-pack/simdcomp.git",
+      "commit": "009c67807670d16f8984c0534aef0e630e5465a4",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/simdjson",
+      "url": "https://github.com/ClickHouse/simdjson",
+      "commit": "47b97cc5dcfbf0caac51f0e5bbf7709484a041d8",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/simdutf",
+      "url": "https://github.com/ClickHouse/simdutf",
+      "commit": "7e44f083693e12ee0d4807be9479e3748167907b",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/snappy",
+      "url": "https://github.com/ClickHouse/snappy",
+      "commit": "c78b4aad6403cf47e616a1329db113e52b1ed955",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/sparsehash-c11",
+      "url": "https://github.com/sparsehash/sparsehash-c11",
+      "commit": "edd6f1180156e76facc1c0449da245208ab39503",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/spdlog",
+      "url": "https://github.com/gabime/spdlog.git",
+      "commit": "27cb4c76708608465c413f6d0e6b8d99a4d84302",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/sqids-cpp",
+      "url": "https://github.com/sqids/sqids-cpp.git",
+      "commit": "a471f53672e98d49223f598528a533b07b085c61",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/sql-console",
+      "url": "https://github.com/ClickHouse/clickhouse-sql-console.git",
+      "commit": "e8dadc688cc690adc09a46d384bb70f0c53b19f7",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/sqlite-amalgamation",
+      "url": "https://github.com/ClickHouse/sqlite-amalgamation",
+      "commit": "f48768e9089bf66717e8c393dce5dd80c86761f5",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/substrait",
+      "url": "https://github.com/substrait-io/substrait.git",
+      "commit": "de9e6328f4f94abc0809977f57dfde7262a7258b",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/sysroot",
+      "url": "https://github.com/ClickHouse/sysroot",
+      "commit": "6dd29c222896e54de24e7af1b191c92e4cf2e229",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/sz3",
+      "url": "https://github.com/ClickHouse/SZ3.git",
+      "commit": "930875780d65b1639de4a34d1600973726c96d9e",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/thrift",
+      "url": "https://github.com/ClickHouse/thrift",
+      "commit": "26bf3f0c3cade6f2c9fac82d4962751466282c23",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/ulid-c",
+      "url": "https://github.com/ClickHouse/ulid-c.git",
+      "commit": "c433b6783cf918b8f996dacd014cb2b68c7de419",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/usearch",
+      "url": "https://github.com/ClickHouse/usearch.git",
+      "commit": "6bd13d4c69a1baef1f668e652c3ca26028970f12",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/utf8proc",
+      "url": "https://github.com/JuliaStrings/utf8proc.git",
+      "commit": "dce38103bed462c4f87bfcdb80172ec22312e595",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/vectorscan",
+      "url": "https://github.com/ClickHouse/vectorscan",
+      "commit": "4f863adbc2aa1129d473483d1a70134da07b5074",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/wagyu",
+      "url": "https://github.com/ClickHouse/wagyu",
+      "commit": "22ce25812c98e42dc277805941ab8e6577ba729b",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/wasmtime",
+      "url": "https://github.com/ClickHouse/wasmtime",
+      "commit": "561b224fd0589a02fc9e7bcef1aeb70d886d33c0",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/wordnet-blast",
+      "url": "https://github.com/ClickHouse/wordnet-blast",
+      "commit": "1d16ac28036e19fe8da7ba72c16a307fbdf8c87e",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/wyhash",
+      "url": "https://github.com/wangyi-fudan/wyhash",
+      "commit": "991aa3dab624e50b066f7a02ccc9f6935cc740ec",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/xgboost",
+      "url": "https://github.com/ClickHouse/xgboost",
+      "commit": "665fa8355e455a3b9fc7acbfd68e6788337a45f8",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/xsimd",
+      "url": "https://github.com/ClickHouse/xsimd",
+      "commit": "f795779ccfad12832ea47bfc02d02a65fd7f3576",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/xxHash",
+      "url": "https://github.com/Cyan4973/xxHash",
+      "commit": "c87183a77d67f7d37e3d2d1b7eaac5e7c695e4f0",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/xz",
+      "url": "https://github.com/tukaani-project/xz",
+      "commit": "d3e650e63c110e830fd5391e7f8b45df0b91d3da",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/yaml-cpp",
+      "url": "https://github.com/ClickHouse/yaml-cpp",
+      "commit": "acf418672e8aae00fa0de9ada9753e9001a6d57e",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/zlib-ng",
+      "url": "https://github.com/ClickHouse/zlib-ng",
+      "commit": "a2fbeffdc30a8b0ce6d54ee31208e2688eac4c9f",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/zmij",
+      "url": "https://github.com/ClickHouse/zmij.git",
+      "commit": "dc28b5cb3dbf46245381d9df97af05ff593c8461",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/zstd",
+      "url": "https://github.com/ClickHouse/zstd",
+      "commit": "5b3e9e8fd2779260101a07e6cc7b34fd8764617f",
+      "commit_verified_at_url": true
+    },
+    {
+      "path": "contrib/zxc",
+      "url": "https://github.com/hellobertrand/zxc",
+      "commit": "e568d1967309fd5d160f45f2fdabcbff6ab3f058",
+      "commit_verified_at_url": true
+    }
+  ]
+}
