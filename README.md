@@ -55,16 +55,17 @@ that do not import it remain cgo-free; programs that do need Go 1.23+, cgo,
 and a chdb-core engine with the Arrow C ABI. See the [Arrow module guide](v2/arrow/README.md)
 for installation, supported usage, and resource lifetimes.
 
-### Experimental static engine build
+### Static engine (experimental)
 
-An opt-in `chdb_static` + cgo build can link `libchdb.a` into the executable
-instead of looking for a dynamic engine at runtime. Ordinary builds remain
-purego-based. See the [static linking guide](docs/static-linking.md) for the
-verified platforms, build inputs, and system-library limitations.
+To link chDB into your executable instead of loading `libchdb` at runtime:
 
-Native Go module packaging and Vercel Blob publication/discovery staging are
-available, but no opt-in static module is published yet. See the
-[module staging and publication guide](docs/static-module-publishing.md).
+```sh
+go get go.chdb.io/chdb/static@latest
+```
+
+Import `_ "go.chdb.io/chdb/static"` and build with
+`CGO_ENABLED=1 go build -tags chdb_static`. See the
+[static engine guide](docs/static-linking.md).
 
 ### Where the engine is loaded from
 
