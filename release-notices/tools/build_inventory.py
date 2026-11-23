@@ -3,8 +3,13 @@
 and an obligations TSV in the shape of the v26.11.1 records.
 
 Inputs: the previous inventory (family mapping and obligations), records.json
-from generate.py (license file records), the RC assets, their member lists and
-defined-symbol lists (nm --defined-only, local symbols included)."""
+from generate.py (license file records), the release assets, their member lists
+and defined-symbol lists (nm --defined-only, local symbols included), and the
+release's reviewed changes file (inputs/<engine>/inventory-changes.json).
+
+Nothing release-specific is written into this script. A family that is new, or
+whose license differs from the previous inventory, must have a reviewed
+obligation in the changes file; the script refuses to reuse another one."""
 import argparse, collections, hashlib, json, os, tarfile
 
 ANCHORS = {"mariadb": ["mariadb_connection", "mysql_init"], "gsasl": ["gsasl_init"], "libssh": ["ssh_new"],
@@ -33,20 +38,24 @@ def anchors(symbols, mach):
 
 def main():
     ap = argparse.ArgumentParser()
-    for a in ("previous", "records", "release", "assets", "symbols", "out-json", "out-tsv", "review-date"):
+    for a in ("previous", "records", "release", "assets", "changes", "out-json", "out-tsv", "review-date"):
         ap.add_argument("--" + a, required=True)
     o = ap.parse_args()
     prev = json.load(open(o.previous))
     recs = {f["id"]: f for f in json.load(open(o.records))["families"]}
     rel = json.load(open(o.release))
     assets = json.load(open(o.assets))  # platform -> {tarball, archive, members?, manifest?, symbols}
+    changes = json.load(open(o.changes))
+    for k in ("changesFromPrevious", "groupFamilies", "obligations", "linuxEvidence", "evidenceLimits", "notPromotedToBlockersAdded"):
+        if k not in changes:
+            raise SystemExit(f"{o.changes}: missing {k}")
 
     group_family = {}
     for f in prev["families"]:
         for ev in f["archiveEvidence"].values():
             for g in ev.get("groups", []):
                 group_family[g] = f["id"]
-    group_family["gdeflate"] = "gdeflate"
+    group_family.update(changes["groupFamilies"])
 
     archives, fam_ev = [], collections.defaultdict(dict)
     for plat in ("darwin-arm64", "darwin-amd64", "linux-amd64", "linux-arm64"):
@@ -80,6 +89,16 @@ def main():
         for e in ev.values():
             e["groups"].sort()
 
+    def reviewed(fid, old_license, license, old_obligation):
+        # A previous obligation applies only to the same license; anything else
+        # needs a reviewed obligation in the changes file.
+        if fid in changes["obligations"]:
+            return changes["obligations"][fid]
+        if old_license == license and old_obligation:
+            return old_obligation
+        raise SystemExit(f"{fid}: license {license!r} differs from the previous inventory "
+                         f"({old_license!r}); add a reviewed obligation to {o.changes}")
+
     prev_fam = {f["id"]: f for f in prev["families"]}
     prev_linux = {f["id"]: f for f in prev["linuxSpecific"]}
     families, linux = [], []
@@ -93,13 +112,17 @@ def main():
         lic = [{"path": where(s), "source": s["source"], "commit": s["commit"], "textSHA256": s["sha256"],
                 **({"lines": s["lines"]} if "lines" in s else {})} for s in rec["files"]]
         if rec["platforms"] == "linux":
-            p = prev_linux.get(fid, {})
+            p = prev_linux.get(fid)
+            evidence = changes["linuxEvidence"].get(fid) or (p and p["evidence"])
+            if not evidence:
+                raise SystemExit(f"{fid}: new Linux-specific family needs linuxEvidence in {o.changes}")
             linux.append({"id": fid, "license": rec["license"],
                           "commit": next((s["commit"] for s in rec["files"] if s["source"].startswith("contrib/")), None),
-                          "evidence": p.get("evidence", ""), "obligation": p.get("obligation", ""), "licenseRecords": lic})
+                          "evidence": evidence, "obligation": reviewed(fid, p and p["license"], rec["license"], p and p["obligation"]),
+                          "licenseRecords": lic})
             continue
         p = prev_fam.get(fid)
-        obligation = p["obligation"] if p else prev_fam["brotli"]["obligation"]  # same MIT treatment
+        obligation = reviewed(fid, p and p["reviewLicense"], rec["license"], p and p["obligation"])
         families.append({"id": fid, "reviewLicense": rec["license"], "obligation": obligation,
                          "archiveEvidence": dict(sorted(fam_ev.get(fid, {}).items())), "licenseRecords": lic})
     missing = set(fam_ev) - {f["id"] for f in families}
@@ -109,25 +132,11 @@ def main():
     inv = {
         "schema": 1, "reviewDate": o.review_date,
         "scope": prev["scope"], "engine": rel["engine"], "coreCommit": rel["source_commit"],
-        "changesFromPrevious": {
-            "previousEngine": prev["engine"], "previousCoreCommit": prev["coreCommit"],
-            "addedFamilies": ["gdeflate"],
-            "submodulesChanged": {"contrib/llvm-project": "140ad525c086cfe79c8dcf33302a4f168d5a187b -> fa3910d62714",
-                                  "contrib/jemalloc": "bumped; not linked (only DB::ServerSetting names match 'jemalloc')",
-                                  "contrib/gdeflate": "added; linked on all four platforms",
-                                  "contrib/arrow-testing": "added; test data, not linked"},
-            "removedMacGroups": ["chdb_func", "libdarwin-compatibility"],
-            "licenseFileCorrections": "License records now name the files actually reproduced in THIRD_PARTY_NOTICES.txt (e.g. xz COPYING/COPYING.0BSD, rocksdb LICENSE.Apache/LICENSE.leveldb, lz4 lib/LICENSE, each AWS C library, LLVM runtime LICENSE files)."},
-        "evidenceLimits": [
-            "Both macOS archives retain library-prefixed members and are fully covered by the target-family mapping; an unmapped group fails record generation.",
-            "Linux archives are chdb-core's split archive: nine relocatable shards each, cut across library boundaries. Critical LGPL and platform-specific libraries are verified by defined symbol anchors; remaining libraries are not individually reconstructed from the shards.",
-            "symbolCount counts distinct defined symbol names (nm --defined-only, local symbols included), so it is not comparable with the v26.11.1 counts. The split archive makes most symbols local, so anchors are matched with or without the .chdb suffix.",
-            prev["evidenceLimits"][2], prev["evidenceLimits"][3]],
+        "changesFromPrevious": {"previousEngine": prev["engine"], "previousCoreCommit": prev["coreCommit"],
+                                **changes["changesFromPrevious"]},
+        "evidenceLimits": changes["evidenceLimits"],
         "archives": archives, "families": families, "linuxSpecific": linux,
-        "notPromotedToBlockers": prev["notPromotedToBlockers"] + [
-            {"id": "jemalloc", "reason": "No je_*/mallctl definitions in any archive; only DB::ServerSetting names contain 'jemalloc'"},
-            {"id": "libdeflate", "reason": "No contrib/libdeflate archive group; every libdeflate_* definition is gdeflate's renamed copy"},
-            {"id": "arrow-testing", "reason": "Test data submodule; not built into the library"}],
+        "notPromotedToBlockers": prev["notPromotedToBlockers"] + changes["notPromotedToBlockersAdded"],
     }
     json.dump(inv, open(o.out_json, "w"), indent=2)
     open(o.out_json, "a").write("\n")

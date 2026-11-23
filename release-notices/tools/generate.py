@@ -128,6 +128,12 @@ def main():
     notices = "".join(out).encode("utf-8")
     open(os.path.join(o.out, "THIRD_PARTY_NOTICES.txt"), "wb").write(notices)
 
+    # A verification record counts only for the exact URL and commit written
+    # here; a stale file or a changed submodule URL leaves the flag false.
+    def checked(v, url, commit):
+        return bool(v and v.get("ok") is True and v.get("url") == url and v.get("commit") == commit)
+
+    core_repository = "https://github.com/chdb-io/chdb-core"
     components = []
     for path in sorted(urls):
         try:
@@ -136,14 +142,14 @@ def main():
             continue
         v = verified.get(path)
         components.append({"path": path, "url": urls[path], "commit": commit,
-                           "commit_verified_at_url": bool(v and v.get("commit") == commit and v.get("ok"))})
+                           "commit_verified_at_url": checked(v, urls[path], commit)})
     by_path = {c["path"]: c for c in components}
     prov = {
         "schema": 1,
         "engine": spec["engine"],
         "core_commit": C,
-        "core_repository": "https://github.com/chdb-io/chdb-core",
-        "core_commit_verified": verified.get(".", {}).get("ok", False),
+        "core_repository": core_repository,
+        "core_commit_verified": checked(verified.get("."), core_repository, C),
         "packager": {"repository": "https://github.com/chdb-io/chdb-go", "commit": o.packager_commit,
                      "paths": ["internal/staticbundle", "scripts/staticbundle", "static-release.json"]},
         "platforms": {p: {"asset": a["asset"], "sha256": a["sha256"]} for p, a in sorted(release["platforms"].items())},

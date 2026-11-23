@@ -24,7 +24,14 @@ alternative of a dual license applies, is a review decision recorded in the spec
   optionally with a line range, or `{"upstream": "<owner/repo>@<commit>:<path>"}`
   for a file outside the core tree, served from `upstream/` and pinned by
   SHA-256 in `upstream_files`).
-- `verified-urls.json`: written by `verify_urls.py`.
+- `verified-urls.json`: written by `verify_urls.py`. A commit counts as verified
+  only when its record has the same URL and commit as the provenance.
+- `inventory-changes.json`: the reviewed, release-specific part of the
+  inventory: what changed from the previous release, new macOS member groups
+  (`groupFamilies`), evidence limits, entries not treated as blockers, and an
+  `obligations` entry for every family that is new or whose license string
+  differs from the previous inventory. `build_inventory.py` refuses to reuse
+  another family's obligation.
 - `STATIC_RELINKING.md`: the relinking guide, copied as is.
 - `upstream/`: cached upstream files named in the spec.
 
@@ -59,13 +66,14 @@ commits (`git submodule update` once; the working tree does not matter).
      (`nm --defined-only`, not `-g`), for the anchors in `build_inventory.py`.
    A name in a symbol is not proof of a library (ClickHouse settings mention
    jemalloc); check for library-level symbols.
-3. For a new or changed family, add or update its entry and files in `spec.json`.
-   A new macOS member group also needs its family in `build_inventory.py`
-   (`group_family`).
+3. For a new or changed family, add or update its entry and files in `spec.json`,
+   and its reviewed obligation in `inventory-changes.json`. A new macOS member
+   group also needs its family in `groupFamilies` there.
 4. `python3 tools/verify_urls.py /path/to/chdb-core <core commit> inputs/<engine>/verified-urls.json`
 5. Run `generate.py` with `--out release-notices/<engine>` (the directory must not exist).
-6. Run `build_inventory.py` with the previous inventory, the new `records.json`
-   and an assets file like `assets.example.json` (absolute paths to the
+6. Run `build_inventory.py` with the previous inventory, the new `records.json`,
+   `--changes inputs/<engine>/inventory-changes.json` and an assets file like
+   `assets.example.json` (absolute paths to the
    downloaded tarballs, extracted archives, `ar -t` member lists and
    `nm --defined-only` symbol lists; Linux entries take the split manifest).
 7. Review the diff of the three files and the records, then package with
