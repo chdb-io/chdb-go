@@ -9,5 +9,7 @@ This directory is its own Go module only so that the root module's zip does not
 carry these files to every purego user. Nothing imports it, and it is not
 tagged or published.
 
-The files are generated from the pinned chdb-core sources; the per-file records
-are in [docs/compliance](../docs/compliance). Do not edit them by hand.
+The files are generated from the pinned chdb-core sources by
+[tools/](tools/README.md), from the inputs in `inputs/<engine>/`; the per-file
+records are in [docs/compliance](../docs/compliance). Do not edit them by hand:
+change the inputs and regenerate.
