@@ -134,7 +134,7 @@ jobs:
           fi
           go run ./scripts/staticbundle package \
             -platform "$PLATFORM" -archive "$RUNNER_TEMP/$asset" \
-            -publication-plan static-publication.json -phase "$PHASE" "${notices[@]}" \
+            -publication-plan static-publication.json -phase "$PHASE" ${notices[@]+"${notices[@]}"} \
             -out "$RUNNER_TEMP/native"
       - name: External static and Arrow consumers, offline rebuild, and purego isolation
         run: |
