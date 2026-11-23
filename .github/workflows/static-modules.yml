@@ -17,6 +17,8 @@ on:
       - 'deploy/vercel-modules/**'
       - '.github/workflows/static-modules.yml'
       - '.github/scripts/prepare-arrow-workspace.sh'
+      - '.github/scripts/static-user-quickstart.sh'
+      - 'release-notices/**'
   push:
     branches: [main, 'codex/static-modules-*']
     paths:
@@ -34,6 +36,8 @@ on:
       - 'deploy/vercel-modules/**'
       - '.github/workflows/static-modules.yml'
       - '.github/scripts/prepare-arrow-workspace.sh'
+      - '.github/scripts/static-user-quickstart.sh'
+      - 'release-notices/**'
   workflow_dispatch:
     inputs:
       platform_set:
@@ -41,11 +45,19 @@ on:
         type: choice
         options: [all, macos]
         default: all
+      phase:
+        description: 'validation uses the CI namespace; public-rc packages go.chdb.io/chdb with release notices (all platforms only). Neither uploads.'
+        type: choice
+        options: [validation, public-rc]
+        default: validation
 
-run-name: Static modules (${{ inputs.platform_set || 'all' }}, no publication)
+run-name: Static modules (${{ inputs.platform_set || 'all' }}, ${{ inputs.phase || 'validation' }}, no publication)
 
 permissions:
   contents: read
+
+env:
+  PHASE: ${{ inputs.phase || 'validation' }}
 
 jobs:
   platforms:
@@ -60,6 +72,10 @@ jobs:
           PLATFORM_SET: ${{ inputs.platform_set || 'all' }}
         run: |
           set -euo pipefail
+          if [ "$PHASE" = public-rc ] && [ "$PLATFORM_SET" != all ]; then
+            echo 'public-rc packaging needs all four platforms' >&2
+            exit 2
+          fi
           mac='[{"os":"macos-15","platform":"darwin-arm64"},{"os":"macos-15-intel","platform":"darwin-amd64"}]'
           case "$PLATFORM_SET" in
             macos) matrix=$(jq -cn --argjson mac "$mac" '{include:$mac}') ;;
@@ -112,19 +128,23 @@ jobs:
           engine=$(jq -r .engine static-release.json)
           asset=$(jq -r --arg p "$PLATFORM" '.platforms[$p].asset' static-release.json)
           gh release download "$engine" -R chdb-io/chdb-core -p "$asset" -D "$RUNNER_TEMP"
+          notices=()
+          if [ "$PHASE" = public-rc ]; then
+            notices=(-notices "$GITHUB_WORKSPACE/release-notices/$engine")
+          fi
           go run ./scripts/staticbundle package \
             -platform "$PLATFORM" -archive "$RUNNER_TEMP/$asset" \
-            -publication-plan static-publication.json -phase validation \
+            -publication-plan static-publication.json -phase "$PHASE" ${notices[@]+"${notices[@]}"} \
             -out "$RUNNER_TEMP/native"
       - name: External static and Arrow consumers, offline rebuild, and purego isolation
         run: |
           set -euo pipefail
           ulimit -c 0
           go run ./scripts/staticbundle assemble \
-            -publication-plan static-publication.json -phase validation \
+            -publication-plan static-publication.json -phase "$PHASE" \
             -input "$RUNNER_TEMP/native" -allow-partial -out "$RUNNER_TEMP/assembled"
           go run ./scripts/staticbundle verify \
-            -publication-plan static-publication.json -phase validation \
+            -publication-plan static-publication.json -phase "$PHASE" \
             -bundle "$RUNNER_TEMP/assembled" -out "$RUNNER_TEMP/consumer-check"
       - name: Capture a native macOS consumer failure
         if: failure() && runner.os == 'macOS'
@@ -196,22 +216,67 @@ jobs:
           selected="$inputs/native-darwin-amd64,$inputs/native-darwin-arm64"
           if [ "$PLATFORM_SET" = all ]; then
             go run ./scripts/staticbundle assemble \
-              -publication-plan static-publication.json -phase validation \
+              -publication-plan static-publication.json -phase "$PHASE" \
               -input "$selected,$inputs/native-linux-amd64,$inputs/native-linux-arm64" \
               -out "$RUNNER_TEMP/assembled"
             test "$(jq -r .complete "$RUNNER_TEMP/assembled/bundle.json")" = true
             go run ./scripts/staticbundle plan -publication-plan static-publication.json \
-              -phase validation -bundle "$RUNNER_TEMP/assembled"
+              -phase "$PHASE" -bundle "$RUNNER_TEMP/assembled"
+            if [ "$PHASE" = public-rc ]; then
+              # The exact upload inventory and approval id, for review before any
+              # confirmed blob-publish. This job holds no Vercel credentials.
+              mkdir -p "$RUNNER_TEMP/plans"
+              go run ./scripts/staticbundle blob-plan -publication-plan static-publication.json \
+                -phase public-rc -bundle "$RUNNER_TEMP/assembled" \
+                -blob-target deploy/vercel-modules/go.chdb.io.target.json > "$RUNNER_TEMP/plans/blob-plan.json"
+              jq '{approval_id, total_bytes, files: (.files | length)}' "$RUNNER_TEMP/plans/blob-plan.json" >> "$GITHUB_STEP_SUMMARY"
+            fi
           else
             go run ./scripts/staticbundle assemble \
-              -publication-plan static-publication.json -phase validation \
+              -publication-plan static-publication.json -phase "$PHASE" \
               -input "$selected" -allow-partial -out "$RUNNER_TEMP/assembled"
             test "$(jq -r .complete "$RUNNER_TEMP/assembled/bundle.json")" = false
             echo 'Both macOS platforms validated; the assembled bundle is partial and not publishable.' >> "$GITHUB_STEP_SUMMARY"
           fi
       - uses: actions/upload-artifact@v4
         with:
-          name: staged-static-modules-${{ needs.platforms.outputs.selection }}-NOT-PUBLISHED
+          name: staged-static-modules-${{ needs.platforms.outputs.selection }}-${{ env.PHASE }}-NOT-PUBLISHED
           path: ${{ runner.temp }}/assembled
           compression-level: 0
           retention-days: 7
+      - uses: actions/upload-artifact@v4
+        if: env.PHASE == 'public-rc'
+        with:
+          name: blob-plan-${{ env.PHASE }}
+          path: ${{ runner.temp }}/plans
+          retention-days: 7
+
+  # The user's quickstart on each native platform, against the exact assembled
+  # bytes: a new module, `go get .../static@latest`, the documented main.go, a
+  # tagged build, run, and an offline rebuild. The root bindings come from their
+  # published release, as they will for users.
+  quickstart:
+    needs: [assemble, platforms]
+    if: needs.platforms.outputs.selection == 'all'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: macos-15, platform: darwin-arm64}
+          - {os: macos-15-intel, platform: darwin-amd64}
+          - {os: ubuntu-22.04, platform: linux-amd64}
+          - {os: ubuntu-22.04-arm, platform: linux-arm64}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.2'
+      - uses: actions/download-artifact@v4
+        with:
+          name: staged-static-modules-all-${{ env.PHASE }}-NOT-PUBLISHED
+          path: ${{ runner.temp }}/assembled
+      - name: User quickstart with go get .../static@latest
+        run: |
+          ulimit -c 0
+          bash .github/scripts/static-user-quickstart.sh local "$RUNNER_TEMP/assembled"

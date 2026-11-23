@@ -1,0 +1,38 @@
+# After a confirmed upload: the user's quickstart against the public origin on
+# all four platforms, with default GOPROXY and GOSUMDB and empty caches. Reads
+# only; it never uploads or deploys.
+name: Static modules public acceptance
+
+on:
+  workflow_dispatch:
+    inputs:
+      prefix:
+        description: 'Published module prefix'
+        type: string
+        default: go.chdb.io/chdb
+
+permissions:
+  contents: read
+
+jobs:
+  quickstart:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: macos-15, platform: darwin-arm64}
+          - {os: macos-15-intel, platform: darwin-amd64}
+          - {os: ubuntu-22.04, platform: linux-amd64}
+          - {os: ubuntu-22.04-arm, platform: linux-arm64}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.2'
+      - name: User quickstart with go get .../static@latest (public)
+        env:
+          PREFIX: ${{ inputs.prefix }}
+        run: |
+          ulimit -c 0
+          bash .github/scripts/static-user-quickstart.sh public "$PREFIX"

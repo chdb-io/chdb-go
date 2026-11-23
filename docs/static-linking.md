@@ -15,31 +15,64 @@ against this release.
 
 ## Opt-in Go modules (staged, not yet published)
 
-The repository now includes a native-module packager, Vercel Blob publication
-adapter, and a small static module-discovery site. They split each authenticated
-release archive into relocatable `.syso`
-files, distribute those across size-bounded native modules, and generate one
-small `<authorized-prefix>/static` module that selects the target's payloads.
-The root module has no dependency on these modules, including under build tags.
-
-After publication, an application will add the generated static module and
-blank-import `<authorized-prefix>/static`, then build with:
+Once the public RC is uploaded, the quickstart is:
 
 ```sh
+go mod init example.com/myapp
+go get go.chdb.io/chdb/static@latest
+```
+
+```go
+package main
+
+import (
+	"fmt"
+
+	"github.com/chdb-io/chdb-go/v2/chdb"
+	_ "go.chdb.io/chdb/static" // static engine
+)
+
+func main() {
+	r, err := chdb.Query("SELECT 42", "CSV")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Print(r.String())
+}
+```
+
+```sh
+go mod tidy
 CGO_ENABLED=1 go build -tags chdb_static -o myapp .
 ```
 
-No native-library paths, download script, or `CGO_LDFLAGS_ALLOW` are needed in
-this mode. The static adapter carries the header pinned in
-`static-release.json` and checks that the linked engine reports the same
-version before binding it. Do not combine the module
-payloads with manual archive linker flags: that would link the engine twice.
+`go get .../static@latest` also adds the matching root bindings
+(`github.com/chdb-io/chdb-go/v2`); no version needs to be typed. Without the
+tag the build stops with an error that names it. No native-library paths,
+download script or `CGO_LDFLAGS_ALLOW` are needed.
 
-The final public module identity and compatible published root bindings version
-have not been selected here. The Vercel probe project/store is for staged public
-download validation, not a published engine release. There is no published
-static module to `go get` yet. See [native-module staging and publication](static-module-publishing.md)
-for local commands, validation, and the remaining public-release gates.
+What to expect:
+
+- `go mod tidy` and `go mod vendor` download the engine for all four
+  platforms (roughly 0.9 GB compressed, once per module cache); `go build`
+  alone fetches only the target's. A vendor directory holds files over 100 MiB,
+  so it cannot be committed as is to an ordinary GitHub repository.
+- The executable is large (about 500 MB on macOS arm64; `-ldflags="-s -w"`
+  trims it to about 390 MB) and still needs a C toolchain to build and the
+  system C/C++ runtime to run. Windows is not supported.
+- Root and static versions must match: the static adapter checks that the
+  linked engine reports the version of the header it was built with. Keep both
+  at what `@latest` resolved together.
+
+CI runs this exact quickstart on all four platforms against the assembled
+bundle before an upload (`static-modules.yml`, job `quickstart`), and against
+`go.chdb.io` after one (`static-public-acceptance.yml`). Do not combine the
+module payloads with the manual archive flags below: that would link the
+engine twice.
+
+Until the engine modules are uploaded, `go get go.chdb.io/chdb/static@latest`
+fails with `404 Not Found`. See [native-module staging and publication](static-module-publishing.md)
+for the staging commands and remaining release gates.
 
 ## Where the native library comes from
 
