@@ -42,10 +42,18 @@ def main():
         ap.add_argument("--" + a, required=True)
     o = ap.parse_args()
     prev = json.load(open(o.previous))
-    recs = {f["id"]: f for f in json.load(open(o.records))["families"]}
     rel = json.load(open(o.release))
+    records = json.load(open(o.records))
+    if records.get("engine") != rel["engine"] or records.get("core_commit") != rel["source_commit"]:
+        raise SystemExit(f"{o.records}: records are for {records.get('engine')} at {records.get('core_commit')}, "
+                         f"not the release's {rel['engine']} at {rel['source_commit']}")
+    if prev.get("engine") == rel["engine"]:
+        raise SystemExit(f"{o.previous}: the previous inventory is for the same engine {rel['engine']}")
+    recs = {f["id"]: f for f in records["families"]}
     assets = json.load(open(o.assets))  # platform -> {tarball, archive, members?, manifest?, symbols}
     changes = json.load(open(o.changes))
+    if changes.get("engine") != rel["engine"]:
+        raise SystemExit(f"{o.changes}: changes are for {changes.get('engine')}, not {rel['engine']}")
     for k in ("changesFromPrevious", "groupFamilies", "obligations", "linuxEvidence", "evidenceLimits", "notPromotedToBlockersAdded"):
         if k not in changes:
             raise SystemExit(f"{o.changes}: missing {k}")

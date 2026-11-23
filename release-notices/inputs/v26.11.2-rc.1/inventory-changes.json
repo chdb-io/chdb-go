@@ -1,5 +1,6 @@
 {
   "_comment": "Reviewed, release-specific inputs for build_inventory.py. Everything here is a review decision for this engine release against the previous inventory.",
+  "engine": "v26.11.2-rc.1",
   "changesFromPrevious": {
     "addedFamilies": [
       "gdeflate"
