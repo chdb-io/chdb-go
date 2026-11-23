@@ -40,8 +40,9 @@ file records are in [static-v26.11.2-rc.1-inventory.json](compliance/static-v26.
 Every pinned submodule commit was confirmed reachable at its `.gitmodules` URL.
 Source is delivered as those exact commits at their public repository URLs,
 including for the LGPL components (MariaDB Connector/C and GNU SASL); no
-separate source archive is published. The end-to-end modified-library rebuild
-below is still untested.
+separate source archive is published. The modified-library rebuild below has
+been tested end to end on macOS arm64 only; the other three platforms are not
+yet tested.
 
 The v26.11.1 identity was:
 
@@ -85,8 +86,14 @@ directories and add application-level `replace` directives for all affected
 module paths before resolving/building. Keep that work isolated from the public
 Go cache and do not upload modified bytes under an existing public version.
 
-An end-to-end modified-library rebuild/replacement example remains a release
-acceptance task; this document does not claim that it has already been tested.
+For v26.11.2-rc.1 this was tested on macOS arm64 (2026-11-23): MariaDB
+Connector/C was changed, the core rebuilt at the RC commit with
+`chdb/build/build_static_lib.sh` and `CHDB_VERSION=26.11.2-rc.1`, the archive
+packaged under a separate local manifest (packaging identity 99) and replaced
+into an application using the published root `v2.5.0-rc.2`. The application
+reported the changed MariaDB message. On macOS, build the tarball with
+`COPYFILE_DISABLE=1 tar --no-xattrs`; the packager rejects `._*` members. Linux
+amd64/arm64 and macOS amd64 remain a release acceptance task.
 It also does not promise that a binary-only recipient can rebuild an application
 without suitable application source or object/relink materials. Downstream
 binary distributors must choose and document their applicable LGPL compliance
