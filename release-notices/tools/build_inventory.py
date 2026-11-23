@@ -36,6 +36,10 @@ def anchors(symbols, mach):
         found[k] = hits
     return found
 
+# Linux-specific families with a symbol anchor: their evidence must hold in
+# both of this release's Linux archives.
+LINUX_ANCHORS = {"libgsasl": "gsasl", "krb5": "krb5", "icu": "icu"}
+
 def main():
     ap = argparse.ArgumentParser()
     for a in ("previous", "records", "release", "assets", "changes", "out-json", "out-tsv", "review-date"):
@@ -121,9 +125,14 @@ def main():
                 **({"lines": s["lines"]} if "lines" in s else {})} for s in rec["files"]]
         if rec["platforms"] == "linux":
             p = prev_linux.get(fid)
-            evidence = changes["linuxEvidence"].get(fid) or (p and p["evidence"])
+            # Evidence is reviewed for every release against its own archives;
+            # a previous release's claim is never carried forward.
+            evidence = changes["linuxEvidence"].get(fid)
             if not evidence:
-                raise SystemExit(f"{fid}: new Linux-specific family needs linuxEvidence in {o.changes}")
+                raise SystemExit(f"{fid}: Linux-specific family needs this release's reviewed linuxEvidence in {o.changes}")
+            anchor = LINUX_ANCHORS.get(fid)
+            if anchor and not all(x["anchors"].get(anchor) for x in archives if x["platform"].startswith("linux")):
+                raise SystemExit(f"{fid}: no {anchor} anchor in this release's Linux archives; its evidence does not hold")
             linux.append({"id": fid, "license": rec["license"],
                           "commit": next((s["commit"] for s in rec["files"] if s["source"].startswith("contrib/")), None),
                           "evidence": evidence, "obligation": reviewed(fid, p and p["license"], rec["license"], p and p["obligation"]),

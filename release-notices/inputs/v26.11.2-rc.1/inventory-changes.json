@@ -44,7 +44,13 @@
     "zstd": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
     "zxc": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms"
   },
-  "linuxEvidence": {},
+  "linuxEvidence": {
+    "libgsasl": "gsasl_init defined in both Linux archives; static build enables HDFS/GSASL only on Linux",
+    "krb5": "krb5_init_context defined in both Linux archives",
+    "icu": "u_getVersion_78 defined in both Linux archives",
+    "glibc-compatibility": "GLIBC_COMPATIBILITY=1 in fixed Linux build; source directory includes musl/Arm/Sun notices",
+    "libhdfs3": "Fixed build explicitly enables HDFS and uses GNU SASL/Kerberos; the split archive's shards cut across library boundaries, so input objects cannot be attributed individually"
+  },
   "evidenceLimits": [
     "Both macOS archives retain library-prefixed members and are fully covered by the target-family mapping; an unmapped group fails record generation.",
     "Linux archives are chdb-core's split archive: nine relocatable shards each, cut across library boundaries. Critical LGPL and platform-specific libraries are verified by defined symbol anchors; remaining libraries are not individually reconstructed from the shards.",

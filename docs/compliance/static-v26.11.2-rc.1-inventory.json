@@ -4621,7 +4621,7 @@
       "id": "libhdfs3",
       "license": "Apache-2.0",
       "commit": "28a9868bc15749d899669e117e0c6eb9f5350923",
-      "evidence": "Fixed build explicitly enables HDFS and uses GNU SASL/Kerberos; Linux prelink prevents per-input-object attribution",
+      "evidence": "Fixed build explicitly enables HDFS and uses GNU SASL/Kerberos; the split archive's shards cut across library boundaries, so input objects cannot be attributed individually",
       "obligation": "Retain LICENSE/NOTICE from pinned fork",
       "licenseRecords": [
         {
