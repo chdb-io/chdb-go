@@ -34,7 +34,16 @@ readable and usable for local validation without them.
 
 ## Source provenance
 
-The following identity is fixed for this release:
+For v26.11.2-rc.1 the three files have been prepared from the core commit
+`59a7f688d1fc8d895115e104f09a2c4071490d6a` and its pinned submodules; their
+file records are in [static-v26.11.2-rc.1-inventory.json](compliance/static-v26.11.2-rc.1-inventory.json).
+Every pinned submodule commit was confirmed reachable at its `.gitmodules` URL.
+Source is delivered as those exact commits at their public repository URLs,
+including for the LGPL components (MariaDB Connector/C and GNU SASL); no
+separate source archive is published. The end-to-end modified-library rebuild
+below is still untested.
+
+The v26.11.1 identity was:
 
 ```json
 {

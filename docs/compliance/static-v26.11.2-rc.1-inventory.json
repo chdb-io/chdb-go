@@ -1,0 +1,4666 @@
+{
+  "schema": 1,
+  "reviewDate": "2026-11-23",
+  "scope": "Release-level redistribution review, not a file/header-complete SPDX SBOM or legal clearance",
+  "engine": "v26.11.2-rc.1",
+  "coreCommit": "59a7f688d1fc8d895115e104f09a2c4071490d6a",
+  "changesFromPrevious": {
+    "previousEngine": "v26.11.1",
+    "previousCoreCommit": "bc9c42e6edf4f394884a6a0458aa49abff85f1b6",
+    "addedFamilies": [
+      "gdeflate"
+    ],
+    "submodulesChanged": {
+      "contrib/llvm-project": "140ad525c086cfe79c8dcf33302a4f168d5a187b -> fa3910d62714",
+      "contrib/jemalloc": "bumped; not linked (only DB::ServerSetting names match 'jemalloc')",
+      "contrib/gdeflate": "added; linked on all four platforms",
+      "contrib/arrow-testing": "added; test data, not linked"
+    },
+    "removedMacGroups": [
+      "chdb_func",
+      "libdarwin-compatibility"
+    ],
+    "licenseFileCorrections": "License records now name the files actually reproduced in THIRD_PARTY_NOTICES.txt (e.g. xz COPYING/COPYING.0BSD, rocksdb LICENSE.Apache/LICENSE.leveldb, lz4 lib/LICENSE, each AWS C library, LLVM runtime LICENSE files)."
+  },
+  "evidenceLimits": [
+    "Both macOS archives retain library-prefixed members and are fully covered by the target-family mapping; an unmapped group fails record generation.",
+    "Linux archives are chdb-core's split archive: nine relocatable shards each, cut across library boundaries. Critical LGPL and platform-specific libraries are verified by defined symbol anchors; remaining libraries are not individually reconstructed from the shards.",
+    "symbolCount counts distinct defined symbol names (nm --defined-only, local symbols included), so it is not comparable with the v26.11.1 counts. The split archive makes most symbols local, so anchors are matched with or without the .chdb suffix.",
+    "Header-only/transitive code is not completely enumerated by archive member names. License and notices collection must preserve bundled component texts.",
+    "A registry type label is heuristic, not the authoritative file license. XZ/liblzma, LLVM, ICU, libarchive, vectorscan, librdkafka and RocksDB illustrate the distinction."
+  ],
+  "archives": [
+    {
+      "platform": "darwin-arm64",
+      "asset": "macos-arm64-libchdb-static.tar.gz",
+      "sha256": "c60fa51f4e6d4538441ab9372b4c9b38d235af015d5bc3c40c896e7c79642b64",
+      "archiveBytes": 269075293,
+      "nativeBytes": 1160834696,
+      "objectMembers": 8760,
+      "groups": {
+        "ai-sdk-cpp-anthropic": {
+          "count": 5,
+          "examples": [
+            "ai-sdk-cpp-anthropic__anthropic_client.cpp.o",
+            "ai-sdk-cpp-anthropic__anthropic_request_builder.cpp.o",
+            "ai-sdk-cpp-anthropic__anthropic_response_parser.cpp.o",
+            "ai-sdk-cpp-anthropic__anthropic_stream.cpp.o"
+          ]
+        },
+        "ai-sdk-cpp-core": {
+          "count": 5,
+          "examples": [
+            "ai-sdk-cpp-core__stream_result.cpp.o",
+            "ai-sdk-cpp-core__http_request_handler.cpp.o",
+            "ai-sdk-cpp-core__base_provider_client.cpp.o",
+            "ai-sdk-cpp-core__tool_executor.cpp.o"
+          ]
+        },
+        "ai-sdk-cpp-openai": {
+          "count": 5,
+          "examples": [
+            "ai-sdk-cpp-openai__openai_client.cpp.o",
+            "ai-sdk-cpp-openai__openai_request_builder.cpp.o",
+            "ai-sdk-cpp-openai__openai_response_parser.cpp.o",
+            "ai-sdk-cpp-openai__openai_stream.cpp.o"
+          ]
+        },
+        "arrow": {
+          "count": 143,
+          "examples": [
+            "arrow__compression_zstd.cc.o",
+            "arrow__compression_zlib.cc.o",
+            "arrow__compression_snappy.cc.o",
+            "arrow__compression_lz4.cc.o"
+          ]
+        },
+        "avrocpp": {
+          "count": 21,
+          "examples": [
+            "avrocpp__Compiler.cc.o",
+            "avrocpp__Node.cc.o",
+            "avrocpp__LogicalType.cc.o",
+            "avrocpp__NodeImpl.cc.o"
+          ]
+        },
+        "aws": {
+          "count": 1434,
+          "examples": [
+            "aws__AmazonSerializableWebServiceRequest.cpp.o",
+            "aws__AmazonStreamingWebServiceRequest.cpp.o",
+            "aws__AmazonWebServiceRequest.cpp.o",
+            "aws__Aws.cpp.o"
+          ]
+        },
+        "azure_sdk": {
+          "count": 65,
+          "examples": [
+            "azure_sdk__azure_assert.cpp.o",
+            "azure_sdk__base64.cpp.o",
+            "azure_sdk__context.cpp.o",
+            "azure_sdk__authorization_challenge_parser.cpp.o"
+          ]
+        },
+        "boost_context": {
+          "count": 4,
+          "examples": [
+            "boost_context__fcontext.cpp.o",
+            "boost_context__jump_arm64_aapcs_macho_gas.S.o",
+            "boost_context__make_arm64_aapcs_macho_gas.S.o",
+            "boost_context__ontop_arm64_aapcs_macho_gas.S.o"
+          ]
+        },
+        "boost_iostreams": {
+          "count": 3,
+          "examples": [
+            "boost_iostreams__file_descriptor.cpp.o",
+            "boost_iostreams__zlib.cpp.o",
+            "boost_iostreams__zstd.cpp.o"
+          ]
+        },
+        "boost_program_options": {
+          "count": 8,
+          "examples": [
+            "boost_program_options__cmdline.cpp.o",
+            "boost_program_options__convert.cpp.o",
+            "boost_program_options__options_description.cpp.o",
+            "boost_program_options__positional_options.cpp.o"
+          ]
+        },
+        "brotli": {
+          "count": 35,
+          "examples": [
+            "brotli__constants.c.o",
+            "brotli__context.c.o",
+            "brotli__dictionary.c.o",
+            "brotli__platform.c.o"
+          ]
+        },
+        "bsoncxx": {
+          "count": 23,
+          "examples": [
+            "bsoncxx__itoa.cpp.o",
+            "bsoncxx__id.cpp.o",
+            "bsoncxx__core.cpp.o",
+            "bsoncxx__error_code.cpp.o"
+          ]
+        },
+        "c-ares": {
+          "count": 60,
+          "examples": [
+            "c-ares__ares_addrinfo2hostent.c.o",
+            "c-ares__ares_addrinfo_localhost.c.o",
+            "c-ares__ares_close_sockets.c.o",
+            "c-ares__ares_conn.c.o"
+          ]
+        },
+        "cctz": {
+          "count": 9,
+          "examples": [
+            "cctz__time_zone_fixed.cc.o",
+            "cctz__time_zone_format.cc.o",
+            "cctz__time_zone_if.cc.o",
+            "cctz__time_zone_impl.cc.o"
+          ]
+        },
+        "chdb_func_libclickhouse_functions_gatherutils": {
+          "count": 14,
+          "examples": [
+            "chdb_func_libclickhouse_functions_gatherutils__GatherUtils.cpp.o",
+            "chdb_func_libclickhouse_functions_gatherutils__concat.cpp.o",
+            "chdb_func_libclickhouse_functions_gatherutils__ends_with.cpp.o",
+            "chdb_func_libclickhouse_functions_gatherutils__has_all.cpp.o"
+          ]
+        },
+        "chdb_func_libclickhouse_functions_jsonpath": {
+          "count": 7,
+          "examples": [
+            "chdb_func_libclickhouse_functions_jsonpath__ParserJSONPath.cpp.o",
+            "chdb_func_libclickhouse_functions_jsonpath__ParserJSONPathMemberAccess.cpp.o",
+            "chdb_func_libclickhouse_functions_jsonpath__ParserJSONPathMemberSquareBracketAccess.cpp.o",
+            "chdb_func_libclickhouse_functions_jsonpath__ParserJSONPathQuery.cpp.o"
+          ]
+        },
+        "chdb_local": {
+          "count": 18,
+          "examples": [
+            "chdb_local__ArrowSchema.cpp.o",
+            "chdb_local__ArrowStreamWrapper.cpp.o",
+            "chdb_local__ArrowTableReader.cpp.o",
+            "chdb_local__ChunkCollectorOutputFormat.cpp.o"
+          ]
+        },
+        "cityhash": {
+          "count": 1,
+          "examples": [
+            "cityhash__city.cc.o"
+          ]
+        },
+        "consistent_hashing": {
+          "count": 1,
+          "examples": [
+            "consistent_hashing__consistent_hashing.cpp.o"
+          ]
+        },
+        "cppkafka": {
+          "count": 19,
+          "examples": [
+            "cppkafka__buffer.cpp.o",
+            "cppkafka__configuration_option.cpp.o",
+            "cppkafka__configuration.cpp.o",
+            "cppkafka__consumer.cpp.o"
+          ]
+        },
+        "crc32c": {
+          "count": 3,
+          "examples": [
+            "crc32c__crc32c_portable.cc.o",
+            "crc32c__crc32c.cc.o",
+            "crc32c__crc32c_arm64.cc.o"
+          ]
+        },
+        "double-conversion": {
+          "count": 8,
+          "examples": [
+            "double-conversion__bignum-dtoa.cc.o",
+            "double-conversion__bignum.cc.o",
+            "double-conversion__cached-powers.cc.o",
+            "double-conversion__double-to-string.cc.o"
+          ]
+        },
+        "farmhash": {
+          "count": 1,
+          "examples": [
+            "farmhash__farmhash.cc.o"
+          ]
+        },
+        "fmt": {
+          "count": 1,
+          "examples": [
+            "fmt__format.cc.o"
+          ]
+        },
+        "gdeflate": {
+          "count": 3,
+          "examples": [
+            "gdeflate__utils.c.o",
+            "gdeflate__gdeflate_compress.c.o",
+            "gdeflate__gdeflate_decompress.c.o"
+          ]
+        },
+        "h3": {
+          "count": 17,
+          "examples": [
+            "h3__algos.c.o",
+            "h3__area.c.o",
+            "h3__cellsToMultiPoly.c.o",
+            "h3__bbox.c.o"
+          ]
+        },
+        "ipcrypt2": {
+          "count": 1,
+          "examples": [
+            "ipcrypt2__ipcrypt2.c.o"
+          ]
+        },
+        "libabsl_base": {
+          "count": 4,
+          "examples": [
+            "libabsl_base__cycleclock.cc.o",
+            "libabsl_base__spinlock.cc.o",
+            "libabsl_base__sysinfo.cc.o",
+            "libabsl_base__thread_identity.cc.o"
+          ]
+        },
+        "libabsl_base_cpu_detect": {
+          "count": 1,
+          "examples": [
+            "libabsl_base_cpu_detect__cpu_detect.cc.o"
+          ]
+        },
+        "libabsl_city": {
+          "count": 1,
+          "examples": [
+            "libabsl_city__city.cc.o"
+          ]
+        },
+        "libabsl_cord": {
+          "count": 2,
+          "examples": [
+            "libabsl_cord__cord.cc.o",
+            "libabsl_cord__cord_analysis.cc.o"
+          ]
+        },
+        "libabsl_cord_internal": {
+          "count": 6,
+          "examples": [
+            "libabsl_cord_internal__cord_internal.cc.o",
+            "libabsl_cord_internal__cord_rep_btree.cc.o",
+            "libabsl_cord_internal__cord_rep_btree_navigator.cc.o",
+            "libabsl_cord_internal__cord_rep_btree_reader.cc.o"
+          ]
+        },
+        "libabsl_cordz_handle": {
+          "count": 1,
+          "examples": [
+            "libabsl_cordz_handle__cordz_handle.cc.o"
+          ]
+        },
+        "libabsl_cordz_info": {
+          "count": 1,
+          "examples": [
+            "libabsl_cordz_info__cordz_info.cc.o"
+          ]
+        },
+        "libabsl_crc32c": {
+          "count": 4,
+          "examples": [
+            "libabsl_crc32c__crc32c.cc.o",
+            "libabsl_crc32c__crc_memcpy_fallback.cc.o",
+            "libabsl_crc32c__crc_memcpy_x86_arm_combined.cc.o",
+            "libabsl_crc32c__crc_non_temporal_memcpy.cc.o"
+          ]
+        },
+        "libabsl_crc_cord_state": {
+          "count": 1,
+          "examples": [
+            "libabsl_crc_cord_state__crc_cord_state.cc.o"
+          ]
+        },
+        "libabsl_crc_internal": {
+          "count": 2,
+          "examples": [
+            "libabsl_crc_internal__crc.cc.o",
+            "libabsl_crc_internal__crc_x86_arm_combined.cc.o"
+          ]
+        },
+        "libabsl_debugging_internal": {
+          "count": 2,
+          "examples": [
+            "libabsl_debugging_internal__decode_rust_punycode.cc.o",
+            "libabsl_debugging_internal__utf8_for_code_point.cc.o"
+          ]
+        },
+        "libabsl_demangle_internal": {
+          "count": 2,
+          "examples": [
+            "libabsl_demangle_internal__demangle.cc.o",
+            "libabsl_demangle_internal__demangle_rust.cc.o"
+          ]
+        },
+        "libabsl_examine_stack": {
+          "count": 1,
+          "examples": [
+            "libabsl_examine_stack__examine_stack.cc.o"
+          ]
+        },
+        "libabsl_hash": {
+          "count": 1,
+          "examples": [
+            "libabsl_hash__hash.cc.o"
+          ]
+        },
+        "libabsl_hashtablez_sampler": {
+          "count": 2,
+          "examples": [
+            "libabsl_hashtablez_sampler__hashtablez_sampler.cc.o",
+            "libabsl_hashtablez_sampler__hashtablez_sampler_force_weak_definition.cc.o"
+          ]
+        },
+        "libabsl_int128": {
+          "count": 1,
+          "examples": [
+            "libabsl_int128__int128.cc.o"
+          ]
+        },
+        "libabsl_kernel_timeout_internal": {
+          "count": 1,
+          "examples": [
+            "libabsl_kernel_timeout_internal__kernel_timeout.cc.o"
+          ]
+        },
+        "libabsl_leak_check": {
+          "count": 1,
+          "examples": [
+            "libabsl_leak_check__leak_check.cc.o"
+          ]
+        },
+        "libabsl_log_globals": {
+          "count": 1,
+          "examples": [
+            "libabsl_log_globals__globals.cc.o"
+          ]
+        },
+        "libabsl_log_internal_check_op": {
+          "count": 1,
+          "examples": [
+            "libabsl_log_internal_check_op__check_op.cc.o"
+          ]
+        },
+        "libabsl_log_internal_conditions": {
+          "count": 1,
+          "examples": [
+            "libabsl_log_internal_conditions__conditions.cc.o"
+          ]
+        },
+        "libabsl_log_internal_format": {
+          "count": 1,
+          "examples": [
+            "libabsl_log_internal_format__log_format.cc.o"
+          ]
+        },
+        "libabsl_log_internal_globals": {
+          "count": 1,
+          "examples": [
+            "libabsl_log_internal_globals__globals.cc.o"
+          ]
+        },
+        "libabsl_log_internal_log_sink_set": {
+          "count": 1,
+          "examples": [
+            "libabsl_log_internal_log_sink_set__log_sink_set.cc.o"
+          ]
+        },
+        "libabsl_log_internal_message": {
+          "count": 1,
+          "examples": [
+            "libabsl_log_internal_message__log_message.cc.o"
+          ]
+        },
+        "libabsl_log_internal_nullguard": {
+          "count": 1,
+          "examples": [
+            "libabsl_log_internal_nullguard__nullguard.cc.o"
+          ]
+        },
+        "libabsl_log_internal_proto": {
+          "count": 1,
+          "examples": [
+            "libabsl_log_internal_proto__proto.cc.o"
+          ]
+        },
+        "libabsl_log_internal_structured_proto": {
+          "count": 1,
+          "examples": [
+            "libabsl_log_internal_structured_proto__structured_proto.cc.o"
+          ]
+        },
+        "libabsl_log_sink": {
+          "count": 1,
+          "examples": [
+            "libabsl_log_sink__log_sink.cc.o"
+          ]
+        },
+        "libabsl_malloc_internal": {
+          "count": 1,
+          "examples": [
+            "libabsl_malloc_internal__low_level_alloc.cc.o"
+          ]
+        },
+        "libabsl_raw_hash_set": {
+          "count": 1,
+          "examples": [
+            "libabsl_raw_hash_set__raw_hash_set.cc.o"
+          ]
+        },
+        "libabsl_raw_logging_internal": {
+          "count": 1,
+          "examples": [
+            "libabsl_raw_logging_internal__raw_logging.cc.o"
+          ]
+        },
+        "libabsl_spinlock_wait": {
+          "count": 1,
+          "examples": [
+            "libabsl_spinlock_wait__spinlock_wait.cc.o"
+          ]
+        },
+        "libabsl_stacktrace": {
+          "count": 1,
+          "examples": [
+            "libabsl_stacktrace__stacktrace.cc.o"
+          ]
+        },
+        "libabsl_status": {
+          "count": 3,
+          "examples": [
+            "libabsl_status__status_internal.cc.o",
+            "libabsl_status__status.cc.o",
+            "libabsl_status__status_payload_printer.cc.o"
+          ]
+        },
+        "libabsl_statusor": {
+          "count": 1,
+          "examples": [
+            "libabsl_statusor__statusor.cc.o"
+          ]
+        },
+        "libabsl_str_format_internal": {
+          "count": 6,
+          "examples": [
+            "libabsl_str_format_internal__arg.cc.o",
+            "libabsl_str_format_internal__bind.cc.o",
+            "libabsl_str_format_internal__extension.cc.o",
+            "libabsl_str_format_internal__float_conversion.cc.o"
+          ]
+        },
+        "libabsl_strerror": {
+          "count": 1,
+          "examples": [
+            "libabsl_strerror__strerror.cc.o"
+          ]
+        },
+        "libabsl_strings": {
+          "count": 12,
+          "examples": [
+            "libabsl_strings__ascii.cc.o",
+            "libabsl_strings__charconv.cc.o",
+            "libabsl_strings__escaping.cc.o",
+            "libabsl_strings__charconv_bigint.cc.o"
+          ]
+        },
+        "libabsl_strings_internal": {
+          "count": 2,
+          "examples": [
+            "libabsl_strings_internal__utf8.cc.o",
+            "libabsl_strings_internal__escaping.cc.o"
+          ]
+        },
+        "libabsl_symbolize": {
+          "count": 1,
+          "examples": [
+            "libabsl_symbolize__symbolize.cc.o"
+          ]
+        },
+        "libabsl_synchronization": {
+          "count": 5,
+          "examples": [
+            "libabsl_synchronization__create_thread_identity.cc.o",
+            "libabsl_synchronization__per_thread_sem.cc.o",
+            "libabsl_synchronization__pthread_waiter.cc.o",
+            "libabsl_synchronization__waiter_base.cc.o"
+          ]
+        },
+        "libabsl_throw_delegate": {
+          "count": 1,
+          "examples": [
+            "libabsl_throw_delegate__throw_delegate.cc.o"
+          ]
+        },
+        "libabsl_time": {
+          "count": 3,
+          "examples": [
+            "libabsl_time__clock.cc.o",
+            "libabsl_time__duration.cc.o",
+            "libabsl_time__time.cc.o"
+          ]
+        },
+        "libabsl_time_zone": {
+          "count": 8,
+          "examples": [
+            "libabsl_time_zone__time_zone_fixed.cc.o",
+            "libabsl_time_zone__time_zone_if.cc.o",
+            "libabsl_time_zone__time_zone_impl.cc.o",
+            "libabsl_time_zone__time_zone_info.cc.o"
+          ]
+        },
+        "libarchive": {
+          "count": 55,
+          "examples": [
+            "libarchive__archive_acl.c.o",
+            "libarchive__archive_check_magic.c.o",
+            "libarchive__archive_cmdline.c.o",
+            "libarchive__archive_cryptor.c.o"
+          ]
+        },
+        "libbson": {
+          "count": 19,
+          "examples": [
+            "libbson__bson-bcon.c.o",
+            "libbson__bson-clock.c.o",
+            "libbson__bson-context.c.o",
+            "libbson__bson-decimal128.c.o"
+          ]
+        },
+        "libclickhouse_aggregate_functions": {
+          "count": 136,
+          "examples": [
+            "libclickhouse_aggregate_functions__AggregateFunctionAggThrow.cpp.o",
+            "libclickhouse_aggregate_functions__AggregateFunctionAnalysisOfVariance.cpp.o",
+            "libclickhouse_aggregate_functions__AggregateFunctionAny.cpp.o",
+            "libclickhouse_aggregate_functions__AggregateFunctionAnyHeavy.cpp.o"
+          ]
+        },
+        "libclickhouse_common_access": {
+          "count": 10,
+          "examples": [
+            "libclickhouse_common_access__AccessEntityType.cpp.o",
+            "libclickhouse_common_access__AccessFlags.cpp.o",
+            "libclickhouse_common_access__AccessRightsElement.cpp.o",
+            "libclickhouse_common_access__AccessType.cpp.o"
+          ]
+        },
+        "libclickhouse_common_config": {
+          "count": 8,
+          "examples": [
+            "libclickhouse_common_config__AbstractConfigurationComparison.cpp.o",
+            "libclickhouse_common_config__ConfigProcessor.cpp.o",
+            "libclickhouse_common_config__ConfigurationWithUsageTracking.cpp.o",
+            "libclickhouse_common_config__getConfigPath.cpp.o"
+          ]
+        },
+        "libclickhouse_common_io": {
+          "count": 388,
+          "examples": [
+            "libclickhouse_common_io__ActionLock.cpp.o",
+            "libclickhouse_common_io__AddressToLineCache.cpp.o",
+            "libclickhouse_common_io__AggregatedMetrics.cpp.o",
+            "libclickhouse_common_io__AlignedBuffer.cpp.o"
+          ]
+        },
+        "libclickhouse_common_zookeeper": {
+          "count": 1,
+          "examples": [
+            "libclickhouse_common_zookeeper__ZooKeeperImpl.cpp.o"
+          ]
+        },
+        "libclickhouse_common_zookeeper_base": {
+          "count": 16,
+          "examples": [
+            "libclickhouse_common_zookeeper_base__IKeeper.cpp.o",
+            "libclickhouse_common_zookeeper_base__KeeperException.cpp.o",
+            "libclickhouse_common_zookeeper_base__KeeperFeatureFlags.cpp.o",
+            "libclickhouse_common_zookeeper_base__KeeperSpans.cpp.o"
+          ]
+        },
+        "libclickhouse_compression": {
+          "count": 30,
+          "examples": [
+            "libclickhouse_compression__CachedCompressedReadBuffer.cpp.o",
+            "libclickhouse_compression__CheckingCompressedReadBuffer.cpp.o",
+            "libclickhouse_compression__CompressedReadBuffer.cpp.o",
+            "libclickhouse_compression__CompressedReadBufferBase.cpp.o"
+          ]
+        },
+        "libclickhouse_dictionaries": {
+          "count": 54,
+          "examples": [
+            "libclickhouse_dictionaries__CacheDictionary.cpp.o",
+            "libclickhouse_dictionaries__CacheDictionaryUpdateQueue.cpp.o",
+            "libclickhouse_dictionaries__CassandraDictionarySource.cpp.o",
+            "libclickhouse_dictionaries__ClickHouseDictionarySource.cpp.o"
+          ]
+        },
+        "libclickhouse_dictionaries_embedded": {
+          "count": 8,
+          "examples": [
+            "libclickhouse_dictionaries_embedded__GeoDictionariesLoader.cpp.o",
+            "libclickhouse_dictionaries_embedded__RegionsHierarchies.cpp.o",
+            "libclickhouse_dictionaries_embedded__RegionsHierarchy.cpp.o",
+            "libclickhouse_dictionaries_embedded__RegionsNames.cpp.o"
+          ]
+        },
+        "libclickhouse_new_delete": {
+          "count": 1,
+          "examples": [
+            "libclickhouse_new_delete__AllocationInterceptors.cpp.o"
+          ]
+        },
+        "libclickhouse_parsers": {
+          "count": 273,
+          "examples": [
+            "libclickhouse_parsers__ASTAlterNamedCollectionQuery.cpp.o",
+            "libclickhouse_parsers__ASTAssignment.cpp.o",
+            "libclickhouse_parsers__ASTAsterisk.cpp.o",
+            "libclickhouse_parsers__ASTBackupQuery.cpp.o"
+          ]
+        },
+        "libclickhouse_storages_system": {
+          "count": 144,
+          "examples": [
+            "libclickhouse_storages_system__StorageSystemLicenses.generated.cpp.o",
+            "libclickhouse_storages_system__DatabaseTablesCursor.cpp.o",
+            "libclickhouse_storages_system__IStorageSystemOneBlock.cpp.o",
+            "libclickhouse_storages_system__StatusRequestsPool.cpp.o"
+          ]
+        },
+        "libclickhouse_table_functions": {
+          "count": 47,
+          "examples": [
+            "libclickhouse_table_functions__ITableFunctionFileLike.cpp.o",
+            "libclickhouse_table_functions__ITableFunctionXDBC.cpp.o",
+            "libclickhouse_table_functions__TableFunctionBigQuery.cpp.o",
+            "libclickhouse_table_functions__TableFunctionDictionary.cpp.o"
+          ]
+        },
+        "libcommon": {
+          "count": 25,
+          "examples": [
+            "libcommon__argsToConfig.cpp.o",
+            "libcommon__coverage.cpp.o",
+            "libcommon__demangle.cpp.o",
+            "libcommon__Decimal.cpp.o"
+          ]
+        },
+        "libcrypto": {
+          "count": 823,
+          "examples": [
+            "libcrypto__der_dsa_gen.c.o",
+            "libcrypto__der_ec_gen.c.o",
+            "libcrypto__der_ecx_gen.c.o",
+            "libcrypto__der_ml_dsa_gen.c.o"
+          ]
+        },
+        "libcxx": {
+          "count": 40,
+          "examples": [
+            "libcxx__algorithm.cpp.o",
+            "libcxx__any.cpp.o",
+            "libcxx__atomic.cpp.o",
+            "libcxx__expected.cpp.o"
+          ]
+        },
+        "libcxxabi": {
+          "count": 15,
+          "examples": [
+            "libcxxabi__abort_message.cpp.o",
+            "libcxxabi__cxa_aux_runtime.cpp.o",
+            "libcxxabi__cxa_default_handlers.cpp.o",
+            "libcxxabi__cxa_demangle.cpp.o"
+          ]
+        },
+        "libdaemon": {
+          "count": 3,
+          "examples": [
+            "libdaemon__BaseDaemon.cpp.o",
+            "libdaemon__GraphiteWriter.cpp.o",
+            "libdaemon__CrashWriter.cpp.o"
+          ]
+        },
+        "libdbms": {
+          "count": 2292,
+          "examples": [
+            "libdbms__DictionaryFactory.cpp.o",
+            "libdbms__DictionarySourceFactory.cpp.o",
+            "libdbms__DictionaryStructure.cpp.o",
+            "libdbms__getDictionaryConfigurationFromAST.cpp.o"
+          ]
+        },
+        "libfiu": {
+          "count": 3,
+          "examples": [
+            "libfiu__fiu.c.o",
+            "libfiu__backtrace.c.o",
+            "libfiu__wtable.c.o"
+          ]
+        },
+        "libloggers": {
+          "count": 6,
+          "examples": [
+            "libloggers__ExtendedLogMessage.cpp.o",
+            "libloggers__Loggers.cpp.o",
+            "libloggers__OwnFormattingChannel.cpp.o",
+            "libloggers__OwnJSONPatternFormatter.cpp.o"
+          ]
+        },
+        "liblzma": {
+          "count": 56,
+          "examples": [
+            "liblzma__check.c.o",
+            "liblzma__crc32_fast.c.o",
+            "liblzma__crc64_fast.c.o",
+            "liblzma__sha256.c.o"
+          ]
+        },
+        "libmongoc": {
+          "count": 96,
+          "examples": [
+            "libmongoc__mcd-azure.c.o",
+            "libmongoc__mcd-nsinfo.c.o",
+            "libmongoc__mcd-rpc.c.o",
+            "libmongoc__mongoc-aggregate.c.o"
+          ]
+        },
+        "libmysqlxx": {
+          "count": 11,
+          "examples": [
+            "libmysqlxx__Connection.cpp.o",
+            "libmysqlxx__Exception.cpp.o",
+            "libmysqlxx__Query.cpp.o",
+            "libmysqlxx__ResultBase.cpp.o"
+          ]
+        },
+        "libpq": {
+          "count": 45,
+          "examples": [
+            "libpq__fe-auth.c.o",
+            "libpq__fe-auth-scram.c.o",
+            "libpq__fe-auth-oauth.c.o",
+            "libpq__fe-cancel.c.o"
+          ]
+        },
+        "libpqxx": {
+          "count": 18,
+          "examples": [
+            "libpqxx__array.cxx.o",
+            "libpqxx__connection.cxx.o",
+            "libpqxx__encodings.cxx.o",
+            "libpqxx__errorhandler.cxx.o"
+          ]
+        },
+        "libprotobuf": {
+          "count": 52,
+          "examples": [
+            "libprotobuf__any_lite.cc.o",
+            "libprotobuf__arena.cc.o",
+            "libprotobuf__arenastring.cc.o",
+            "libprotobuf__extension_set.cc.o"
+          ]
+        },
+        "libreadpassphrase": {
+          "count": 1,
+          "examples": [
+            "libreadpassphrase__readpassphrase.c.o"
+          ]
+        },
+        "libssl": {
+          "count": 78,
+          "examples": [
+            "libssl__bio_ssl.c.o",
+            "libssl__d1_lib.c.o",
+            "libssl__d1_msg.c.o",
+            "libssl__d1_srtp.c.o"
+          ]
+        },
+        "libtzdata": {
+          "count": 1,
+          "examples": [
+            "libtzdata__TimeZones.generated.cpp.o"
+          ]
+        },
+        "libunwind": {
+          "count": 4,
+          "examples": [
+            "libunwind__libunwind.cpp.o",
+            "libunwind__UnwindLevel1.c.o",
+            "libunwind__UnwindRegistersRestore.S.o",
+            "libunwind__UnwindRegistersSave.S.o"
+          ]
+        },
+        "libutf8_validity": {
+          "count": 1,
+          "examples": [
+            "libutf8_validity__utf8_range.c.o"
+          ]
+        },
+        "libutf8proc": {
+          "count": 1,
+          "examples": [
+            "libutf8proc__utf8proc.c.o"
+          ]
+        },
+        "libxml2": {
+          "count": 34,
+          "examples": [
+            "libxml2__buf.c.o",
+            "libxml2__chvalid.c.o",
+            "libxml2__dict.c.o",
+            "libxml2__encoding.c.o"
+          ]
+        },
+        "lz4": {
+          "count": 3,
+          "examples": [
+            "lz4__lz4.c.o",
+            "lz4__lz4hc.c.o",
+            "lz4__lz4frame.c.o"
+          ]
+        },
+        "mariadbclient": {
+          "count": 32,
+          "examples": [
+            "mariadbclient__pvio_socket.c.o",
+            "mariadbclient__caching_sha2_pw.c.o",
+            "mariadbclient__sha256_pw.c.o",
+            "mariadbclient__my_auth.c.o"
+          ]
+        },
+        "metrohash": {
+          "count": 1,
+          "examples": [
+            "metrohash__metrohash64.cpp.o"
+          ]
+        },
+        "mongocxx": {
+          "count": 106,
+          "examples": [
+            "mongocxx__scoped_bson.cpp.o",
+            "mongocxx__aggregate_options.cpp.o",
+            "mongocxx__auto_encryption_options.cpp.o",
+            "mongocxx__client_bulk_write.cpp.o"
+          ]
+        },
+        "murmurhash": {
+          "count": 2,
+          "examples": [
+            "murmurhash__MurmurHash2.cpp.o",
+            "murmurhash__MurmurHash3.cpp.o"
+          ]
+        },
+        "parquet": {
+          "count": 31,
+          "examples": [
+            "parquet__reader.cc.o",
+            "parquet__reader_internal.cc.o",
+            "parquet__schema_internal.cc.o",
+            "parquet__bloom_filter.cc.o"
+          ]
+        },
+        "poco_foundation": {
+          "count": 103,
+          "examples": [
+            "poco_foundation__ActiveDispatcher.cpp.o",
+            "poco_foundation__ArchiveStrategy.cpp.o",
+            "poco_foundation__Ascii.cpp.o",
+            "poco_foundation__ASCIIEncoding.cpp.o"
+          ]
+        },
+        "poco_foundation_pcre": {
+          "count": 12,
+          "examples": [
+            "poco_foundation_pcre__pcre_chartables.c.o",
+            "poco_foundation_pcre__pcre_compile.c.o",
+            "poco_foundation_pcre__pcre_exec.c.o",
+            "poco_foundation_pcre__pcre_fullinfo.c.o"
+          ]
+        },
+        "poco_json": {
+          "count": 9,
+          "examples": [
+            "poco_json__Array.cpp.o",
+            "poco_json__Handler.cpp.o",
+            "poco_json__JSONException.cpp.o",
+            "poco_json__Object.cpp.o"
+          ]
+        },
+        "poco_json_pdjson": {
+          "count": 1,
+          "examples": [
+            "poco_json_pdjson__pdjson.c.o"
+          ]
+        },
+        "poco_net": {
+          "count": 42,
+          "examples": [
+            "poco_net__DNS.cpp.o",
+            "poco_net__DatagramSocket.cpp.o",
+            "poco_net__DatagramSocketImpl.cpp.o",
+            "poco_net__HTTPAuthenticationParams.cpp.o"
+          ]
+        },
+        "poco_net_ssl": {
+          "count": 23,
+          "examples": [
+            "poco_net_ssl__AcceptCertificateHandler.cpp.o",
+            "poco_net_ssl__CertificateHandlerFactory.cpp.o",
+            "poco_net_ssl__CertificateHandlerFactoryMgr.cpp.o",
+            "poco_net_ssl__Context.cpp.o"
+          ]
+        },
+        "poco_redis": {
+          "count": 7,
+          "examples": [
+            "poco_redis__Array.cpp.o",
+            "poco_redis__Client.cpp.o",
+            "poco_redis__Command.cpp.o",
+            "poco_redis__Error.cpp.o"
+          ]
+        },
+        "poco_util": {
+          "count": 19,
+          "examples": [
+            "poco_util__AbstractConfiguration.cpp.o",
+            "poco_util__Application.cpp.o",
+            "poco_util__ConfigurationView.cpp.o",
+            "poco_util__IniFileConfiguration.cpp.o"
+          ]
+        },
+        "poco_xml": {
+          "count": 61,
+          "examples": [
+            "poco_xml__AbstractContainerNode.cpp.o",
+            "poco_xml__AbstractNode.cpp.o",
+            "poco_xml__Attr.cpp.o",
+            "poco_xml__AttrMap.cpp.o"
+          ]
+        },
+        "poco_xml_expat": {
+          "count": 3,
+          "examples": [
+            "poco_xml_expat__xmlrole.c.o",
+            "poco_xml_expat__xmltok.c.o",
+            "poco_xml_expat__xmlxcs.c.o"
+          ]
+        },
+        "prometheus_protobufs": {
+          "count": 3,
+          "examples": [
+            "prometheus_protobufs__remote.pb.cc.o",
+            "prometheus_protobufs__types.pb.cc.o",
+            "prometheus_protobufs__gogo.pb.cc.o"
+          ]
+        },
+        "rdkafka": {
+          "count": 85,
+          "examples": [
+            "rdkafka__cJSON.c.o",
+            "rdkafka__crc32c.c.o",
+            "rdkafka__rdaddr.c.o",
+            "rdkafka__rdavl.c.o"
+          ]
+        },
+        "re2": {
+          "count": 17,
+          "examples": [
+            "re2__bitmap256.cc.o",
+            "re2__bitstate.cc.o",
+            "re2__compile.cc.o",
+            "re2__dfa.cc.o"
+          ]
+        },
+        "replxx": {
+          "count": 10,
+          "examples": [
+            "replxx__conversion.cxx.o",
+            "replxx__ConvertUTF.cpp.o",
+            "replxx__escape.cxx.o",
+            "replxx__history.cxx.o"
+          ]
+        },
+        "roaring": {
+          "count": 20,
+          "examples": [
+            "roaring__array_util.c.o",
+            "roaring__bitset_util.c.o",
+            "roaring__memory.c.o",
+            "roaring__roaring.c.o"
+          ]
+        },
+        "rocksdb": {
+          "count": 274,
+          "examples": [
+            "rocksdb__cache.cc.o",
+            "rocksdb__cache_entry_roles.cc.o",
+            "rocksdb__cache_key.cc.o",
+            "rocksdb__cache_helpers.cc.o"
+          ]
+        },
+        "sha3iuf": {
+          "count": 1,
+          "examples": [
+            "sha3iuf__sha3.c.o"
+          ]
+        },
+        "simdjson": {
+          "count": 1,
+          "examples": [
+            "simdjson__simdjson.cpp.o"
+          ]
+        },
+        "simdutf": {
+          "count": 1,
+          "examples": [
+            "simdutf__simdutf.cpp.o"
+          ]
+        },
+        "simsimd": {
+          "count": 1,
+          "examples": [
+            "simsimd__lib.c.o"
+          ]
+        },
+        "snappy": {
+          "count": 3,
+          "examples": [
+            "snappy__snappy-c.cc.o",
+            "snappy__snappy-sinksource.cc.o",
+            "snappy__snappy.cc.o"
+          ]
+        },
+        "sqlite": {
+          "count": 1,
+          "examples": [
+            "sqlite__sqlite3.c.o"
+          ]
+        },
+        "stringzilla": {
+          "count": 16,
+          "examples": [
+            "stringzilla__runtime.c.o",
+            "stringzilla__compare.c.o",
+            "stringzilla__memory.c.o",
+            "stringzilla__hash.c.o"
+          ]
+        },
+        "thrift": {
+          "count": 3,
+          "examples": [
+            "thrift__TProtocol.cpp.o",
+            "thrift__TTransportException.cpp.o",
+            "thrift__TBufferTransports.cpp.o"
+          ]
+        },
+        "ulid": {
+          "count": 1,
+          "examples": [
+            "ulid__ulid.c.o"
+          ]
+        },
+        "unprefixed": {
+          "count": 792,
+          "examples": [
+            "chdb_func_CRC.cpp.o",
+            "chdb_func_CancellationBudget.cpp.o",
+            "chdb_func_ComparisonParams.cpp.o",
+            "chdb_func_DateTimeTransforms.cpp.o"
+          ]
+        },
+        "vectorscan": {
+          "count": 199,
+          "examples": [
+            "vectorscan__alloc.c.o",
+            "vectorscan__crc32.c.o",
+            "vectorscan__database.c.o",
+            "vectorscan__grey.cpp.o"
+          ]
+        },
+        "zlib": {
+          "count": 32,
+          "examples": [
+            "zlib__adler32.c.o",
+            "zlib__adler32_fold.c.o",
+            "zlib__chunkset.c.o",
+            "zlib__compare256.c.o"
+          ]
+        },
+        "zmij": {
+          "count": 1,
+          "examples": [
+            "zmij__zmij.cc.o"
+          ]
+        },
+        "zstd": {
+          "count": 34,
+          "examples": [
+            "zstd__entropy_common.c.o",
+            "zstd__error_private.c.o",
+            "zstd__fse_decompress.c.o",
+            "zstd__pool.c.o"
+          ]
+        },
+        "zxc": {
+          "count": 8,
+          "examples": [
+            "zxc__zxc_compress.c.o",
+            "zxc__zxc_decompress.c.o",
+            "zxc__zxc_huffman.c.o",
+            "zxc__zxc_common.c.o"
+          ]
+        }
+      },
+      "symbolCount": 763888,
+      "anchors": {
+        "mariadb": [
+          "_mariadb_connection.chdb",
+          "_mysql_init.chdb"
+        ],
+        "gsasl": [],
+        "libssh": [],
+        "lemmagen": [],
+        "liblzma": [
+          "_lzma_code.chdb"
+        ],
+        "icu": [],
+        "krb5": [],
+        "libcxx": [
+          "___cxa_throw.chdb"
+        ],
+        "libunwind": [
+          "__Unwind_RaiseException.chdb"
+        ],
+        "gdeflate": [
+          "_gdeflate_libdeflate_gdeflate_compress.chdb"
+        ]
+      }
+    },
+    {
+      "platform": "darwin-amd64",
+      "asset": "macos-x86_64-libchdb-static.tar.gz",
+      "sha256": "c9c160467da5a1a63775d627de05fb20fd697a163f78f8bde518eed7d299b726",
+      "archiveBytes": 275424264,
+      "nativeBytes": 1202249496,
+      "objectMembers": 8772,
+      "groups": {
+        "ai-sdk-cpp-anthropic": {
+          "count": 5,
+          "examples": [
+            "ai-sdk-cpp-anthropic__anthropic_client.cpp.o",
+            "ai-sdk-cpp-anthropic__anthropic_request_builder.cpp.o",
+            "ai-sdk-cpp-anthropic__anthropic_response_parser.cpp.o",
+            "ai-sdk-cpp-anthropic__anthropic_stream.cpp.o"
+          ]
+        },
+        "ai-sdk-cpp-core": {
+          "count": 5,
+          "examples": [
+            "ai-sdk-cpp-core__stream_result.cpp.o",
+            "ai-sdk-cpp-core__http_request_handler.cpp.o",
+            "ai-sdk-cpp-core__base_provider_client.cpp.o",
+            "ai-sdk-cpp-core__tool_executor.cpp.o"
+          ]
+        },
+        "ai-sdk-cpp-openai": {
+          "count": 5,
+          "examples": [
+            "ai-sdk-cpp-openai__openai_client.cpp.o",
+            "ai-sdk-cpp-openai__openai_request_builder.cpp.o",
+            "ai-sdk-cpp-openai__openai_response_parser.cpp.o",
+            "ai-sdk-cpp-openai__openai_stream.cpp.o"
+          ]
+        },
+        "arrow": {
+          "count": 144,
+          "examples": [
+            "arrow__compression_zstd.cc.o",
+            "arrow__compression_zlib.cc.o",
+            "arrow__compression_snappy.cc.o",
+            "arrow__compression_lz4.cc.o"
+          ]
+        },
+        "avrocpp": {
+          "count": 21,
+          "examples": [
+            "avrocpp__Compiler.cc.o",
+            "avrocpp__Node.cc.o",
+            "avrocpp__LogicalType.cc.o",
+            "avrocpp__NodeImpl.cc.o"
+          ]
+        },
+        "aws": {
+          "count": 1436,
+          "examples": [
+            "aws__AmazonSerializableWebServiceRequest.cpp.o",
+            "aws__AmazonStreamingWebServiceRequest.cpp.o",
+            "aws__AmazonWebServiceRequest.cpp.o",
+            "aws__Aws.cpp.o"
+          ]
+        },
+        "azure_sdk": {
+          "count": 65,
+          "examples": [
+            "azure_sdk__azure_assert.cpp.o",
+            "azure_sdk__base64.cpp.o",
+            "azure_sdk__context.cpp.o",
+            "azure_sdk__authorization_challenge_parser.cpp.o"
+          ]
+        },
+        "boost_context": {
+          "count": 4,
+          "examples": [
+            "boost_context__fcontext.cpp.o",
+            "boost_context__jump_x86_64_sysv_macho_gas.S.o",
+            "boost_context__make_x86_64_sysv_macho_gas.S.o",
+            "boost_context__ontop_x86_64_sysv_macho_gas.S.o"
+          ]
+        },
+        "boost_iostreams": {
+          "count": 3,
+          "examples": [
+            "boost_iostreams__file_descriptor.cpp.o",
+            "boost_iostreams__zlib.cpp.o",
+            "boost_iostreams__zstd.cpp.o"
+          ]
+        },
+        "boost_program_options": {
+          "count": 8,
+          "examples": [
+            "boost_program_options__cmdline.cpp.o",
+            "boost_program_options__convert.cpp.o",
+            "boost_program_options__options_description.cpp.o",
+            "boost_program_options__positional_options.cpp.o"
+          ]
+        },
+        "brotli": {
+          "count": 35,
+          "examples": [
+            "brotli__constants.c.o",
+            "brotli__context.c.o",
+            "brotli__dictionary.c.o",
+            "brotli__platform.c.o"
+          ]
+        },
+        "bsoncxx": {
+          "count": 23,
+          "examples": [
+            "bsoncxx__itoa.cpp.o",
+            "bsoncxx__id.cpp.o",
+            "bsoncxx__core.cpp.o",
+            "bsoncxx__error_code.cpp.o"
+          ]
+        },
+        "c-ares": {
+          "count": 60,
+          "examples": [
+            "c-ares__ares_addrinfo2hostent.c.o",
+            "c-ares__ares_addrinfo_localhost.c.o",
+            "c-ares__ares_close_sockets.c.o",
+            "c-ares__ares_conn.c.o"
+          ]
+        },
+        "cctz": {
+          "count": 9,
+          "examples": [
+            "cctz__time_zone_fixed.cc.o",
+            "cctz__time_zone_format.cc.o",
+            "cctz__time_zone_if.cc.o",
+            "cctz__time_zone_impl.cc.o"
+          ]
+        },
+        "chdb_func_libclickhouse_functions_gatherutils": {
+          "count": 14,
+          "examples": [
+            "chdb_func_libclickhouse_functions_gatherutils__GatherUtils.cpp.o",
+            "chdb_func_libclickhouse_functions_gatherutils__concat.cpp.o",
+            "chdb_func_libclickhouse_functions_gatherutils__ends_with.cpp.o",
+            "chdb_func_libclickhouse_functions_gatherutils__has_all.cpp.o"
+          ]
+        },
+        "chdb_func_libclickhouse_functions_jsonpath": {
+          "count": 7,
+          "examples": [
+            "chdb_func_libclickhouse_functions_jsonpath__ParserJSONPath.cpp.o",
+            "chdb_func_libclickhouse_functions_jsonpath__ParserJSONPathMemberAccess.cpp.o",
+            "chdb_func_libclickhouse_functions_jsonpath__ParserJSONPathMemberSquareBracketAccess.cpp.o",
+            "chdb_func_libclickhouse_functions_jsonpath__ParserJSONPathQuery.cpp.o"
+          ]
+        },
+        "chdb_local": {
+          "count": 18,
+          "examples": [
+            "chdb_local__ArrowSchema.cpp.o",
+            "chdb_local__ArrowStreamWrapper.cpp.o",
+            "chdb_local__ArrowTableReader.cpp.o",
+            "chdb_local__ChunkCollectorOutputFormat.cpp.o"
+          ]
+        },
+        "cityhash": {
+          "count": 1,
+          "examples": [
+            "cityhash__city.cc.o"
+          ]
+        },
+        "consistent_hashing": {
+          "count": 1,
+          "examples": [
+            "consistent_hashing__consistent_hashing.cpp.o"
+          ]
+        },
+        "cppkafka": {
+          "count": 19,
+          "examples": [
+            "cppkafka__buffer.cpp.o",
+            "cppkafka__configuration_option.cpp.o",
+            "cppkafka__configuration.cpp.o",
+            "cppkafka__consumer.cpp.o"
+          ]
+        },
+        "crc32c": {
+          "count": 3,
+          "examples": [
+            "crc32c__crc32c_portable.cc.o",
+            "crc32c__crc32c.cc.o",
+            "crc32c__crc32c_sse42.cc.o"
+          ]
+        },
+        "double-conversion": {
+          "count": 8,
+          "examples": [
+            "double-conversion__bignum-dtoa.cc.o",
+            "double-conversion__bignum.cc.o",
+            "double-conversion__cached-powers.cc.o",
+            "double-conversion__double-to-string.cc.o"
+          ]
+        },
+        "farmhash": {
+          "count": 1,
+          "examples": [
+            "farmhash__farmhash.cc.o"
+          ]
+        },
+        "fmt": {
+          "count": 1,
+          "examples": [
+            "fmt__format.cc.o"
+          ]
+        },
+        "gdeflate": {
+          "count": 3,
+          "examples": [
+            "gdeflate__utils.c.o",
+            "gdeflate__gdeflate_compress.c.o",
+            "gdeflate__gdeflate_decompress.c.o"
+          ]
+        },
+        "h3": {
+          "count": 17,
+          "examples": [
+            "h3__algos.c.o",
+            "h3__area.c.o",
+            "h3__cellsToMultiPoly.c.o",
+            "h3__bbox.c.o"
+          ]
+        },
+        "ipcrypt2": {
+          "count": 1,
+          "examples": [
+            "ipcrypt2__ipcrypt2.c.o"
+          ]
+        },
+        "libabsl_base": {
+          "count": 4,
+          "examples": [
+            "libabsl_base__cycleclock.cc.o",
+            "libabsl_base__spinlock.cc.o",
+            "libabsl_base__sysinfo.cc.o",
+            "libabsl_base__thread_identity.cc.o"
+          ]
+        },
+        "libabsl_base_cpu_detect": {
+          "count": 1,
+          "examples": [
+            "libabsl_base_cpu_detect__cpu_detect.cc.o"
+          ]
+        },
+        "libabsl_city": {
+          "count": 1,
+          "examples": [
+            "libabsl_city__city.cc.o"
+          ]
+        },
+        "libabsl_cord": {
+          "count": 2,
+          "examples": [
+            "libabsl_cord__cord.cc.o",
+            "libabsl_cord__cord_analysis.cc.o"
+          ]
+        },
+        "libabsl_cord_internal": {
+          "count": 6,
+          "examples": [
+            "libabsl_cord_internal__cord_internal.cc.o",
+            "libabsl_cord_internal__cord_rep_btree.cc.o",
+            "libabsl_cord_internal__cord_rep_btree_navigator.cc.o",
+            "libabsl_cord_internal__cord_rep_btree_reader.cc.o"
+          ]
+        },
+        "libabsl_cordz_handle": {
+          "count": 1,
+          "examples": [
+            "libabsl_cordz_handle__cordz_handle.cc.o"
+          ]
+        },
+        "libabsl_cordz_info": {
+          "count": 1,
+          "examples": [
+            "libabsl_cordz_info__cordz_info.cc.o"
+          ]
+        },
+        "libabsl_crc32c": {
+          "count": 4,
+          "examples": [
+            "libabsl_crc32c__crc32c.cc.o",
+            "libabsl_crc32c__crc_memcpy_fallback.cc.o",
+            "libabsl_crc32c__crc_memcpy_x86_arm_combined.cc.o",
+            "libabsl_crc32c__crc_non_temporal_memcpy.cc.o"
+          ]
+        },
+        "libabsl_crc_cord_state": {
+          "count": 1,
+          "examples": [
+            "libabsl_crc_cord_state__crc_cord_state.cc.o"
+          ]
+        },
+        "libabsl_crc_internal": {
+          "count": 2,
+          "examples": [
+            "libabsl_crc_internal__crc.cc.o",
+            "libabsl_crc_internal__crc_x86_arm_combined.cc.o"
+          ]
+        },
+        "libabsl_debugging_internal": {
+          "count": 2,
+          "examples": [
+            "libabsl_debugging_internal__decode_rust_punycode.cc.o",
+            "libabsl_debugging_internal__utf8_for_code_point.cc.o"
+          ]
+        },
+        "libabsl_demangle_internal": {
+          "count": 2,
+          "examples": [
+            "libabsl_demangle_internal__demangle.cc.o",
+            "libabsl_demangle_internal__demangle_rust.cc.o"
+          ]
+        },
+        "libabsl_examine_stack": {
+          "count": 1,
+          "examples": [
+            "libabsl_examine_stack__examine_stack.cc.o"
+          ]
+        },
+        "libabsl_hash": {
+          "count": 1,
+          "examples": [
+            "libabsl_hash__hash.cc.o"
+          ]
+        },
+        "libabsl_hashtablez_sampler": {
+          "count": 2,
+          "examples": [
+            "libabsl_hashtablez_sampler__hashtablez_sampler.cc.o",
+            "libabsl_hashtablez_sampler__hashtablez_sampler_force_weak_definition.cc.o"
+          ]
+        },
+        "libabsl_int128": {
+          "count": 1,
+          "examples": [
+            "libabsl_int128__int128.cc.o"
+          ]
+        },
+        "libabsl_kernel_timeout_internal": {
+          "count": 1,
+          "examples": [
+            "libabsl_kernel_timeout_internal__kernel_timeout.cc.o"
+          ]
+        },
+        "libabsl_leak_check": {
+          "count": 1,
+          "examples": [
+            "libabsl_leak_check__leak_check.cc.o"
+          ]
+        },
+        "libabsl_log_globals": {
+          "count": 1,
+          "examples": [
+            "libabsl_log_globals__globals.cc.o"
+          ]
+        },
+        "libabsl_log_internal_check_op": {
+          "count": 1,
+          "examples": [
+            "libabsl_log_internal_check_op__check_op.cc.o"
+          ]
+        },
+        "libabsl_log_internal_conditions": {
+          "count": 1,
+          "examples": [
+            "libabsl_log_internal_conditions__conditions.cc.o"
+          ]
+        },
+        "libabsl_log_internal_format": {
+          "count": 1,
+          "examples": [
+            "libabsl_log_internal_format__log_format.cc.o"
+          ]
+        },
+        "libabsl_log_internal_globals": {
+          "count": 1,
+          "examples": [
+            "libabsl_log_internal_globals__globals.cc.o"
+          ]
+        },
+        "libabsl_log_internal_log_sink_set": {
+          "count": 1,
+          "examples": [
+            "libabsl_log_internal_log_sink_set__log_sink_set.cc.o"
+          ]
+        },
+        "libabsl_log_internal_message": {
+          "count": 1,
+          "examples": [
+            "libabsl_log_internal_message__log_message.cc.o"
+          ]
+        },
+        "libabsl_log_internal_nullguard": {
+          "count": 1,
+          "examples": [
+            "libabsl_log_internal_nullguard__nullguard.cc.o"
+          ]
+        },
+        "libabsl_log_internal_proto": {
+          "count": 1,
+          "examples": [
+            "libabsl_log_internal_proto__proto.cc.o"
+          ]
+        },
+        "libabsl_log_internal_structured_proto": {
+          "count": 1,
+          "examples": [
+            "libabsl_log_internal_structured_proto__structured_proto.cc.o"
+          ]
+        },
+        "libabsl_log_sink": {
+          "count": 1,
+          "examples": [
+            "libabsl_log_sink__log_sink.cc.o"
+          ]
+        },
+        "libabsl_malloc_internal": {
+          "count": 1,
+          "examples": [
+            "libabsl_malloc_internal__low_level_alloc.cc.o"
+          ]
+        },
+        "libabsl_raw_hash_set": {
+          "count": 1,
+          "examples": [
+            "libabsl_raw_hash_set__raw_hash_set.cc.o"
+          ]
+        },
+        "libabsl_raw_logging_internal": {
+          "count": 1,
+          "examples": [
+            "libabsl_raw_logging_internal__raw_logging.cc.o"
+          ]
+        },
+        "libabsl_spinlock_wait": {
+          "count": 1,
+          "examples": [
+            "libabsl_spinlock_wait__spinlock_wait.cc.o"
+          ]
+        },
+        "libabsl_stacktrace": {
+          "count": 1,
+          "examples": [
+            "libabsl_stacktrace__stacktrace.cc.o"
+          ]
+        },
+        "libabsl_status": {
+          "count": 3,
+          "examples": [
+            "libabsl_status__status_internal.cc.o",
+            "libabsl_status__status.cc.o",
+            "libabsl_status__status_payload_printer.cc.o"
+          ]
+        },
+        "libabsl_statusor": {
+          "count": 1,
+          "examples": [
+            "libabsl_statusor__statusor.cc.o"
+          ]
+        },
+        "libabsl_str_format_internal": {
+          "count": 6,
+          "examples": [
+            "libabsl_str_format_internal__arg.cc.o",
+            "libabsl_str_format_internal__bind.cc.o",
+            "libabsl_str_format_internal__extension.cc.o",
+            "libabsl_str_format_internal__float_conversion.cc.o"
+          ]
+        },
+        "libabsl_strerror": {
+          "count": 1,
+          "examples": [
+            "libabsl_strerror__strerror.cc.o"
+          ]
+        },
+        "libabsl_strings": {
+          "count": 12,
+          "examples": [
+            "libabsl_strings__ascii.cc.o",
+            "libabsl_strings__charconv.cc.o",
+            "libabsl_strings__escaping.cc.o",
+            "libabsl_strings__charconv_bigint.cc.o"
+          ]
+        },
+        "libabsl_strings_internal": {
+          "count": 2,
+          "examples": [
+            "libabsl_strings_internal__utf8.cc.o",
+            "libabsl_strings_internal__escaping.cc.o"
+          ]
+        },
+        "libabsl_symbolize": {
+          "count": 1,
+          "examples": [
+            "libabsl_symbolize__symbolize.cc.o"
+          ]
+        },
+        "libabsl_synchronization": {
+          "count": 5,
+          "examples": [
+            "libabsl_synchronization__create_thread_identity.cc.o",
+            "libabsl_synchronization__per_thread_sem.cc.o",
+            "libabsl_synchronization__pthread_waiter.cc.o",
+            "libabsl_synchronization__waiter_base.cc.o"
+          ]
+        },
+        "libabsl_throw_delegate": {
+          "count": 1,
+          "examples": [
+            "libabsl_throw_delegate__throw_delegate.cc.o"
+          ]
+        },
+        "libabsl_time": {
+          "count": 3,
+          "examples": [
+            "libabsl_time__clock.cc.o",
+            "libabsl_time__duration.cc.o",
+            "libabsl_time__time.cc.o"
+          ]
+        },
+        "libabsl_time_zone": {
+          "count": 8,
+          "examples": [
+            "libabsl_time_zone__time_zone_fixed.cc.o",
+            "libabsl_time_zone__time_zone_if.cc.o",
+            "libabsl_time_zone__time_zone_impl.cc.o",
+            "libabsl_time_zone__time_zone_info.cc.o"
+          ]
+        },
+        "libarchive": {
+          "count": 55,
+          "examples": [
+            "libarchive__archive_acl.c.o",
+            "libarchive__archive_check_magic.c.o",
+            "libarchive__archive_cmdline.c.o",
+            "libarchive__archive_cryptor.c.o"
+          ]
+        },
+        "libbson": {
+          "count": 19,
+          "examples": [
+            "libbson__bson-bcon.c.o",
+            "libbson__bson-clock.c.o",
+            "libbson__bson-context.c.o",
+            "libbson__bson-decimal128.c.o"
+          ]
+        },
+        "libclickhouse_aggregate_functions": {
+          "count": 136,
+          "examples": [
+            "libclickhouse_aggregate_functions__AggregateFunctionAggThrow.cpp.o",
+            "libclickhouse_aggregate_functions__AggregateFunctionAnalysisOfVariance.cpp.o",
+            "libclickhouse_aggregate_functions__AggregateFunctionAny.cpp.o",
+            "libclickhouse_aggregate_functions__AggregateFunctionAnyHeavy.cpp.o"
+          ]
+        },
+        "libclickhouse_common_access": {
+          "count": 10,
+          "examples": [
+            "libclickhouse_common_access__AccessEntityType.cpp.o",
+            "libclickhouse_common_access__AccessFlags.cpp.o",
+            "libclickhouse_common_access__AccessRightsElement.cpp.o",
+            "libclickhouse_common_access__AccessType.cpp.o"
+          ]
+        },
+        "libclickhouse_common_config": {
+          "count": 8,
+          "examples": [
+            "libclickhouse_common_config__AbstractConfigurationComparison.cpp.o",
+            "libclickhouse_common_config__ConfigProcessor.cpp.o",
+            "libclickhouse_common_config__ConfigurationWithUsageTracking.cpp.o",
+            "libclickhouse_common_config__getConfigPath.cpp.o"
+          ]
+        },
+        "libclickhouse_common_io": {
+          "count": 389,
+          "examples": [
+            "libclickhouse_common_io__ActionLock.cpp.o",
+            "libclickhouse_common_io__AddressToLineCache.cpp.o",
+            "libclickhouse_common_io__AggregatedMetrics.cpp.o",
+            "libclickhouse_common_io__AlignedBuffer.cpp.o"
+          ]
+        },
+        "libclickhouse_common_zookeeper": {
+          "count": 1,
+          "examples": [
+            "libclickhouse_common_zookeeper__ZooKeeperImpl.cpp.o"
+          ]
+        },
+        "libclickhouse_common_zookeeper_base": {
+          "count": 16,
+          "examples": [
+            "libclickhouse_common_zookeeper_base__IKeeper.cpp.o",
+            "libclickhouse_common_zookeeper_base__KeeperException.cpp.o",
+            "libclickhouse_common_zookeeper_base__KeeperFeatureFlags.cpp.o",
+            "libclickhouse_common_zookeeper_base__KeeperSpans.cpp.o"
+          ]
+        },
+        "libclickhouse_compression": {
+          "count": 30,
+          "examples": [
+            "libclickhouse_compression__CachedCompressedReadBuffer.cpp.o",
+            "libclickhouse_compression__CheckingCompressedReadBuffer.cpp.o",
+            "libclickhouse_compression__CompressedReadBuffer.cpp.o",
+            "libclickhouse_compression__CompressedReadBufferBase.cpp.o"
+          ]
+        },
+        "libclickhouse_dictionaries": {
+          "count": 54,
+          "examples": [
+            "libclickhouse_dictionaries__CacheDictionary.cpp.o",
+            "libclickhouse_dictionaries__CacheDictionaryUpdateQueue.cpp.o",
+            "libclickhouse_dictionaries__CassandraDictionarySource.cpp.o",
+            "libclickhouse_dictionaries__ClickHouseDictionarySource.cpp.o"
+          ]
+        },
+        "libclickhouse_dictionaries_embedded": {
+          "count": 8,
+          "examples": [
+            "libclickhouse_dictionaries_embedded__GeoDictionariesLoader.cpp.o",
+            "libclickhouse_dictionaries_embedded__RegionsHierarchies.cpp.o",
+            "libclickhouse_dictionaries_embedded__RegionsHierarchy.cpp.o",
+            "libclickhouse_dictionaries_embedded__RegionsNames.cpp.o"
+          ]
+        },
+        "libclickhouse_new_delete": {
+          "count": 1,
+          "examples": [
+            "libclickhouse_new_delete__AllocationInterceptors.cpp.o"
+          ]
+        },
+        "libclickhouse_parsers": {
+          "count": 273,
+          "examples": [
+            "libclickhouse_parsers__ASTAlterNamedCollectionQuery.cpp.o",
+            "libclickhouse_parsers__ASTAssignment.cpp.o",
+            "libclickhouse_parsers__ASTAsterisk.cpp.o",
+            "libclickhouse_parsers__ASTBackupQuery.cpp.o"
+          ]
+        },
+        "libclickhouse_storages_system": {
+          "count": 144,
+          "examples": [
+            "libclickhouse_storages_system__StorageSystemLicenses.generated.cpp.o",
+            "libclickhouse_storages_system__DatabaseTablesCursor.cpp.o",
+            "libclickhouse_storages_system__IStorageSystemOneBlock.cpp.o",
+            "libclickhouse_storages_system__StatusRequestsPool.cpp.o"
+          ]
+        },
+        "libclickhouse_table_functions": {
+          "count": 47,
+          "examples": [
+            "libclickhouse_table_functions__ITableFunctionFileLike.cpp.o",
+            "libclickhouse_table_functions__ITableFunctionXDBC.cpp.o",
+            "libclickhouse_table_functions__TableFunctionBigQuery.cpp.o",
+            "libclickhouse_table_functions__TableFunctionDictionary.cpp.o"
+          ]
+        },
+        "libcommon": {
+          "count": 25,
+          "examples": [
+            "libcommon__argsToConfig.cpp.o",
+            "libcommon__coverage.cpp.o",
+            "libcommon__demangle.cpp.o",
+            "libcommon__Decimal.cpp.o"
+          ]
+        },
+        "libcrypto": {
+          "count": 823,
+          "examples": [
+            "libcrypto__der_dsa_gen.c.o",
+            "libcrypto__der_ec_gen.c.o",
+            "libcrypto__der_ecx_gen.c.o",
+            "libcrypto__der_ml_dsa_gen.c.o"
+          ]
+        },
+        "libcxx": {
+          "count": 40,
+          "examples": [
+            "libcxx__algorithm.cpp.o",
+            "libcxx__any.cpp.o",
+            "libcxx__atomic.cpp.o",
+            "libcxx__expected.cpp.o"
+          ]
+        },
+        "libcxxabi": {
+          "count": 15,
+          "examples": [
+            "libcxxabi__abort_message.cpp.o",
+            "libcxxabi__cxa_aux_runtime.cpp.o",
+            "libcxxabi__cxa_default_handlers.cpp.o",
+            "libcxxabi__cxa_demangle.cpp.o"
+          ]
+        },
+        "libdaemon": {
+          "count": 3,
+          "examples": [
+            "libdaemon__BaseDaemon.cpp.o",
+            "libdaemon__GraphiteWriter.cpp.o",
+            "libdaemon__CrashWriter.cpp.o"
+          ]
+        },
+        "libdbms": {
+          "count": 2292,
+          "examples": [
+            "libdbms__DictionaryFactory.cpp.o",
+            "libdbms__DictionarySourceFactory.cpp.o",
+            "libdbms__DictionaryStructure.cpp.o",
+            "libdbms__getDictionaryConfigurationFromAST.cpp.o"
+          ]
+        },
+        "libfiu": {
+          "count": 3,
+          "examples": [
+            "libfiu__fiu.c.o",
+            "libfiu__backtrace.c.o",
+            "libfiu__wtable.c.o"
+          ]
+        },
+        "libloggers": {
+          "count": 6,
+          "examples": [
+            "libloggers__ExtendedLogMessage.cpp.o",
+            "libloggers__Loggers.cpp.o",
+            "libloggers__OwnFormattingChannel.cpp.o",
+            "libloggers__OwnJSONPatternFormatter.cpp.o"
+          ]
+        },
+        "liblzma": {
+          "count": 56,
+          "examples": [
+            "liblzma__check.c.o",
+            "liblzma__crc32_fast.c.o",
+            "liblzma__crc64_fast.c.o",
+            "liblzma__sha256.c.o"
+          ]
+        },
+        "libmongoc": {
+          "count": 96,
+          "examples": [
+            "libmongoc__mcd-azure.c.o",
+            "libmongoc__mcd-nsinfo.c.o",
+            "libmongoc__mcd-rpc.c.o",
+            "libmongoc__mongoc-aggregate.c.o"
+          ]
+        },
+        "libmysqlxx": {
+          "count": 11,
+          "examples": [
+            "libmysqlxx__Connection.cpp.o",
+            "libmysqlxx__Exception.cpp.o",
+            "libmysqlxx__Query.cpp.o",
+            "libmysqlxx__ResultBase.cpp.o"
+          ]
+        },
+        "libpq": {
+          "count": 45,
+          "examples": [
+            "libpq__fe-auth.c.o",
+            "libpq__fe-auth-scram.c.o",
+            "libpq__fe-auth-oauth.c.o",
+            "libpq__fe-cancel.c.o"
+          ]
+        },
+        "libpqxx": {
+          "count": 18,
+          "examples": [
+            "libpqxx__array.cxx.o",
+            "libpqxx__connection.cxx.o",
+            "libpqxx__encodings.cxx.o",
+            "libpqxx__errorhandler.cxx.o"
+          ]
+        },
+        "libprotobuf": {
+          "count": 52,
+          "examples": [
+            "libprotobuf__any_lite.cc.o",
+            "libprotobuf__arena.cc.o",
+            "libprotobuf__arenastring.cc.o",
+            "libprotobuf__extension_set.cc.o"
+          ]
+        },
+        "libreadpassphrase": {
+          "count": 1,
+          "examples": [
+            "libreadpassphrase__readpassphrase.c.o"
+          ]
+        },
+        "libssl": {
+          "count": 78,
+          "examples": [
+            "libssl__bio_ssl.c.o",
+            "libssl__d1_lib.c.o",
+            "libssl__d1_msg.c.o",
+            "libssl__d1_srtp.c.o"
+          ]
+        },
+        "libtzdata": {
+          "count": 1,
+          "examples": [
+            "libtzdata__TimeZones.generated.cpp.o"
+          ]
+        },
+        "libunwind": {
+          "count": 4,
+          "examples": [
+            "libunwind__libunwind.cpp.o",
+            "libunwind__UnwindLevel1.c.o",
+            "libunwind__UnwindRegistersRestore.S.o",
+            "libunwind__UnwindRegistersSave.S.o"
+          ]
+        },
+        "libutf8_validity": {
+          "count": 1,
+          "examples": [
+            "libutf8_validity__utf8_range.c.o"
+          ]
+        },
+        "libutf8proc": {
+          "count": 1,
+          "examples": [
+            "libutf8proc__utf8proc.c.o"
+          ]
+        },
+        "libxml2": {
+          "count": 34,
+          "examples": [
+            "libxml2__buf.c.o",
+            "libxml2__chvalid.c.o",
+            "libxml2__dict.c.o",
+            "libxml2__encoding.c.o"
+          ]
+        },
+        "lz4": {
+          "count": 3,
+          "examples": [
+            "lz4__lz4.c.o",
+            "lz4__lz4hc.c.o",
+            "lz4__lz4frame.c.o"
+          ]
+        },
+        "mariadbclient": {
+          "count": 32,
+          "examples": [
+            "mariadbclient__pvio_socket.c.o",
+            "mariadbclient__caching_sha2_pw.c.o",
+            "mariadbclient__sha256_pw.c.o",
+            "mariadbclient__my_auth.c.o"
+          ]
+        },
+        "metrohash": {
+          "count": 1,
+          "examples": [
+            "metrohash__metrohash64.cpp.o"
+          ]
+        },
+        "mongocxx": {
+          "count": 106,
+          "examples": [
+            "mongocxx__scoped_bson.cpp.o",
+            "mongocxx__aggregate_options.cpp.o",
+            "mongocxx__auto_encryption_options.cpp.o",
+            "mongocxx__client_bulk_write.cpp.o"
+          ]
+        },
+        "murmurhash": {
+          "count": 2,
+          "examples": [
+            "murmurhash__MurmurHash2.cpp.o",
+            "murmurhash__MurmurHash3.cpp.o"
+          ]
+        },
+        "parquet": {
+          "count": 34,
+          "examples": [
+            "parquet__reader.cc.o",
+            "parquet__reader_internal.cc.o",
+            "parquet__schema_internal.cc.o",
+            "parquet__bloom_filter.cc.o"
+          ]
+        },
+        "poco_foundation": {
+          "count": 103,
+          "examples": [
+            "poco_foundation__ActiveDispatcher.cpp.o",
+            "poco_foundation__ArchiveStrategy.cpp.o",
+            "poco_foundation__Ascii.cpp.o",
+            "poco_foundation__ASCIIEncoding.cpp.o"
+          ]
+        },
+        "poco_foundation_pcre": {
+          "count": 12,
+          "examples": [
+            "poco_foundation_pcre__pcre_chartables.c.o",
+            "poco_foundation_pcre__pcre_compile.c.o",
+            "poco_foundation_pcre__pcre_exec.c.o",
+            "poco_foundation_pcre__pcre_fullinfo.c.o"
+          ]
+        },
+        "poco_json": {
+          "count": 9,
+          "examples": [
+            "poco_json__Array.cpp.o",
+            "poco_json__Handler.cpp.o",
+            "poco_json__JSONException.cpp.o",
+            "poco_json__Object.cpp.o"
+          ]
+        },
+        "poco_json_pdjson": {
+          "count": 1,
+          "examples": [
+            "poco_json_pdjson__pdjson.c.o"
+          ]
+        },
+        "poco_net": {
+          "count": 42,
+          "examples": [
+            "poco_net__DNS.cpp.o",
+            "poco_net__DatagramSocket.cpp.o",
+            "poco_net__DatagramSocketImpl.cpp.o",
+            "poco_net__HTTPAuthenticationParams.cpp.o"
+          ]
+        },
+        "poco_net_ssl": {
+          "count": 23,
+          "examples": [
+            "poco_net_ssl__AcceptCertificateHandler.cpp.o",
+            "poco_net_ssl__CertificateHandlerFactory.cpp.o",
+            "poco_net_ssl__CertificateHandlerFactoryMgr.cpp.o",
+            "poco_net_ssl__Context.cpp.o"
+          ]
+        },
+        "poco_redis": {
+          "count": 7,
+          "examples": [
+            "poco_redis__Array.cpp.o",
+            "poco_redis__Client.cpp.o",
+            "poco_redis__Command.cpp.o",
+            "poco_redis__Error.cpp.o"
+          ]
+        },
+        "poco_util": {
+          "count": 19,
+          "examples": [
+            "poco_util__AbstractConfiguration.cpp.o",
+            "poco_util__Application.cpp.o",
+            "poco_util__ConfigurationView.cpp.o",
+            "poco_util__IniFileConfiguration.cpp.o"
+          ]
+        },
+        "poco_xml": {
+          "count": 61,
+          "examples": [
+            "poco_xml__AbstractContainerNode.cpp.o",
+            "poco_xml__AbstractNode.cpp.o",
+            "poco_xml__Attr.cpp.o",
+            "poco_xml__AttrMap.cpp.o"
+          ]
+        },
+        "poco_xml_expat": {
+          "count": 3,
+          "examples": [
+            "poco_xml_expat__xmlrole.c.o",
+            "poco_xml_expat__xmltok.c.o",
+            "poco_xml_expat__xmlxcs.c.o"
+          ]
+        },
+        "prometheus_protobufs": {
+          "count": 3,
+          "examples": [
+            "prometheus_protobufs__remote.pb.cc.o",
+            "prometheus_protobufs__types.pb.cc.o",
+            "prometheus_protobufs__gogo.pb.cc.o"
+          ]
+        },
+        "rdkafka": {
+          "count": 85,
+          "examples": [
+            "rdkafka__cJSON.c.o",
+            "rdkafka__crc32c.c.o",
+            "rdkafka__rdaddr.c.o",
+            "rdkafka__rdavl.c.o"
+          ]
+        },
+        "re2": {
+          "count": 17,
+          "examples": [
+            "re2__bitmap256.cc.o",
+            "re2__bitstate.cc.o",
+            "re2__compile.cc.o",
+            "re2__dfa.cc.o"
+          ]
+        },
+        "replxx": {
+          "count": 10,
+          "examples": [
+            "replxx__conversion.cxx.o",
+            "replxx__ConvertUTF.cpp.o",
+            "replxx__escape.cxx.o",
+            "replxx__history.cxx.o"
+          ]
+        },
+        "roaring": {
+          "count": 21,
+          "examples": [
+            "roaring__array_util.c.o",
+            "roaring__bitset_util.c.o",
+            "roaring__isadetection.c.o",
+            "roaring__memory.c.o"
+          ]
+        },
+        "rocksdb": {
+          "count": 273,
+          "examples": [
+            "rocksdb__cache.cc.o",
+            "rocksdb__cache_entry_roles.cc.o",
+            "rocksdb__cache_key.cc.o",
+            "rocksdb__cache_helpers.cc.o"
+          ]
+        },
+        "sha3iuf": {
+          "count": 1,
+          "examples": [
+            "sha3iuf__sha3.c.o"
+          ]
+        },
+        "simdjson": {
+          "count": 1,
+          "examples": [
+            "simdjson__simdjson.cpp.o"
+          ]
+        },
+        "simdutf": {
+          "count": 1,
+          "examples": [
+            "simdutf__simdutf.cpp.o"
+          ]
+        },
+        "simsimd": {
+          "count": 1,
+          "examples": [
+            "simsimd__lib.c.o"
+          ]
+        },
+        "snappy": {
+          "count": 3,
+          "examples": [
+            "snappy__snappy-c.cc.o",
+            "snappy__snappy-sinksource.cc.o",
+            "snappy__snappy.cc.o"
+          ]
+        },
+        "sqlite": {
+          "count": 1,
+          "examples": [
+            "sqlite__sqlite3.c.o"
+          ]
+        },
+        "stringzilla": {
+          "count": 16,
+          "examples": [
+            "stringzilla__runtime.c.o",
+            "stringzilla__compare.c.o",
+            "stringzilla__memory.c.o",
+            "stringzilla__hash.c.o"
+          ]
+        },
+        "thrift": {
+          "count": 3,
+          "examples": [
+            "thrift__TProtocol.cpp.o",
+            "thrift__TTransportException.cpp.o",
+            "thrift__TBufferTransports.cpp.o"
+          ]
+        },
+        "ulid": {
+          "count": 1,
+          "examples": [
+            "ulid__ulid.c.o"
+          ]
+        },
+        "unprefixed": {
+          "count": 792,
+          "examples": [
+            "chdb_func_CRC.cpp.o",
+            "chdb_func_CancellationBudget.cpp.o",
+            "chdb_func_ComparisonParams.cpp.o",
+            "chdb_func_DateTimeTransforms.cpp.o"
+          ]
+        },
+        "vectorscan": {
+          "count": 200,
+          "examples": [
+            "vectorscan__alloc.c.o",
+            "vectorscan__crc32.c.o",
+            "vectorscan__database.c.o",
+            "vectorscan__grey.cpp.o"
+          ]
+        },
+        "zlib": {
+          "count": 35,
+          "examples": [
+            "zlib__adler32.c.o",
+            "zlib__adler32_fold.c.o",
+            "zlib__compress.c.o",
+            "zlib__cpu_features.c.o"
+          ]
+        },
+        "zmij": {
+          "count": 1,
+          "examples": [
+            "zmij__zmij.cc.o"
+          ]
+        },
+        "zstd": {
+          "count": 35,
+          "examples": [
+            "zstd__entropy_common.c.o",
+            "zstd__error_private.c.o",
+            "zstd__fse_decompress.c.o",
+            "zstd__pool.c.o"
+          ]
+        },
+        "zxc": {
+          "count": 8,
+          "examples": [
+            "zxc__zxc_compress.c.o",
+            "zxc__zxc_decompress.c.o",
+            "zxc__zxc_huffman.c.o",
+            "zxc__zxc_common.c.o"
+          ]
+        }
+      },
+      "symbolCount": 743037,
+      "anchors": {
+        "mariadb": [
+          "_mariadb_connection.chdb",
+          "_mysql_init.chdb"
+        ],
+        "gsasl": [],
+        "libssh": [],
+        "lemmagen": [],
+        "liblzma": [
+          "_lzma_code.chdb"
+        ],
+        "icu": [],
+        "krb5": [],
+        "libcxx": [
+          "___cxa_throw.chdb"
+        ],
+        "libunwind": [
+          "__Unwind_RaiseException.chdb"
+        ],
+        "gdeflate": [
+          "_gdeflate_libdeflate_gdeflate_compress.chdb"
+        ]
+      }
+    },
+    {
+      "platform": "linux-amd64",
+      "asset": "linux-x86_64-libchdb-static-split.tar.gz",
+      "sha256": "1843bd7e29dd79cc6acb6427099e9fff7793f433203f87bef6d249534cefe34b",
+      "archiveBytes": 232358040,
+      "nativeBytes": 1421011940,
+      "objectMembers": 9,
+      "groups": {
+        "libchdb_part": {
+          "count": 9,
+          "examples": [
+            "libchdb_part_000.o",
+            "libchdb_part_001.o",
+            "libchdb_part_002.o",
+            "libchdb_part_003.o"
+          ]
+        }
+      },
+      "symbolCount": 794651,
+      "anchors": {
+        "mariadb": [
+          "mariadb_connection",
+          "mysql_init"
+        ],
+        "gsasl": [
+          "gsasl_init"
+        ],
+        "libssh": [],
+        "lemmagen": [],
+        "liblzma": [
+          "lzma_code.chdb"
+        ],
+        "icu": [
+          "u_getVersion_78"
+        ],
+        "krb5": [
+          "krb5_init_context.chdb"
+        ],
+        "libcxx": [
+          "__cxa_throw.chdb"
+        ],
+        "libunwind": [
+          "_Unwind_RaiseException"
+        ],
+        "gdeflate": [
+          "gdeflate_libdeflate_gdeflate_compress"
+        ]
+      }
+    },
+    {
+      "platform": "linux-arm64",
+      "asset": "linux-aarch64-libchdb-static-split.tar.gz",
+      "sha256": "16020252214e4c025e6375d2e7137565b5863052b275f94537599fe8089562ae",
+      "archiveBytes": 208801403,
+      "nativeBytes": 1309535172,
+      "objectMembers": 9,
+      "groups": {
+        "libchdb_part": {
+          "count": 9,
+          "examples": [
+            "libchdb_part_000.o",
+            "libchdb_part_001.o",
+            "libchdb_part_002.o",
+            "libchdb_part_003.o"
+          ]
+        }
+      },
+      "symbolCount": 736606,
+      "anchors": {
+        "mariadb": [
+          "mariadb_connection",
+          "mysql_init"
+        ],
+        "gsasl": [
+          "gsasl_init"
+        ],
+        "libssh": [],
+        "lemmagen": [],
+        "liblzma": [
+          "lzma_code.chdb"
+        ],
+        "icu": [
+          "u_getVersion_78"
+        ],
+        "krb5": [
+          "krb5_init_context.chdb"
+        ],
+        "libcxx": [
+          "__cxa_throw.chdb"
+        ],
+        "libunwind": [
+          "_Unwind_RaiseException"
+        ],
+        "gdeflate": [
+          "gdeflate_libdeflate_gdeflate_compress"
+        ]
+      }
+    }
+  ],
+  "families": [
+    {
+      "id": "chdb-clickhouse",
+      "reviewLicense": "Apache-2.0",
+      "obligation": "Apache license; applicable copyright and NOTICE; mark repackaging",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 4286,
+          "groups": [
+            "chdb_func_libclickhouse_functions_gatherutils",
+            "chdb_func_libclickhouse_functions_jsonpath",
+            "chdb_local",
+            "consistent_hashing",
+            "libclickhouse_aggregate_functions",
+            "libclickhouse_common_access",
+            "libclickhouse_common_config",
+            "libclickhouse_common_io",
+            "libclickhouse_common_zookeeper",
+            "libclickhouse_common_zookeeper_base",
+            "libclickhouse_compression",
+            "libclickhouse_dictionaries",
+            "libclickhouse_dictionaries_embedded",
+            "libclickhouse_new_delete",
+            "libclickhouse_parsers",
+            "libclickhouse_storages_system",
+            "libclickhouse_table_functions",
+            "libcommon",
+            "libdaemon",
+            "libdbms",
+            "libloggers",
+            "libmysqlxx",
+            "unprefixed"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 4285,
+          "groups": [
+            "chdb_func_libclickhouse_functions_gatherutils",
+            "chdb_func_libclickhouse_functions_jsonpath",
+            "chdb_local",
+            "consistent_hashing",
+            "libclickhouse_aggregate_functions",
+            "libclickhouse_common_access",
+            "libclickhouse_common_config",
+            "libclickhouse_common_io",
+            "libclickhouse_common_zookeeper",
+            "libclickhouse_common_zookeeper_base",
+            "libclickhouse_compression",
+            "libclickhouse_dictionaries",
+            "libclickhouse_dictionaries_embedded",
+            "libclickhouse_new_delete",
+            "libclickhouse_parsers",
+            "libclickhouse_storages_system",
+            "libclickhouse_table_functions",
+            "libcommon",
+            "libdaemon",
+            "libdbms",
+            "libloggers",
+            "libmysqlxx",
+            "unprefixed"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/LICENSE.txt",
+          "source": "chdb-core",
+          "commit": "59a7f688d1fc8d895115e104f09a2c4071490d6a",
+          "textSHA256": "8ac615b4d08ee7dd746a3e9ef5b249ea441c7a2be42eab0c94548d630cc618a2"
+        },
+        {
+          "path": "github.com/ClickHouse/ClickHouse:LICENSE",
+          "source": "github.com/ClickHouse/ClickHouse",
+          "commit": "00c46a11583af48ba0ea5f88e65e1d072fa13e40",
+          "textSHA256": "af5d33e7f3dbbd25e889d8bdc61c83562c257d20c22386bb04106cd22937341a"
+        }
+      ]
+    },
+    {
+      "id": "abseil-cpp",
+      "reviewLicense": "Apache-2.0",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 93,
+          "groups": [
+            "libabsl_base",
+            "libabsl_base_cpu_detect",
+            "libabsl_city",
+            "libabsl_cord",
+            "libabsl_cord_internal",
+            "libabsl_cordz_handle",
+            "libabsl_cordz_info",
+            "libabsl_crc32c",
+            "libabsl_crc_cord_state",
+            "libabsl_crc_internal",
+            "libabsl_debugging_internal",
+            "libabsl_demangle_internal",
+            "libabsl_examine_stack",
+            "libabsl_hash",
+            "libabsl_hashtablez_sampler",
+            "libabsl_int128",
+            "libabsl_kernel_timeout_internal",
+            "libabsl_leak_check",
+            "libabsl_log_globals",
+            "libabsl_log_internal_check_op",
+            "libabsl_log_internal_conditions",
+            "libabsl_log_internal_format",
+            "libabsl_log_internal_globals",
+            "libabsl_log_internal_log_sink_set",
+            "libabsl_log_internal_message",
+            "libabsl_log_internal_nullguard",
+            "libabsl_log_internal_proto",
+            "libabsl_log_internal_structured_proto",
+            "libabsl_log_sink",
+            "libabsl_malloc_internal",
+            "libabsl_raw_hash_set",
+            "libabsl_raw_logging_internal",
+            "libabsl_spinlock_wait",
+            "libabsl_stacktrace",
+            "libabsl_status",
+            "libabsl_statusor",
+            "libabsl_str_format_internal",
+            "libabsl_strerror",
+            "libabsl_strings",
+            "libabsl_strings_internal",
+            "libabsl_symbolize",
+            "libabsl_synchronization",
+            "libabsl_throw_delegate",
+            "libabsl_time",
+            "libabsl_time_zone"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 93,
+          "groups": [
+            "libabsl_base",
+            "libabsl_base_cpu_detect",
+            "libabsl_city",
+            "libabsl_cord",
+            "libabsl_cord_internal",
+            "libabsl_cordz_handle",
+            "libabsl_cordz_info",
+            "libabsl_crc32c",
+            "libabsl_crc_cord_state",
+            "libabsl_crc_internal",
+            "libabsl_debugging_internal",
+            "libabsl_demangle_internal",
+            "libabsl_examine_stack",
+            "libabsl_hash",
+            "libabsl_hashtablez_sampler",
+            "libabsl_int128",
+            "libabsl_kernel_timeout_internal",
+            "libabsl_leak_check",
+            "libabsl_log_globals",
+            "libabsl_log_internal_check_op",
+            "libabsl_log_internal_conditions",
+            "libabsl_log_internal_format",
+            "libabsl_log_internal_globals",
+            "libabsl_log_internal_log_sink_set",
+            "libabsl_log_internal_message",
+            "libabsl_log_internal_nullguard",
+            "libabsl_log_internal_proto",
+            "libabsl_log_internal_structured_proto",
+            "libabsl_log_sink",
+            "libabsl_malloc_internal",
+            "libabsl_raw_hash_set",
+            "libabsl_raw_logging_internal",
+            "libabsl_spinlock_wait",
+            "libabsl_stacktrace",
+            "libabsl_status",
+            "libabsl_statusor",
+            "libabsl_str_format_internal",
+            "libabsl_strerror",
+            "libabsl_strings",
+            "libabsl_strings_internal",
+            "libabsl_symbolize",
+            "libabsl_synchronization",
+            "libabsl_throw_delegate",
+            "libabsl_time",
+            "libabsl_time_zone"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/abseil-cpp/LICENSE",
+          "source": "contrib/abseil-cpp",
+          "commit": "2065f4ded0558c6f89fee67c8e5228feb4eb960e",
+          "textSHA256": "c79a7fea0e3cac04cd43f20e7b648e5a0ff8fa5344e644b0ee09ca1162b62747"
+        }
+      ]
+    },
+    {
+      "id": "ai-sdk-cpp",
+      "reviewLicense": "Apache-2.0",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 15,
+          "groups": [
+            "ai-sdk-cpp-anthropic",
+            "ai-sdk-cpp-core",
+            "ai-sdk-cpp-openai"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 15,
+          "groups": [
+            "ai-sdk-cpp-anthropic",
+            "ai-sdk-cpp-core",
+            "ai-sdk-cpp-openai"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/ai-sdk-cpp/LICENSE",
+          "source": "contrib/ai-sdk-cpp",
+          "commit": "ab06ef70baba81ba4ecf1ece038bbae96e74d4af",
+          "textSHA256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        }
+      ]
+    },
+    {
+      "id": "arrow-parquet",
+      "reviewLicense": "Apache-2.0 plus bundled component terms",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 178,
+          "groups": [
+            "arrow",
+            "parquet"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 174,
+          "groups": [
+            "arrow",
+            "parquet"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/arrow/LICENSE.txt",
+          "source": "contrib/arrow",
+          "commit": "363af92ec194c0fb8c8536c8e1570e4ec6e9cb40",
+          "textSHA256": "d1c981370f1ffd4edcdd2fb3565c8939cc40c75e24e1f92d581d04e54f0dff81"
+        },
+        {
+          "path": "/contrib/arrow/NOTICE.txt",
+          "source": "contrib/arrow",
+          "commit": "363af92ec194c0fb8c8536c8e1570e4ec6e9cb40",
+          "textSHA256": "afd895d61a00101f6d5a41cf518c83865d815e8109e956f512a0ce4ea9738c06"
+        }
+      ]
+    },
+    {
+      "id": "avro",
+      "reviewLicense": "Apache-2.0 plus bundled component terms",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 21,
+          "groups": [
+            "avrocpp"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 21,
+          "groups": [
+            "avrocpp"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/avro/LICENSE.txt",
+          "source": "contrib/avro",
+          "commit": "4df3dab49badd93fec847a072b784d4dcf7e5350",
+          "textSHA256": "58e3a945e918e1daeaa9586eaea7e6f5b6c40d71fa9ec8349f7bb6060862fe5f"
+        },
+        {
+          "path": "/contrib/avro/NOTICE.txt",
+          "source": "contrib/avro",
+          "commit": "4df3dab49badd93fec847a072b784d4dcf7e5350",
+          "textSHA256": "a566b6fb3d3b319e045ace61fddc4a02ae448f334c4f25b8855ec33e0f5c7c9b"
+        }
+      ]
+    },
+    {
+      "id": "aws-sdk",
+      "reviewLicense": "Apache-2.0 plus bundled component terms",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 1436,
+          "groups": [
+            "aws"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 1434,
+          "groups": [
+            "aws"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/aws/LICENSE",
+          "source": "contrib/aws",
+          "commit": "c1d5b5f6e8476c31cc511efa9919b17cf9c5c314",
+          "textSHA256": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1"
+        },
+        {
+          "path": "/contrib/aws/LICENSE.txt",
+          "source": "contrib/aws",
+          "commit": "c1d5b5f6e8476c31cc511efa9919b17cf9c5c314",
+          "textSHA256": "d721f7df04e3f82ff104de91a734c4e2ea40e8e4bb2f89dc4d4c7dd6ebbecb40"
+        },
+        {
+          "path": "/contrib/aws/NOTICE.txt",
+          "source": "contrib/aws",
+          "commit": "c1d5b5f6e8476c31cc511efa9919b17cf9c5c314",
+          "textSHA256": "8f43c4888a1e14f48c102b3f5556d581d02ea3afc9cbe31a2b714dae9383ef36"
+        },
+        {
+          "path": "/contrib/aws-crt-cpp/LICENSE",
+          "source": "contrib/aws-crt-cpp",
+          "commit": "fb9638dc096ae5b472947adee958ac2b9bd75ba1",
+          "textSHA256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        },
+        {
+          "path": "/contrib/aws-crt-cpp/NOTICE",
+          "source": "contrib/aws-crt-cpp",
+          "commit": "fb9638dc096ae5b472947adee958ac2b9bd75ba1",
+          "textSHA256": "90f9b4a63a71d4a70420242c414b2fe24ee809c094c2dbac3b8871a646469293"
+        },
+        {
+          "path": "/contrib/aws-c-auth/LICENSE",
+          "source": "contrib/aws-c-auth",
+          "commit": "4b5d524bf1a511b05e0fffe5bdc51800770b9427",
+          "textSHA256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        },
+        {
+          "path": "/contrib/aws-c-auth/NOTICE",
+          "source": "contrib/aws-c-auth",
+          "commit": "4b5d524bf1a511b05e0fffe5bdc51800770b9427",
+          "textSHA256": "f228f9b9f0405035d8bc2dbd9f018533b641136c7110f9e6a34edec7dd52e310"
+        },
+        {
+          "path": "/contrib/aws-c-cal/LICENSE",
+          "source": "contrib/aws-c-cal",
+          "commit": "8aa2a48a09f93c65d4cf06388e143a6584de6321",
+          "textSHA256": "09e8a9bcec8067104652c168685ab0931e7868f9c8284b66f5ae6edae5f1130b"
+        },
+        {
+          "path": "/contrib/aws-c-cal/NOTICE",
+          "source": "contrib/aws-c-cal",
+          "commit": "8aa2a48a09f93c65d4cf06388e143a6584de6321",
+          "textSHA256": "06da05ec640017cc2bc80e4856cf14a9002efdd57b1ed4655714bfe5e777d216"
+        },
+        {
+          "path": "/contrib/aws-c-common/LICENSE",
+          "source": "contrib/aws-c-common",
+          "commit": "d06a38e88b3afef2a5cc0445d0b68d9d4e349fbc",
+          "textSHA256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        },
+        {
+          "path": "/contrib/aws-c-common/NOTICE",
+          "source": "contrib/aws-c-common",
+          "commit": "d06a38e88b3afef2a5cc0445d0b68d9d4e349fbc",
+          "textSHA256": "f43576ad8c3330cd2647c8e8dc3572d8bf7dfc47a13d56dbdb8c1abbef900367"
+        },
+        {
+          "path": "/contrib/aws-c-compression/LICENSE",
+          "source": "contrib/aws-c-compression",
+          "commit": "d8264e64f698341eb03039b96b4f44702a9b3f83",
+          "textSHA256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        },
+        {
+          "path": "/contrib/aws-c-compression/NOTICE",
+          "source": "contrib/aws-c-compression",
+          "commit": "d8264e64f698341eb03039b96b4f44702a9b3f83",
+          "textSHA256": "758db6c88293e55e9790adc73e9e58066405c408797afa9d48bef18d308eb49e"
+        },
+        {
+          "path": "/contrib/aws-c-event-stream/LICENSE",
+          "source": "contrib/aws-c-event-stream",
+          "commit": "51bef3c44e1058b1689751539170b2e0f589ccdb",
+          "textSHA256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        },
+        {
+          "path": "/contrib/aws-c-event-stream/NOTICE",
+          "source": "contrib/aws-c-event-stream",
+          "commit": "51bef3c44e1058b1689751539170b2e0f589ccdb",
+          "textSHA256": "ca6098641e6982418933b0eb3973e56f544e94932f1244cb9352db60321a040f"
+        },
+        {
+          "path": "/contrib/aws-c-http/LICENSE",
+          "source": "contrib/aws-c-http",
+          "commit": "8aefd899fc3210bfd0e3fd414011a3cb708bf6e4",
+          "textSHA256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        },
+        {
+          "path": "/contrib/aws-c-http/NOTICE",
+          "source": "contrib/aws-c-http",
+          "commit": "8aefd899fc3210bfd0e3fd414011a3cb708bf6e4",
+          "textSHA256": "2d1f498ef5ec8f71a7590ad3447688de6f0276434c619b5c4ce6e53c068ea33e"
+        },
+        {
+          "path": "/contrib/aws-c-io/LICENSE",
+          "source": "contrib/aws-c-io",
+          "commit": "ad2b310237ca87b67b1d0f6c9bc4b865d44cf45c",
+          "textSHA256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        },
+        {
+          "path": "/contrib/aws-c-io/NOTICE",
+          "source": "contrib/aws-c-io",
+          "commit": "ad2b310237ca87b67b1d0f6c9bc4b865d44cf45c",
+          "textSHA256": "f0604df9ed45fb474874f8b363700aa2e493705799ffd6e1362b899aa70653e4"
+        },
+        {
+          "path": "/contrib/aws-c-mqtt/LICENSE",
+          "source": "contrib/aws-c-mqtt",
+          "commit": "e35b9ca3f9fcbf1a972c831c5e79046ce56959d1",
+          "textSHA256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        },
+        {
+          "path": "/contrib/aws-c-mqtt/NOTICE",
+          "source": "contrib/aws-c-mqtt",
+          "commit": "e35b9ca3f9fcbf1a972c831c5e79046ce56959d1",
+          "textSHA256": "09211ec471e551c78cd57aba8344847091f297a6ae389288beb5d55076ab2c76"
+        },
+        {
+          "path": "/contrib/aws-c-s3/LICENSE",
+          "source": "contrib/aws-c-s3",
+          "commit": "226c3e6937e3d5f7db9e10651f7bd20575e98187",
+          "textSHA256": "09e8a9bcec8067104652c168685ab0931e7868f9c8284b66f5ae6edae5f1130b"
+        },
+        {
+          "path": "/contrib/aws-c-s3/NOTICE",
+          "source": "contrib/aws-c-s3",
+          "commit": "226c3e6937e3d5f7db9e10651f7bd20575e98187",
+          "textSHA256": "d4290ed64c2edd0fce1d84e3f9dfb2881240fe534def76b8cd29ed6af683e287"
+        },
+        {
+          "path": "/contrib/aws-c-sdkutils/LICENSE",
+          "source": "contrib/aws-c-sdkutils",
+          "commit": "a1cc19f53b63658f1b1400b36f199eafeeb895a6",
+          "textSHA256": "09e8a9bcec8067104652c168685ab0931e7868f9c8284b66f5ae6edae5f1130b"
+        },
+        {
+          "path": "/contrib/aws-c-sdkutils/NOTICE",
+          "source": "contrib/aws-c-sdkutils",
+          "commit": "a1cc19f53b63658f1b1400b36f199eafeeb895a6",
+          "textSHA256": "d4290ed64c2edd0fce1d84e3f9dfb2881240fe534def76b8cd29ed6af683e287"
+        },
+        {
+          "path": "/contrib/aws-checksums/LICENSE",
+          "source": "contrib/aws-checksums",
+          "commit": "1d5f2f1f3e5d013aae8810878ceb5b3f6f258c4e",
+          "textSHA256": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1"
+        }
+      ]
+    },
+    {
+      "id": "azure-sdk",
+      "reviewLicense": "MIT",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 65,
+          "groups": [
+            "azure_sdk"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 65,
+          "groups": [
+            "azure_sdk"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/azure/LICENSE.txt",
+          "source": "contrib/azure",
+          "commit": "20f8b46b878718b4536a88888a182f60f665465a",
+          "textSHA256": "9906940f61b1f0b533fa7d99baf55178b2808fbe113ea51dfbfad8572ccd5f2b"
+        }
+      ]
+    },
+    {
+      "id": "boost",
+      "reviewLicense": "BSL-1.0",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 15,
+          "groups": [
+            "boost_context",
+            "boost_iostreams",
+            "boost_program_options"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 15,
+          "groups": [
+            "boost_context",
+            "boost_iostreams",
+            "boost_program_options"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/boost/LICENSE_1_0.txt",
+          "source": "contrib/boost",
+          "commit": "030f1d17436e5ef1ccf8d2e3cec3674d9c385370",
+          "textSHA256": "c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566"
+        }
+      ]
+    },
+    {
+      "id": "brotli",
+      "reviewLicense": "MIT",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 35,
+          "groups": [
+            "brotli"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 35,
+          "groups": [
+            "brotli"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/brotli/LICENSE",
+          "source": "contrib/brotli",
+          "commit": "2d9c9b61f4e7d3523c9dfb62e48fe91aaf86e812",
+          "textSHA256": "3d180008e36922a4e8daec11c34c7af264fed5962d07924aea928c38e8663c94"
+        }
+      ]
+    },
+    {
+      "id": "mongo-c-driver",
+      "reviewLicense": "Apache-2.0 plus bundled component terms",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 115,
+          "groups": [
+            "libbson",
+            "libmongoc"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 115,
+          "groups": [
+            "libbson",
+            "libmongoc"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/mongo-c-driver/COPYING",
+          "source": "contrib/mongo-c-driver",
+          "commit": "a629595f0e72e64ac19a70f042b2577c4f84de4b",
+          "textSHA256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+        },
+        {
+          "path": "/contrib/mongo-c-driver/THIRD_PARTY_NOTICES",
+          "source": "contrib/mongo-c-driver",
+          "commit": "a629595f0e72e64ac19a70f042b2577c4f84de4b",
+          "textSHA256": "2f397b6b524dadf7385fc0fac003fd713781cf84adb146fd85eecd8351defbe5"
+        }
+      ]
+    },
+    {
+      "id": "mongo-cxx-driver",
+      "reviewLicense": "Apache-2.0",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 129,
+          "groups": [
+            "bsoncxx",
+            "mongocxx"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 129,
+          "groups": [
+            "bsoncxx",
+            "mongocxx"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/mongo-cxx-driver/LICENSE",
+          "source": "contrib/mongo-cxx-driver",
+          "commit": "fa9ee6ed008e84b9562a7a55d70681de8a6bc1c6",
+          "textSHA256": "cb5e8e7e5f4a3988e1063c142c60dc2df75605f4c46515e776e3aca6df976e14"
+        },
+        {
+          "path": "/contrib/mongo-cxx-driver/THIRD-PARTY-NOTICES",
+          "source": "contrib/mongo-cxx-driver",
+          "commit": "fa9ee6ed008e84b9562a7a55d70681de8a6bc1c6",
+          "textSHA256": "33aa2bc20970ed53da80ff0a98f7233b4eb7624ec140e227f943333c7cf3fa86"
+        }
+      ]
+    },
+    {
+      "id": "c-ares",
+      "reviewLicense": "MIT",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 60,
+          "groups": [
+            "c-ares"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 60,
+          "groups": [
+            "c-ares"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/c-ares/LICENSE.md",
+          "source": "contrib/c-ares",
+          "commit": "bc91829cce983a35ec01f5dbc05465858a3df469",
+          "textSHA256": "460f5e768fda3752ca2169a95df062578a10fb126bfd65f3b9b1a1bed2f84807"
+        }
+      ]
+    },
+    {
+      "id": "cctz-tzdata",
+      "reviewLicense": "Apache-2.0; IANA time zone data",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 10,
+          "groups": [
+            "cctz",
+            "libtzdata"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 10,
+          "groups": [
+            "cctz",
+            "libtzdata"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/cctz/LICENSE.txt",
+          "source": "contrib/cctz",
+          "commit": "fa5fe114a87a34c055853adf54dde305979acea0",
+          "textSHA256": "c79a7fea0e3cac04cd43f20e7b648e5a0ff8fa5344e644b0ee09ca1162b62747"
+        }
+      ]
+    },
+    {
+      "id": "cityhash",
+      "reviewLicense": "MIT",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 1,
+          "groups": [
+            "cityhash"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 1,
+          "groups": [
+            "cityhash"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/cityhash102/COPYING",
+          "source": "chdb-core",
+          "commit": "59a7f688d1fc8d895115e104f09a2c4071490d6a",
+          "textSHA256": "3ed00dd93c75655599456c83cba2f69c6824fd53f24fc24206ba27b65057709d"
+        }
+      ]
+    },
+    {
+      "id": "cppkafka",
+      "reviewLicense": "BSD-2-Clause",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 19,
+          "groups": [
+            "cppkafka"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 19,
+          "groups": [
+            "cppkafka"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/cppkafka/LICENSE",
+          "source": "contrib/cppkafka",
+          "commit": "01ea85530b2c156db2dcadb4117f30e1faf93b09",
+          "textSHA256": "6240ca463a139be1fc46c676ee9c94d74e3a0b6ef90cb935d8475dac107d18c4"
+        }
+      ]
+    },
+    {
+      "id": "crc32c",
+      "reviewLicense": "BSD-3-Clause",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 3,
+          "groups": [
+            "crc32c"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 3,
+          "groups": [
+            "crc32c"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/crc32c/LICENSE",
+          "source": "contrib/crc32c",
+          "commit": "8e39af2c7f8b23d1a0c2a6367b3313149c20b520",
+          "textSHA256": "a1f30b77c01e0995fa32a00119e00749e8731ee8a3c4c3549bce74083c72b0b6"
+        }
+      ]
+    },
+    {
+      "id": "double-conversion",
+      "reviewLicense": "BSD-3-Clause",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 8,
+          "groups": [
+            "double-conversion"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 8,
+          "groups": [
+            "double-conversion"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/double-conversion/LICENSE",
+          "source": "contrib/double-conversion",
+          "commit": "9dd6227ee3e29807183e56877f0282aeb40b8b1e",
+          "textSHA256": "4af93c12062c58058378de2397dc1c92bbff9ddfb1d583a01c84127557ce97ca"
+        }
+      ]
+    },
+    {
+      "id": "farmhash",
+      "reviewLicense": "MIT",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 1,
+          "groups": [
+            "farmhash"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 1,
+          "groups": [
+            "farmhash"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/libfarmhash/COPYING",
+          "source": "chdb-core",
+          "commit": "59a7f688d1fc8d895115e104f09a2c4071490d6a",
+          "textSHA256": "4162dd091caae234f72d3b57e138174f733e736b2430a4c51b098b17d866fcb6"
+        }
+      ]
+    },
+    {
+      "id": "fmt",
+      "reviewLicense": "MIT",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 1,
+          "groups": [
+            "fmt"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 1,
+          "groups": [
+            "fmt"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/fmtlib/LICENSE",
+          "source": "contrib/fmtlib",
+          "commit": "6f1b0812b84a51c7053191cdb392fcd0b7338fb0",
+          "textSHA256": "07580f2a3b35709ce703d523f447b242f6dfec7582a8c0df102c7fa2849375f8"
+        }
+      ]
+    },
+    {
+      "id": "gdeflate",
+      "reviewLicense": "MIT",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 3,
+          "groups": [
+            "gdeflate"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 3,
+          "groups": [
+            "gdeflate"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/gdeflate/COPYING",
+          "source": "contrib/gdeflate",
+          "commit": "038f6f59c1d2a1e285b384ffd8d37cba56db66dd",
+          "textSHA256": "8640f41453395fa7bb99393d01a2bf619a6b3e4a882d596ff130428c77e85407"
+        }
+      ]
+    },
+    {
+      "id": "h3",
+      "reviewLicense": "Apache-2.0",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 17,
+          "groups": [
+            "h3"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 17,
+          "groups": [
+            "h3"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/h3/LICENSE",
+          "source": "contrib/h3",
+          "commit": "a98c060583faaad33d55a85e1e88be54c8863859",
+          "textSHA256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        },
+        {
+          "path": "/contrib/h3/NOTICE",
+          "source": "contrib/h3",
+          "commit": "a98c060583faaad33d55a85e1e88be54c8863859",
+          "textSHA256": "aa869183968dc0173cd1c218e19ec0249e6a18f3bf3e4b52538365715796f04c"
+        }
+      ]
+    },
+    {
+      "id": "ipcrypt2",
+      "reviewLicense": "ISC",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 1,
+          "groups": [
+            "ipcrypt2"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 1,
+          "groups": [
+            "ipcrypt2"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/ipcrypt2/LICENSE",
+          "source": "contrib/ipcrypt2",
+          "commit": "07fd2e1ef3bf6e7d689b6d1c46ff48f67df20888",
+          "textSHA256": "5253276080f78b4605a28c8998c6dc8c8301bf07748dd1cd6f4a7bb4d139e562"
+        }
+      ]
+    },
+    {
+      "id": "libarchive",
+      "reviewLicense": "BSD-style, MIT and Apache file-level terms",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 55,
+          "groups": [
+            "libarchive"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 55,
+          "groups": [
+            "libarchive"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/libarchive/COPYING",
+          "source": "contrib/libarchive",
+          "commit": "27cbc7827172698143e440801fc0ba39ccb4f1f5",
+          "textSHA256": "30e556b3959e3985d66efefec5eaac51d4995053caa1d3cffe6eb916f146f229"
+        }
+      ]
+    },
+    {
+      "id": "openssl",
+      "reviewLicense": "Apache-2.0",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 901,
+          "groups": [
+            "libcrypto",
+            "libssl"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 901,
+          "groups": [
+            "libcrypto",
+            "libssl"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/openssl/LICENSE.txt",
+          "source": "contrib/openssl",
+          "commit": "e20d8f40abcba2d733450a5c426490246f636368",
+          "textSHA256": "7d5450cb2d142651b8afa315b5f238efc805dad827d91ba367d8516bc9d49e7a"
+        }
+      ]
+    },
+    {
+      "id": "llvm-runtimes",
+      "reviewLicense": "Apache-2.0 WITH LLVM-exception and retained legacy notices",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 59,
+          "groups": [
+            "libcxx",
+            "libcxxabi",
+            "libunwind"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 59,
+          "groups": [
+            "libcxx",
+            "libcxxabi",
+            "libunwind"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/llvm-project/LICENSE.TXT",
+          "source": "contrib/llvm-project",
+          "commit": "fa3910d62714b59592f64dfd33e9e3d0dc5926e4",
+          "textSHA256": "8d85c1057d742e597985c7d4e6320b015a9139385cff4cbae06ffc0ebe89afee"
+        },
+        {
+          "path": "/contrib/llvm-project/libcxx/LICENSE.TXT",
+          "source": "contrib/llvm-project",
+          "commit": "fa3910d62714b59592f64dfd33e9e3d0dc5926e4",
+          "textSHA256": "539dd7aed86e8a4f12cbdd0e6c50c189c7d74847e4fecc64ce2c6ee3a01da38b"
+        },
+        {
+          "path": "/contrib/llvm-project/libcxxabi/LICENSE.TXT",
+          "source": "contrib/llvm-project",
+          "commit": "fa3910d62714b59592f64dfd33e9e3d0dc5926e4",
+          "textSHA256": "e2b35be49f7284a45b7baca8fc7b3ab7440e7902392b2528a457816b5bb2a15c"
+        },
+        {
+          "path": "/contrib/llvm-project/libunwind/LICENSE.TXT",
+          "source": "contrib/llvm-project",
+          "commit": "fa3910d62714b59592f64dfd33e9e3d0dc5926e4",
+          "textSHA256": "b5efebcaca80879234098e52d1725e6d9eb8fb96a19fce625d39184b705f7b6d"
+        }
+      ]
+    },
+    {
+      "id": "libfiu",
+      "reviewLicense": "BOLA public-domain dedication",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 3,
+          "groups": [
+            "libfiu"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 3,
+          "groups": [
+            "libfiu"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/libfiu/LICENSE",
+          "source": "contrib/libfiu",
+          "commit": "74bc382193df83d829f9e5b99d7f17a841c5cf74",
+          "textSHA256": "4101532c4cf6c75cf1e6b1c929e0c410a9f2e151213d8199362d97f9d195c6b6"
+        }
+      ]
+    },
+    {
+      "id": "liblzma",
+      "reviewLicense": "0BSD",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 56,
+          "groups": [
+            "liblzma"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 56,
+          "groups": [
+            "liblzma"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/xz/COPYING",
+          "source": "contrib/xz",
+          "commit": "d3e650e63c110e830fd5391e7f8b45df0b91d3da",
+          "textSHA256": "616a3ad264ce29b8f1cb97e53037b139d406899ca8d1f799651e17bfa09830b8"
+        },
+        {
+          "path": "/contrib/xz/COPYING.0BSD",
+          "source": "contrib/xz",
+          "commit": "d3e650e63c110e830fd5391e7f8b45df0b91d3da",
+          "textSHA256": "0b01625d853911cd0e2e088dcfb743261034a091bb379246cb25a14cc4c74bf1"
+        }
+      ]
+    },
+    {
+      "id": "postgres-libpq",
+      "reviewLicense": "PostgreSQL",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 45,
+          "groups": [
+            "libpq"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 45,
+          "groups": [
+            "libpq"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/postgres/COPYRIGHT",
+          "source": "contrib/postgres",
+          "commit": "c7649becd213231466df7e679154e8ac0f744788",
+          "textSHA256": "3d6af92ff8a4c2cdf69afb1cf44edea727922f5cd0cf8b5f72b11cdecac8fdfd"
+        }
+      ]
+    },
+    {
+      "id": "libpqxx",
+      "reviewLicense": "BSD-3-Clause",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 18,
+          "groups": [
+            "libpqxx"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 18,
+          "groups": [
+            "libpqxx"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/libpqxx/COPYING",
+          "source": "contrib/libpqxx",
+          "commit": "24a31c3f3a9317131b1326c7b87f42053a5f4489",
+          "textSHA256": "3dd057a614dd24688aafc38d4c41111140e17147cfd94f314a80af30879641b2"
+        }
+      ]
+    },
+    {
+      "id": "protobuf",
+      "reviewLicense": "BSD-3-Clause",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 52,
+          "groups": [
+            "libprotobuf"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 52,
+          "groups": [
+            "libprotobuf"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/google-protobuf/LICENSE",
+          "source": "contrib/google-protobuf",
+          "commit": "f377bfefc5e2cfab68b816903c25b23e091c439d",
+          "textSHA256": "6e5e117324afd944dcf67f36cf329843bc1a92229a8cd9bb573d7a83130fea7d"
+        }
+      ]
+    },
+    {
+      "id": "readpassphrase",
+      "reviewLicense": "ISC-style permission notice",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 1,
+          "groups": [
+            "libreadpassphrase"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 1,
+          "groups": [
+            "libreadpassphrase"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/base/readpassphrase/readpassphrase.c",
+          "source": "chdb-core",
+          "commit": "59a7f688d1fc8d895115e104f09a2c4071490d6a",
+          "textSHA256": "7a0e3da199f27da4d2bfb664772313f71641414d38cb79864c6492ca6f6d874e",
+          "lines": [
+            1,
+            22
+          ]
+        }
+      ]
+    },
+    {
+      "id": "utf8-validity",
+      "reviewLicense": "MIT (protobuf third_party/utf8_range)",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 1,
+          "groups": [
+            "libutf8_validity"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 1,
+          "groups": [
+            "libutf8_validity"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/google-protobuf/third_party/utf8_range/LICENSE",
+          "source": "contrib/google-protobuf",
+          "commit": "f377bfefc5e2cfab68b816903c25b23e091c439d",
+          "textSHA256": "02de69b64fc36d9e938f418e52723e42f0b2b226d58a9cb3c8dcbdf7059f5074"
+        }
+      ]
+    },
+    {
+      "id": "utf8proc",
+      "reviewLicense": "MIT plus Unicode data notices",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 1,
+          "groups": [
+            "libutf8proc"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 1,
+          "groups": [
+            "libutf8proc"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/utf8proc/LICENSE.md",
+          "source": "contrib/utf8proc",
+          "commit": "dce38103bed462c4f87bfcdb80172ec22312e595",
+          "textSHA256": "3b510150d34f248a221bb88e1d811238d6c6c18b51231822c42974c39bb07256"
+        }
+      ]
+    },
+    {
+      "id": "libxml2",
+      "reviewLicense": "MIT plus retained component notices",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 34,
+          "groups": [
+            "libxml2"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 34,
+          "groups": [
+            "libxml2"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/libxml2/Copyright",
+          "source": "contrib/libxml2",
+          "commit": "96498992efa48d52b0e8b83058bd88dbdaf153c1",
+          "textSHA256": "5d4873884a890122a4b9b20ad56ac6f7da1d796a5bfcf04a427970ac96217626"
+        }
+      ]
+    },
+    {
+      "id": "lz4",
+      "reviewLicense": "BSD-2-Clause (library)",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 3,
+          "groups": [
+            "lz4"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 3,
+          "groups": [
+            "lz4"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/lz4/lib/LICENSE",
+          "source": "contrib/lz4",
+          "commit": "ebb370ca83af193212df4dcbadcc5d87bc0de2f0",
+          "textSHA256": "8b58c446121a109ccf32edc094bba3010a3d85e4ee3702950db55e4d3e87736c"
+        }
+      ]
+    },
+    {
+      "id": "mariadb-connector-c",
+      "reviewLicense": "LGPL-2.1 (COPYING.LIB); some files LGPL-2.0-or-later",
+      "obligation": "License and attribution; corresponding library source and build/patch instructions; downstream static relinking conditions",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 32,
+          "groups": [
+            "mariadbclient"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 32,
+          "groups": [
+            "mariadbclient"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/mariadb-connector-c/COPYING.LIB",
+          "source": "contrib/mariadb-connector-c",
+          "commit": "b3c09ab333c2ef9277291e721871a2bafca6e8bf",
+          "textSHA256": "dc626520dcd53a22f727af3ee42c770e56c97a64fe3adb063799d8ab032fe551"
+        }
+      ]
+    },
+    {
+      "id": "metrohash",
+      "reviewLicense": "Apache-2.0",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 1,
+          "groups": [
+            "metrohash"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 1,
+          "groups": [
+            "metrohash"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/libmetrohash/LICENSE",
+          "source": "chdb-core",
+          "commit": "59a7f688d1fc8d895115e104f09a2c4071490d6a",
+          "textSHA256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        }
+      ]
+    },
+    {
+      "id": "murmurhash",
+      "reviewLicense": "Public-domain dedication",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 2,
+          "groups": [
+            "murmurhash"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 2,
+          "groups": [
+            "murmurhash"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/murmurhash/LICENSE",
+          "source": "chdb-core",
+          "commit": "59a7f688d1fc8d895115e104f09a2c4071490d6a",
+          "textSHA256": "2131044e70a6a827f14df426246f89848c48ecbd25facfb447786d3538ca114b"
+        }
+      ]
+    },
+    {
+      "id": "poco",
+      "reviewLicense": "BSL-1.0 plus embedded-library notices",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 264,
+          "groups": [
+            "poco_foundation",
+            "poco_json",
+            "poco_net",
+            "poco_net_ssl",
+            "poco_redis",
+            "poco_util",
+            "poco_xml"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 264,
+          "groups": [
+            "poco_foundation",
+            "poco_json",
+            "poco_net",
+            "poco_net_ssl",
+            "poco_redis",
+            "poco_util",
+            "poco_xml"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/base/poco/LICENSE",
+          "source": "chdb-core",
+          "commit": "59a7f688d1fc8d895115e104f09a2c4071490d6a",
+          "textSHA256": "c4b1e1e5f36d8331737231fefcc30f5714326aec7c387ad59a8115eb0ba7d6b5"
+        }
+      ]
+    },
+    {
+      "id": "poco-pcre",
+      "reviewLicense": "BSD-3-Clause",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 12,
+          "groups": [
+            "poco_foundation_pcre"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 12,
+          "groups": [
+            "poco_foundation_pcre"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/base/poco/Foundation/src/pcre_compile.c",
+          "source": "chdb-core",
+          "commit": "59a7f688d1fc8d895115e104f09a2c4071490d6a",
+          "textSHA256": "7a1fbe741dd9c2e3231b52ca06908b406f65e6d8caa885eedef9950eae7db6d1",
+          "lines": [
+            1,
+            38
+          ]
+        }
+      ]
+    },
+    {
+      "id": "poco-expat",
+      "reviewLicense": "MIT",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 3,
+          "groups": [
+            "poco_xml_expat"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 3,
+          "groups": [
+            "poco_xml_expat"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/base/poco/XML/src/xmlparse.cpp",
+          "source": "chdb-core",
+          "commit": "59a7f688d1fc8d895115e104f09a2c4071490d6a",
+          "textSHA256": "c3cb789ba388e379a29ae1a62b6e867bc82de8fe24d7768b88ca718a63c34a2b",
+          "lines": [
+            1,
+            83
+          ]
+        },
+        {
+          "path": "/base/poco/XML/src/xmltok.c",
+          "source": "chdb-core",
+          "commit": "59a7f688d1fc8d895115e104f09a2c4071490d6a",
+          "textSHA256": "d6f162339b4ab0014e98656782d198d862d5f26d86dcf430d86166d48da6c13c",
+          "lines": [
+            1,
+            53
+          ]
+        },
+        {
+          "path": "/base/poco/XML/src/xmlrole.c",
+          "source": "chdb-core",
+          "commit": "59a7f688d1fc8d895115e104f09a2c4071490d6a",
+          "textSHA256": "f4145777bc014e1d8e1b17a1fd817308cf81867f6935e557f810903b963e29ae",
+          "lines": [
+            1,
+            41
+          ]
+        }
+      ]
+    },
+    {
+      "id": "poco-pdjson",
+      "reviewLicense": "Poco BSL-1.0; original pdjson upstream uses the Unlicense",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 1,
+          "groups": [
+            "poco_json_pdjson"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 1,
+          "groups": [
+            "poco_json_pdjson"
+          ]
+        }
+      },
+      "licenseRecords": []
+    },
+    {
+      "id": "prometheus-protobufs",
+      "reviewLicense": "Apache-2.0",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 3,
+          "groups": [
+            "prometheus_protobufs"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 3,
+          "groups": [
+            "prometheus_protobufs"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/prometheus-protobufs/LICENSE",
+          "source": "chdb-core",
+          "commit": "59a7f688d1fc8d895115e104f09a2c4071490d6a",
+          "textSHA256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        }
+      ]
+    },
+    {
+      "id": "librdkafka",
+      "reviewLicense": "BSD-2-Clause plus bundled license texts",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 85,
+          "groups": [
+            "rdkafka"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 85,
+          "groups": [
+            "rdkafka"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/librdkafka/LICENSES.txt",
+          "source": "contrib/librdkafka",
+          "commit": "c58ce6331fb871bfb4b15758cfd3283dd0a512fd",
+          "textSHA256": "b9e4616bb9dd0c9ce3fa52e81c7bfc596e60b8855a1df5dce5fa50732b1ccdec"
+        }
+      ]
+    },
+    {
+      "id": "re2",
+      "reviewLicense": "BSD-3-Clause",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 17,
+          "groups": [
+            "re2"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 17,
+          "groups": [
+            "re2"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/re2/LICENSE",
+          "source": "contrib/re2",
+          "commit": "1f24555c97150767d65aa77fde8ddd029d2bb97c",
+          "textSHA256": "6040cda75d90b1738292a631d89934c411ef7ffd543c4d6a1b7edfc8edf29449"
+        }
+      ]
+    },
+    {
+      "id": "replxx",
+      "reviewLicense": "BSD-3-Clause",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 10,
+          "groups": [
+            "replxx"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 10,
+          "groups": [
+            "replxx"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/replxx/LICENSE.md",
+          "source": "contrib/replxx",
+          "commit": "191e04e43b1ed72289adfe7d2b3fd59b4fb4e78b",
+          "textSHA256": "357d952174ede020b495eaf5d1986349f009bdada7fe2e1e49a6339277504378"
+        }
+      ]
+    },
+    {
+      "id": "croaring",
+      "reviewLicense": "Apache-2.0",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 21,
+          "groups": [
+            "roaring"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 20,
+          "groups": [
+            "roaring"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/croaring/LICENSE",
+          "source": "contrib/croaring",
+          "commit": "20495fec4d1622b93284033a160f67d21a5aa8bb",
+          "textSHA256": "f8e1f16a3f22e001b44ae9b12625420b9a0c4dbb7ec0e9f83b6a3d38a9525411"
+        }
+      ]
+    },
+    {
+      "id": "rocksdb",
+      "reviewLicense": "Apache-2.0 (chosen alternative) plus BSD LevelDB notice",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 273,
+          "groups": [
+            "rocksdb"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 274,
+          "groups": [
+            "rocksdb"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/rocksdb/LICENSE.Apache",
+          "source": "contrib/rocksdb",
+          "commit": "7d4d9327af02f4d3ac0a028817d11e4a8a0cce90",
+          "textSHA256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        },
+        {
+          "path": "/contrib/rocksdb/LICENSE.leveldb",
+          "source": "contrib/rocksdb",
+          "commit": "7d4d9327af02f4d3ac0a028817d11e4a8a0cce90",
+          "textSHA256": "b568f1f37a5a1d37a3e981e7c8b7fc4856ca33b2ca0a45bc8e847aaaf7afe485"
+        }
+      ]
+    },
+    {
+      "id": "sha3iuf",
+      "reviewLicense": "MIT",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 1,
+          "groups": [
+            "sha3iuf"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 1,
+          "groups": [
+            "sha3iuf"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/SHA3IUF/LICENSE",
+          "source": "contrib/SHA3IUF",
+          "commit": "fc8504750a5c2174a1874094dd05e6a0d8797753",
+          "textSHA256": "e1cbfa2f8401646b78fb1358abcdd62ddfe19cc3ea3948bd218d3cdd3fd7e0e7"
+        }
+      ]
+    },
+    {
+      "id": "simdjson",
+      "reviewLicense": "MIT (chosen alternative of Apache-2.0 or MIT)",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 1,
+          "groups": [
+            "simdjson"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 1,
+          "groups": [
+            "simdjson"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/simdjson/LICENSE-MIT",
+          "source": "contrib/simdjson",
+          "commit": "47b97cc5dcfbf0caac51f0e5bbf7709484a041d8",
+          "textSHA256": "9ed0a34979f22fc33fc13d942233f22d44906c236d876bd05fadf18cb5abf7da"
+        }
+      ]
+    },
+    {
+      "id": "simdutf",
+      "reviewLicense": "MIT (chosen alternative of Apache-2.0 or MIT)",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 1,
+          "groups": [
+            "simdutf"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 1,
+          "groups": [
+            "simdutf"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/simdutf/LICENSE-MIT",
+          "source": "contrib/simdutf",
+          "commit": "7e44f083693e12ee0d4807be9479e3748167907b",
+          "textSHA256": "fc8dbc04e03ad4efc08a647ffe7f995b811a95bc04c0e85a56d5277c6593fa5f"
+        }
+      ]
+    },
+    {
+      "id": "simsimd",
+      "reviewLicense": "Apache-2.0",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 1,
+          "groups": [
+            "simsimd"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 1,
+          "groups": [
+            "simsimd"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/SimSIMD/LICENSE",
+          "source": "contrib/SimSIMD",
+          "commit": "e81e1c2de244061a476eaa7ac4db9ca01df4feed",
+          "textSHA256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        }
+      ]
+    },
+    {
+      "id": "snappy",
+      "reviewLicense": "BSD-3-Clause",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 3,
+          "groups": [
+            "snappy"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 3,
+          "groups": [
+            "snappy"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/snappy/COPYING",
+          "source": "contrib/snappy",
+          "commit": "c78b4aad6403cf47e616a1329db113e52b1ed955",
+          "textSHA256": "55172044f7e241207117448a4d9d6ba1d0925c8ad66b5d4c08c70adfa9cc3de6"
+        }
+      ]
+    },
+    {
+      "id": "sqlite",
+      "reviewLicense": "SQLite public-domain code plus fork BSD-3-Clause LICENSE",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 1,
+          "groups": [
+            "sqlite"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 1,
+          "groups": [
+            "sqlite"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/sqlite-amalgamation/LICENSE",
+          "source": "contrib/sqlite-amalgamation",
+          "commit": "f48768e9089bf66717e8c393dce5dd80c86761f5",
+          "textSHA256": "5c4b7f614dfa742978662fb74e55c6d9250939b651d1ec5338f25cac9573c0e3"
+        }
+      ]
+    },
+    {
+      "id": "stringzilla",
+      "reviewLicense": "Apache-2.0",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 16,
+          "groups": [
+            "stringzilla"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 16,
+          "groups": [
+            "stringzilla"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/StringZilla/LICENSE",
+          "source": "contrib/StringZilla",
+          "commit": "15c292ec71db5c0e3d05f3bd693a6b5ec9429db8",
+          "textSHA256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        }
+      ]
+    },
+    {
+      "id": "thrift",
+      "reviewLicense": "Apache-2.0",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 3,
+          "groups": [
+            "thrift"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 3,
+          "groups": [
+            "thrift"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/thrift/LICENSE",
+          "source": "contrib/thrift",
+          "commit": "26bf3f0c3cade6f2c9fac82d4962751466282c23",
+          "textSHA256": "c866aafb79e8d5885eabb9d44a0105c8fcca35d26c5088025b131a908458a8af"
+        },
+        {
+          "path": "/contrib/thrift/NOTICE",
+          "source": "contrib/thrift",
+          "commit": "26bf3f0c3cade6f2c9fac82d4962751466282c23",
+          "textSHA256": "c2534e065069887565f871f0648b013a7e5f4a422809faf4ae3c590b7c0bf561"
+        }
+      ]
+    },
+    {
+      "id": "ulid",
+      "reviewLicense": "Unlicense public-domain dedication",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 1,
+          "groups": [
+            "ulid"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 1,
+          "groups": [
+            "ulid"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/ulid-c/UNLICENSE",
+          "source": "contrib/ulid-c",
+          "commit": "c433b6783cf918b8f996dacd014cb2b68c7de419",
+          "textSHA256": "7e12e5df4bae12cb21581ba157ced20e1986a0508dd10d0e8a4ab9a4cf94e85c"
+        }
+      ]
+    },
+    {
+      "id": "vectorscan",
+      "reviewLicense": "BSD-3-Clause plus component notices",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 200,
+          "groups": [
+            "vectorscan"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 199,
+          "groups": [
+            "vectorscan"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/vectorscan/LICENSE",
+          "source": "contrib/vectorscan",
+          "commit": "4f863adbc2aa1129d473483d1a70134da07b5074",
+          "textSHA256": "ce972331c2b92ecbaec53b92d3a27fb2f0276d0b8005e1baad347691635922a3"
+        },
+        {
+          "path": "/contrib/vectorscan/COPYING",
+          "source": "contrib/vectorscan",
+          "commit": "4f863adbc2aa1129d473483d1a70134da07b5074",
+          "textSHA256": "127e3f146f9c5b5a5b8b4959015291255a6b8fcc8864315014051e99517d4dbc"
+        }
+      ]
+    },
+    {
+      "id": "zlib-ng",
+      "reviewLicense": "Zlib",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 35,
+          "groups": [
+            "zlib"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 32,
+          "groups": [
+            "zlib"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/zlib-ng/LICENSE.md",
+          "source": "contrib/zlib-ng",
+          "commit": "a2fbeffdc30a8b0ce6d54ee31208e2688eac4c9f",
+          "textSHA256": "6c9f0d975b41afaa34d22f55bb8986ce69e5cb7ad327cb2b28820cd425edf5ee"
+        }
+      ]
+    },
+    {
+      "id": "zmij",
+      "reviewLicense": "MIT",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 1,
+          "groups": [
+            "zmij"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 1,
+          "groups": [
+            "zmij"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/zmij/LICENSE",
+          "source": "contrib/zmij",
+          "commit": "dc28b5cb3dbf46245381d9df97af05ff593c8461",
+          "textSHA256": "a69b36adb8d116376bcd580772fa45f08fffecc17833cb9822532f4e4f5ec372"
+        }
+      ]
+    },
+    {
+      "id": "zstd",
+      "reviewLicense": "BSD-3-Clause (chosen alternative of BSD or GPLv2)",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 35,
+          "groups": [
+            "zstd"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 34,
+          "groups": [
+            "zstd"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/zstd/LICENSE",
+          "source": "contrib/zstd",
+          "commit": "5b3e9e8fd2779260101a07e6cc7b34fd8764617f",
+          "textSHA256": "7055266497633c9025b777c78eb7235af13922117480ed5c674677adc381c9d8"
+        }
+      ]
+    },
+    {
+      "id": "zxc",
+      "reviewLicense": "BSD-style",
+      "obligation": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+      "archiveEvidence": {
+        "darwin-amd64": {
+          "objects": 8,
+          "groups": [
+            "zxc"
+          ]
+        },
+        "darwin-arm64": {
+          "objects": 8,
+          "groups": [
+            "zxc"
+          ]
+        }
+      },
+      "licenseRecords": [
+        {
+          "path": "/contrib/zxc/LICENSE",
+          "source": "contrib/zxc",
+          "commit": "e568d1967309fd5d160f45f2fdabcbff6ab3f058",
+          "textSHA256": "91f26ccd63536bcf27fedc241187a3e9ece207900c320eb8f6d1083388c3b439"
+        }
+      ]
+    }
+  ],
+  "linuxSpecific": [
+    {
+      "id": "libgsasl",
+      "license": "LGPL-2.1-or-later",
+      "commit": "2d16b4e0d9435bec4546875ef07d36383bb993a5",
+      "evidence": "gsasl_init defined in both Linux archives; static build enables HDFS/GSASL only on Linux",
+      "obligation": "Same LGPL source and downstream relinking treatment as MariaDB; retain fork/gnulib notices",
+      "licenseRecords": [
+        {
+          "path": "/contrib/libgsasl/LICENSE",
+          "source": "contrib/libgsasl",
+          "commit": "2d16b4e0d9435bec4546875ef07d36383bb993a5",
+          "textSHA256": "20c17d8b8c48a600800dfd14f95d5cb9ff47066a9641ddeab48dc54aec96e331"
+        }
+      ]
+    },
+    {
+      "id": "krb5",
+      "license": "BSD-style and MIT component notices",
+      "commit": "857c2d1edd7a4218b84594768587aa53fd63da9e",
+      "evidence": "krb5_init_context defined in both Linux archives",
+      "obligation": "Retain full krb5 NOTICE and component copyright notices",
+      "licenseRecords": [
+        {
+          "path": "/contrib/krb5/NOTICE",
+          "source": "contrib/krb5",
+          "commit": "857c2d1edd7a4218b84594768587aa53fd63da9e",
+          "textSHA256": "d37fcb886de2ad1c602f61c99c6893bcbd9a1949f54d9a6bb40d191204eb605e"
+        }
+      ]
+    },
+    {
+      "id": "icu",
+      "license": "Unicode License V3 and bundled data notices",
+      "commit": "b29faa6d4e46f10d230b93a3c33885e7ec71bd41",
+      "evidence": "u_getVersion_78 defined in both Linux archives",
+      "obligation": "Include full ICU LICENSE and Unicode/data notices",
+      "licenseRecords": [
+        {
+          "path": "/contrib/icu/LICENSE",
+          "source": "contrib/icu",
+          "commit": "b29faa6d4e46f10d230b93a3c33885e7ec71bd41",
+          "textSHA256": "e55522d81edc687a341a4411e0776e54ca654e90147f354a90458aaced4116af"
+        },
+        {
+          "path": "/contrib/icudata/LICENSE",
+          "source": "contrib/icudata",
+          "commit": "e3ae5bcb2b24f17cd9336c4f1b25f36ed636d839",
+          "textSHA256": "6a18c5fac70d7860b57f5b72b4e2c9a1ba6b3d2741eef7ff9767c5379364f10d"
+        }
+      ]
+    },
+    {
+      "id": "glibc-compatibility",
+      "license": "chDB Apache-2.0 plus musl MIT and component notices",
+      "commit": null,
+      "evidence": "GLIBC_COMPATIBILITY=1 in fixed Linux build; source directory includes musl/Arm/Sun notices",
+      "obligation": "Retain those in-tree source notices; do not misclassify the compatibility code as bundled GNU glibc",
+      "licenseRecords": [
+        {
+          "path": "/base/glibc-compatibility/musl/COPYRIGHT",
+          "source": "chdb-core",
+          "commit": "59a7f688d1fc8d895115e104f09a2c4071490d6a",
+          "textSHA256": "70ca142d257e2690a1f8eda8a296e64a6d1b16d8aee6784f8ddcf67f3163635d"
+        }
+      ]
+    },
+    {
+      "id": "libhdfs3",
+      "license": "Apache-2.0",
+      "commit": "28a9868bc15749d899669e117e0c6eb9f5350923",
+      "evidence": "Fixed build explicitly enables HDFS and uses GNU SASL/Kerberos; Linux prelink prevents per-input-object attribution",
+      "obligation": "Retain LICENSE/NOTICE from pinned fork",
+      "licenseRecords": [
+        {
+          "path": "/contrib/libhdfs3/LICENSE.txt",
+          "source": "contrib/libhdfs3",
+          "commit": "28a9868bc15749d899669e117e0c6eb9f5350923",
+          "textSHA256": "cf2a11ea0136b097621db28192b54507beee6cedfda3abe9b88a6de55cf42397"
+        }
+      ]
+    }
+  ],
+  "notPromotedToBlockers": [
+    {
+      "id": "libssh",
+      "reason": "No ssh_new anchor in any archive; not enabled by fixed static build"
+    },
+    {
+      "id": "lemmagen-c",
+      "reason": "No archive family/lemmatizer anchor; do not infer compiled inclusion solely from system.licenses"
+    },
+    {
+      "id": "rust-vendor-MPL-and-dual-GPL-labels",
+      "reason": "ENABLE_RUST=0 in fixed static build; license-registry text inclusion is not linkage of Rust code"
+    },
+    {
+      "id": "xz-command-line-GPL-LGPL",
+      "reason": "Actual linked liblzma is 0BSD under fixed XZ COPYING; no CLI tools/scripts are shipped in these native payloads"
+    },
+    {
+      "id": "jemalloc",
+      "reason": "No je_*/mallctl definitions in any archive; only DB::ServerSetting names contain 'jemalloc'"
+    },
+    {
+      "id": "libdeflate",
+      "reason": "No contrib/libdeflate archive group; every libdeflate_* definition is gdeflate's renamed copy"
+    },
+    {
+      "id": "arrow-testing",
+      "reason": "Test data submodule; not built into the library"
+    }
+  ]
+}
