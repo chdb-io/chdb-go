@@ -64,7 +64,9 @@ go get go.chdb.io/chdb/static@latest
 ```
 
 Import `_ "go.chdb.io/chdb/static"` and build with
-`CGO_ENABLED=1 go build -tags chdb_static`. See the
+`CGO_ENABLED=1 go build -tags chdb_static`. The current release is
+`go.chdb.io/chdb/static` `v0.261102.0-rc.1.1`, a release candidate with
+chdb-core v26.11.2-rc.1, on Linux and macOS (amd64, arm64). See the
 [static engine guide](docs/static-linking.md).
 
 ### Where the engine is loaded from
