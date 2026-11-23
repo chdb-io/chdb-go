@@ -4,6 +4,15 @@ Review date: 2026-11-18. This review concerns republishing the existing four
 chdb-core static release assets as Go modules. It does not change licenses,
 authorize publication, or certify every source/header file as a legal SBOM.
 
+**Update for v26.11.2-rc.1** (2026-11-23, core commit
+`59a7f688d1fc8d895115e104f09a2c4071490d6a`): the conclusions below still apply.
+The one new linked component is GDeflate (MIT, a libdeflate fork) on all four
+platforms; LLVM's runtime moved to a new commit; jemalloc is not linked. The
+RC records are [static-v26.11.2-rc.1-inventory.json](compliance/static-v26.11.2-rc.1-inventory.json)
+and [static-v26.11.2-rc.1-obligations.tsv](compliance/static-v26.11.2-rc.1-obligations.tsv).
+They list the exact license files, commits and SHA-256 values reproduced in the
+RC's THIRD_PARTY_NOTICES.txt. This document stays as the v26.11.1 record.
+
 ## Conclusion
 
 Keep the existing v26.11.1 engine and split-module design. The review found no
