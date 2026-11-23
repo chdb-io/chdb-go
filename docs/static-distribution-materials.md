@@ -41,8 +41,7 @@ Every pinned submodule commit was confirmed reachable at its `.gitmodules` URL.
 Source is delivered as those exact commits at their public repository URLs,
 including for the LGPL components (MariaDB Connector/C and GNU SASL); no
 separate source archive is published. The modified-library rebuild below has
-been tested end to end on macOS arm64 only; the other three platforms are not
-yet tested.
+been tested end to end on all four platforms.
 
 The v26.11.1 identity was:
 
@@ -86,14 +85,13 @@ directories and add application-level `replace` directives for all affected
 module paths before resolving/building. Keep that work isolated from the public
 Go cache and do not upload modified bytes under an existing public version.
 
-For v26.11.2-rc.1 this was tested on macOS arm64 (2026-11-23): MariaDB
-Connector/C was changed, the core rebuilt at the RC commit with
-`chdb/build/build_static_lib.sh` and `CHDB_VERSION=26.11.2-rc.1`, the archive
-packaged under a separate local manifest (packaging identity 99) and replaced
-into an application using the published root `v2.5.0-rc.2`. The application
-reported the changed MariaDB message. On macOS, build the tarball with
-`COPYFILE_DISABLE=1 tar --no-xattrs`; the packager rejects `._*` members. Linux
-amd64/arm64 and macOS amd64 remain a release acceptance task.
+For v26.11.2-rc.1 this was tested on all four platforms: MariaDB Connector/C
+was changed, the core rebuilt at the RC commit as the release workflows build
+it, the archive packaged under a separate local manifest (packaging identity
+99) and replaced into an application using the published root `v2.5.0-rc.2`.
+Each application ran queries and reported the changed MariaDB message. On
+macOS, build the tarball with `COPYFILE_DISABLE=1 tar --no-xattrs`; the
+packager rejects `._*` members.
 It also does not promise that a binary-only recipient can rebuild an application
 without suitable application source or object/relink materials. Downstream
 binary distributors must choose and document their applicable LGPL compliance
