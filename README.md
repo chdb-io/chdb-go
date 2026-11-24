@@ -5,213 +5,54 @@
 [![chDB-go](https://github.com/chdb-io/chdb-go/actions/workflows/chdb.yml/badge.svg)](https://github.com/chdb-io/chdb-go/actions/workflows/chdb.yml)
 
 # chdb-go
-[chDB](https://github.com/chdb-io/chdb) go bindings and chDB cli.
+
+Go bindings and a CLI for [chDB](https://github.com/chdb-io/chdb), the in-process
+SQL OLAP engine powered by ClickHouse.
+
+```go
+result, err := chdb.Query("SELECT version()", "CSV")
+```
 
 ## Install
 
-The engine can either come from the machine or from the build. Both are supported;
-which one you want depends on whether you would rather install something or carry
-it.
+chdb-go needs the chDB engine (`libchdb`). Pick one way to get it:
 
-### From the machine
+| Way | How | Good for |
+| --- | --- | --- |
+| Installed on the machine | `curl -sL https://lib.chdb.io \| bash` | Development machines; no cgo |
+| Embedded in the build | `import _ "github.com/chdb-io/chdb-go/lib/embedded"` | Shipping one binary; the engine is extracted to a cache on first run (Linux needs glibc) |
+| Static (experimental) | `go get go.chdb.io/chdb/static@latest` | One executable with no engine file at runtime; needs cgo |
 
-Install `libchdb` once, then use `chdb-go` against it:
+Then add the bindings:
 
-```
-curl -sL https://lib.chdb.io | bash
+```sh
 go get github.com/chdb-io/chdb-go/v2
 ```
 
-The engine is looked up at runtime — see [where the engine is loaded
-from](#where-the-engine-is-loaded-from). Upgrading `chdb-go` does not upgrade the
-engine, so re-run the installer, or `update_libchdb.sh`, to move both together.
+**Installed on the machine.** Upgrading chdb-go does not upgrade the engine;
+re-run the installer to move both together.
 
-### From the build
+**Embedded.** One blank import and nothing needs installing. See
+[engine modules](docs/engine.md#engine-modules) to pin a specific engine.
 
-One blank import and nothing needs installing — the engine travels inside the binary
-and is extracted to a cache directory on first run:
-
-```go
-import _ "github.com/chdb-io/chdb-go/lib/embedded"
-```
-
-This is what you want for a self-contained binary, a `FROM scratch` image, or
-anywhere you cannot ask for an install step. See [engine
-modules](#engine-modules).
-
-### The CLI
-
-```
-go install github.com/chdb-io/chdb-go/v2@latest
-$GOPATH/bin/chdb-go            # with or without a persistent --path
-```
-
-The CLI resolves the engine the same way, so it needs one installed on the machine.
-
-### Optional Arrow module
-
-Arrow Go input and typed output are available in a separate module. Programs
-that do not import it remain cgo-free; programs that do need Go 1.23+, cgo,
-and a chdb-core engine with the Arrow C ABI. See the [Arrow module guide](v2/arrow/README.md)
-for installation, supported usage, and resource lifetimes.
-
-### Static engine (experimental)
-
-To link chDB into your executable instead of loading `libchdb` at runtime:
-
-```sh
-go get go.chdb.io/chdb/static@latest
-```
-
-Import `_ "go.chdb.io/chdb/static"` and build with
+**Static.** Import `_ "go.chdb.io/chdb/static"` and build with
 `CGO_ENABLED=1 go build -tags chdb_static`. The current release is
-`go.chdb.io/chdb/static` `v0.261102.0-rc.1.1`, a release candidate with
-chdb-core v26.11.2-rc.1, on Linux and macOS (amd64, arm64). See the
-[static engine guide](docs/static-linking.md).
+`v0.261102.0-rc.1.1` (chdb-core v26.11.2-rc.1, a release candidate) for Linux
+and macOS, amd64 and arm64. See the [static engine guide](docs/static-linking.md).
 
-### Where the engine is loaded from
+If chdb-go cannot find the engine, the error lists every location it tried; see
+[where the engine is loaded from](docs/engine.md#where-the-engine-is-loaded-from).
 
-`chdb-go` opens `libchdb` at runtime. It is looked up in this order:
+## Usage
 
-1. `CHDB_LIB_PATH`, if set — the library file, not a directory. Setting it
-   disables the rest of the search, so a copy that does not load is an error
-   rather than a reason to use a different one. It outranks a carried engine,
-   which is how a build that has one can still be pointed at another.
-2. An engine compiled into the binary, if the build imports one of the
-   [engine modules](#engine-modules). Nothing below is tried.
-3. The directory holding the running executable.
-4. `PATH`.
-5. `/usr/local/lib`, `/opt/homebrew/lib` and `/usr/lib`.
-6. The directories in `LD_LIBRARY_PATH`, `DYLD_LIBRARY_PATH` and
-   `DYLD_FALLBACK_LIBRARY_PATH`.
-7. The dynamic loader, by name — this is what reaches an `ldconfig`-registered
-   install, `/usr/lib/<triple>` on a multiarch distribution, or a `RUNPATH`.
+### Queries and sessions
 
-When none of them yields a usable library, the error lists every location that
-was tried and why each one failed.
-
-`chdbpurego.LoadedLibraryPath()` returns the absolute path of the library the
-process is actually using, which is worth logging at startup if you ship
-`libchdb` yourself.
-
-### or Build from source
-1. Build `chdb-go`
-  - run `make build`
-2. Run `chdb-go` with or without persistent `--path`
-  - run `./chdb-go`
-
-## Engine modules
-
-`lib/<platform>` are four Go modules, one per platform, each carrying a compressed
-`libchdb`. Bringing one into the build makes the engine part of it: on first run
-the engine is extracted to a cache directory named after its digest, and reused
-after that.
-
-One blank import does it, with no platform in the path and no engine version in
-your `go.mod`:
-
-```go
-import _ "github.com/chdb-io/chdb-go/lib/embedded"
-```
-
-`lib/embedded` is a dispatch module: its `go.mod` names the four platform modules
-and which version of each, and the build takes the one that matches. On a platform
-none of them covers it registers nothing and the build still succeeds, leaving the
-engine to be looked up on the machine as usual.
-
-Import a platform module directly instead when you want to choose the engine
-version yourself:
-
-```go
-import (
-    chdbpurego "github.com/chdb-io/chdb-go/v2/chdb-purego"
-    engine "github.com/chdb-io/chdb-go/lib/linux-amd64"
-)
-
-func init() {
-    chdbpurego.RegisterEmbeddedEngine(chdbpurego.EmbeddedEngine{
-        Version:  engine.Version,
-        FileName: engine.FileName,
-        Digest:   engine.Digest,
-        Size:     engine.Size,
-        Open:     engine.Open,
-    })
-}
-```
-
-`CHDB_CACHE_DIR` chooses where it is extracted, defaulting to the user cache
-directory and then the temporary directory. It must be a directory no other user
-can write to or substitute, or extraction refuses it.
-
-### Reading the version
-
-The middle field is the chdb-core release, six digits, two per field. The last is
-which packaging of that same engine this is, counting from 1.
-
-```
-v0.260700.1
-   ▲▲▲▲▲▲ ▲
-   26 07 00 — chdb-core v26.7.0, on the ClickHouse 26.7 line
-            1 — first packaging of it
-```
-
-| module version | chdb-core release | ClickHouse line |
-| --- | --- | --- |
-| `v0.260700.1` | `v26.7.0` | 26.7 |
-| `v0.260700.2` | `v26.7.0`, repackaged | 26.7 |
-| `v0.260702.0-rc.1.1` | `v26.7.2-rc.1` | 26.7 |
-
-The first two fields of a chdb-core release are the ClickHouse line it carries; its
-third is chdb-core's own counter, so `v26.7.0` is some ClickHouse 26.7 and not a
-ClickHouse 26.7.0. `chdbpurego.EmbeddedEngineVersion()` returns the chdb-core
-release at runtime, and `SELECT version()` returns the exact ClickHouse build.
-
-Candidates sort below every release of the same engine, so
-`go get lib/<platform>@latest` never picks one.
-
-### Publishing
-
-```
-scripts/package-engine.sh v26.7.0                    # every platform
-CHDB_PACKAGING=2 scripts/package-engine.sh v26.7.0   # repackage the same engine
-```
-
-The script prints the exact `git tag` commands. Use those — the module proxy
-serves a tag's bytes permanently, so a wrong tag can only be superseded, never
-fixed. `internal/enginetag` defines the rule, `go run ./scripts/enginetag -verify
-lib/<platform>/<version>` checks a tag against the module it names, and CI runs
-that check on every `lib/**` tag pushed.
-
-Payloads are added with `git add -f` at publish time and are not on the default
-branch, so a clone does not carry every engine version ever shipped.
-
-## chdb-go CLI
-
-1. Simple mode
-```bash
-./chdb-go "SELECT 123"
-./chdb-go "SELECT 123" JSON
-```
-2. Interactive mode
-```bash
-./chdb-go # enter interactive mode, but data will be lost after exit
-./chdb-go --path /tmp/chdb # interactive persistent mode
-```
-
-```bash
-chdb-io/chdb-go [main] » ./chdb-go 
-Enter your SQL commands; type 'exit' to quit.
- :) CREATE DATABASE IF NOT EXISTS testdb;
-
-
-```
-
-#### Go lib Example
 ```go
 package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -219,230 +60,153 @@ import (
 )
 
 func main() {
-	// Stateless Query (ephemeral)
+	// Stateless query
 	result, err := chdb.Query("SELECT version()", "CSV")
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal(err)
 	}
 	fmt.Println(result)
 
-	tmp_path := filepath.Join(os.TempDir(), "chdb_test")
-	// Stateful Query (persistent)
-	session, _ := chdb.NewSession(tmp_path)
-	// session cleanup will also delete the folder
+	// Stateful session with data on disk; Cleanup also deletes the folder
+	session, err := chdb.NewSession(filepath.Join(os.TempDir(), "chdb_test"))
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer session.Cleanup()
 
-	_, err = session.Query("CREATE DATABASE IF NOT EXISTS testdb; " +
-		"CREATE TABLE IF NOT EXISTS testdb.testtable (id UInt32) ENGINE = MergeTree() ORDER BY id;")
-	if err != nil {
-		fmt.Println(err)
-		return
+	if _, err := session.Query("CREATE DATABASE IF NOT EXISTS testdb; " +
+		"CREATE TABLE IF NOT EXISTS testdb.testtable (id UInt32) ENGINE = MergeTree() ORDER BY id;"); err != nil {
+		log.Fatal(err)
 	}
-
-	_, err = session.Query("USE testdb; INSERT INTO testtable VALUES (1), (2), (3);")
-	if err != nil {
-		fmt.Println(err)
-		return
+	if _, err := session.Query("USE testdb; INSERT INTO testtable VALUES (1), (2), (3);"); err != nil {
+		log.Fatal(err)
 	}
-
-	ret, err := session.Query("SELECT * FROM testtable;")
+	rows, err := session.Query("SELECT * FROM testtable;")
 	if err != nil {
-		fmt.Println(err)
-	} else {
-		fmt.Println(ret)
+		log.Fatal(err)
 	}
+	fmt.Println(rows)
 }
 ```
 
-#### Go SQL driver for chDB
+### database/sql driver
+
 ```go
 package main
 
 import (
-        "database/sql"
-        "log"
+	"database/sql"
+	"log"
 
-        _ "github.com/chdb-io/chdb-go/v2/chdb/driver"
+	_ "github.com/chdb-io/chdb-go/v2/chdb/driver"
 )
 
 func main() {
-        db, err := sql.Open("chdb", "")
-        if err != nil {
-                log.Fatal(err)
-        }
-        rows, err := db.Query(`select COUNT(*) from url('https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_0.parquet')`)
-        if err != nil {
-                log.Fatalf("select fail, err: %s", err)
-        }
-        cols, err := rows.Columns()
-        if err != nil {
-                log.Fatalf("get result columns fail, err: %s", err)
-        }
-        log.Printf("result columns: %v", cols)
-        defer rows.Close()
-        var count int
-        for rows.Next() {
-                err := rows.Scan(&count)
-                if err != nil {
-                        log.Fatalf("scan fail, err: %s", err)
-                }
-                log.Printf("count: %d", count)
-        }
+	db, err := sql.Open("chdb", "")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	var count int
+	err = db.QueryRow(`SELECT COUNT(*) FROM url('https://datasets.clickhouse.com/hits_compatible/athena_partitioned/hits_0.parquet')`).Scan(&count)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("count: %d", count)
 }
 ```
 
-#### Concurrency
+### Query parameters
 
-For native per-query binding, use ClickHouse `{name:Type}` placeholders with
-`sql.Named`. Values are parsed by libchdb as the declared type, not
-interpolated into SQL:
+Use ClickHouse `{name:Type}` placeholders with `sql.Named`. The engine parses
+each value as the declared type; it is not interpolated into SQL:
 
 ```go
 var total int64
 err := db.QueryRowContext(ctx,
-        "SELECT count() FROM events WHERE user_id = {id:Int64}",
-        sql.Named("id", int64(42))).Scan(&total)
+	"SELECT count() FROM events WHERE user_id = {id:Int64}",
+	sql.Named("id", int64(42))).Scan(&total)
 ```
 
-This requires a libchdb that exports the parameter-binding ABI. Named and
-positional arguments cannot be mixed. The existing positional `?` path still
-uses SQL interpolation; `sql.Named` plus a typed placeholder is the secure
-binding path. Named values accept strings, bytes, numbers, booleans and
-`time.Time` (formatted in UTC); null and other Go types need explicit
-conversion. A context deadline is not a guarantee of native interruption.
+This needs an engine that supports parameter binding. Positional
+`?` arguments are interpolated into the SQL text, so prefer named placeholders
+for untrusted input. Named and positional arguments cannot be mixed.
 
-chDB runs a single embedded engine per process bound to one data path, but that
-engine accepts multiple connections that execute queries concurrently. The
-`database/sql` driver opens an independent native chDB connection per pooled
-connection, so you can scale read/write parallelism with `SetMaxOpenConns`:
+### Concurrency
+
+A process runs one engine bound to one data path, and that engine runs queries
+from several connections in parallel. Each pooled `database/sql` connection is
+its own engine connection:
 
 ```go
 db, err := sql.Open("chdb", "session=/path/to/data")
 if err != nil {
-        log.Fatal(err)
+	log.Fatal(err)
 }
 defer db.Close()
-
-// Each pooled connection is its own native chDB connection to the same data
-// path, so queries run in parallel instead of serializing on one connection.
 db.SetMaxOpenConns(8)
 ```
 
-All connections in a process must share the same data path; opening a second,
-different data path while connections are still open returns an error.
+All connections in a process must use the same data path.
 
 ### Durable objects
 
-`chdb/durable` puts a chDB database's authoritative state in object storage you
-own — S3, R2, MinIO, or a directory — as a full checkpoint plus write-ahead-log
-segments, with one compare-and-set `head.json` that holds the manifest and the
-single-writer lease. Local MergeTree stays the hot working copy; the object is a
-folder of open-format files you can move between clouds, and read from the
-Python and Node bindings, which implement the same protocol.
+`chdb/durable` keeps a database's state in object storage you own (S3, R2,
+MinIO or a directory) as a checkpoint plus a write-ahead log, with a
+single-writer lease:
 
 ```go
-import "github.com/chdb-io/chdb-go/v2/chdb/durable"
-
 ns, err := durable.NewNamespace("s3://my-bucket/durable?region=eu-west-1",
-        durable.NamespaceOptions{Owner: "worker-1"})
-
+	durable.NamespaceOptions{Owner: "worker-1"})
 obj, existed, err := ns.Open(ctx, "tenant-123", durable.OpenOptions{Database: "mem"})
 defer obj.Close(ctx)
 
-if !existed {
-        _, err = obj.Execute(ctx, "CREATE TABLE events (id UInt64) ENGINE = MergeTree ORDER BY id")
-}
 ticket, err := obj.Execute(ctx, "INSERT INTO events VALUES (1)")
-err = obj.FlushThrough(ctx, ticket)   // now it survives losing this machine
-rows, err := obj.Query(ctx, "SELECT count() FROM events", "JSONEachRow")
-_, err = obj.Checkpoint(ctx)          // fold base + WAL into a fresh base
+err = obj.FlushThrough(ctx, ticket) // survives losing this machine
 ```
 
-`Execute` means the statement ran locally and joined the WAL buffer — not that
-it left the machine. Durability is `Flush`, or `FlushThrough` for one
-statement's watermark. Because recovery re-executes logged SQL, log literals
-rather than `now()`, `rand()` or `generateUUIDv4()`; a checkpoint is the place
-for anything non-deterministic, since it snapshots actual state.
+One process holds one open durable object at a time, and the lease is
+coordination, not security: access control is your object store's IAM. See the
+[durable objects guide](docs/durable.md).
 
-Whether a statement may run is decided by ClickHouse's parser, not by this
-package: every `Query` and `Execute` is analysed first — how many statements,
-what class, does every write land in the object's own database, does the text
-embed a credential — and the answer is the gate. `BACKUP` and `RESTORE` are
-never assembled as text either. That needs **chdb-core v26.7.2-rc.2 or later**,
-where those three entry points were added; an older engine is refused at open
-rather than working partially. The published [engine
-modules](#engine-modules) carry v26.7.3, so a build using one needs nothing
-installed.
+### Arrow
 
-Two constraints are worth knowing before you design around it:
+Arrow Go input and typed output live in a separate module,
+`github.com/chdb-io/chdb-go/v2/arrow` (Go 1.23+, cgo). Programs that do not
+import it stay cgo-free. See the [Arrow guide](v2/arrow/README.md).
 
-- chdb-core binds one data path per process, so **one process holds one open
-  durable object at a time**. Fan-out across objects is sequential or spread
-  across worker processes.
-- The lease is *coordination*, not security. Access control is entirely your
-  object store's IAM: anyone who can write the prefix can read, modify or take
-  the lock. Give each tenant credentials scoped to its own prefix.
+### Stopping the engine
 
-Errors carry a frozen category, so a caller can branch on what happened:
+Closing sessions does not stop the engine's threads. Exiting the process is
+fine. To stop them earlier, or before exiting a binary built with `-race`,
+close every session and then call:
 
 ```go
-if errors.Is(err, durable.ErrLeaseHeld) { /* another writer is live */ }
-switch durable.CategoryOf(err) {
-case durable.CategoryCommitAmbiguous: // may or may not have committed
-case durable.CategoryCorrupt:         // a referenced object is missing or damaged
+if err := chdb.Shutdown(); err != nil {
+	log.Println("chdb:", err)
 }
 ```
 
-The S3 backend uses only the standard library — `net/http` and a SigV4 signer —
-so importing `chdb-go` adds no cloud SDK to your `go.mod`. It covers the two
-operations the protocol needs and resolves credentials from explicit options,
-the standard environment variables, or `~/.aws/credentials`; for SSO or
-instance-role credentials, pass `durable.S3Options.Credentials` yourself or
-supply your own `durable.Backend`.
+After `Shutdown` the process cannot open another session. See
+[stopping the engine](docs/shutdown.md).
 
-The protocol is specified in `CHDB_DURABLE_V1_CONTRACT.md` in the
-[chdb](https://github.com/chdb-io/chdb) repository, which is the source of truth
-for all bindings.
+## CLI
 
-### Golang API docs
-
-- See [lowApi.md](lowApi.md) for the low level APIs.
-- See [chdb.md](chdb.md) for high level APIs.
-
-## Stopping the engine
-
-Closing your last `chdb.Session` does not stop the thread pools the engine
-started. Measured on chdb-core v26.11.0-rc.2, linux/amd64: a process sitting at
-6 threads reaches 19 once a session runs a query, and is at 22 after that
-session is closed. Exiting is fine — the kernel reaps them. Running something
-*after* that is not, and a process with a sanitizer, C++ global destructors, or
-a host runtime's finalizers does exactly that.
-
-`chdb.Shutdown()` joins them — back to 6 in that same measurement:
-
-```go
-defer func() {
-        if err := chdb.Shutdown(); err != nil {
-                log.Println("chdb:", err)
-        }
-}()
+```sh
+go install github.com/chdb-io/chdb-go/v2@latest
+chdb-go "SELECT 123"                # one query
+chdb-go "SELECT 123" JSON           # with an output format
+chdb-go                             # interactive; data is lost on exit
+chdb-go --path /tmp/chdb            # interactive with persistent data
 ```
 
-Close every session first; it refuses otherwise, with an error wrapping
-`chdb.ErrSessionsOpen` that names how many are still open. It is terminal —
-after it, this process cannot open another session — so it belongs at the end
-of `main`, not between two units of work. A program that never opened a session
-can call it anyway: it loads nothing and returns nil.
+`go install` puts `chdb-go` in `$(go env GOPATH)/bin`. The CLI uses an engine
+installed on the machine. To build it from source, run `make build`.
 
-Not calling it is as safe as it has always been for a process that simply
-exits. The exception is a binary built with `-race`: on a clean exit it leaves
-through libc's `exit()`, which runs the engine's exit teardown while engine
-threads are still running, so exiting it with a session open — `MergeTree`
-merges in flight especially — can crash. Close every session and call
-`chdb.Shutdown()` first.
+## Reference
 
-It needs an engine from chdb-core v26.7.2-rc.2 or later; on an older one it
-returns `chdbpurego.ErrShutdownUnavailable`. Up to v26.11.0-rc.1 its reach was
-narrower than that: a process that had created a `MergeTree` table got an error
-back and no teardown at all. From v26.11.0-rc.2 it stops those threads too, and
-the process is back at the thread count it started with.
+- [Where the engine is loaded from, and engine modules](docs/engine.md)
+- [Static engine](docs/static-linking.md)
+- [Durable objects](docs/durable.md) and [stopping the engine](docs/shutdown.md)
+- [High-level API](chdb.md) and [low-level API](lowApi.md)
