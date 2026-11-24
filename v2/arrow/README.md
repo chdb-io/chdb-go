@@ -80,7 +80,7 @@ downloads its pinned engine into that directory. An installed engine is not
 upgraded by `go get`. The separately versioned `lib/embedded` module currently
 carries an older engine: a program that imports it needs `CHDB_LIB_PATH` set
 to a compatible library to override the embedded copy. See the main
-[engine loading guide](../../README.md#where-the-engine-is-loaded-from).
+[engine loading guide](../../docs/engine.md#where-the-engine-is-loaded-from).
 
 From this repository's `v2/arrow` directory, run the
 [complete quickstart](examples/quickstart/main.go) with:
