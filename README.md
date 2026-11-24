@@ -162,6 +162,9 @@ ns, err := durable.NewNamespace("s3://my-bucket/durable?region=eu-west-1",
 obj, existed, err := ns.Open(ctx, "tenant-123", durable.OpenOptions{Database: "mem"})
 defer obj.Close(ctx)
 
+if !existed {
+	_, err = obj.Execute(ctx, "CREATE TABLE events (id UInt64) ENGINE = MergeTree ORDER BY id")
+}
 ticket, err := obj.Execute(ctx, "INSERT INTO events VALUES (1)")
 err = obj.FlushThrough(ctx, ticket) // survives losing this machine
 ```
