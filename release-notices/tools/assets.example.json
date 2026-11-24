@@ -1,0 +1,6 @@
+{
+  "darwin-arm64": {"tarball": "/abs/dl/macos-arm64-libchdb-static.tar.gz", "archive": "/abs/x/mac-arm64/libchdb.a", "members": "/abs/x/mac-arm64.members", "symbols": "/abs/x/mac-arm64.all"},
+  "darwin-amd64": {"tarball": "/abs/dl/macos-x86_64-libchdb-static.tar.gz", "archive": "/abs/x/mac-x86_64/libchdb.a", "members": "/abs/x/mac-x86_64.members", "symbols": "/abs/x/mac-x86_64.all"},
+  "linux-amd64": {"tarball": "/abs/dl/linux-x86_64-libchdb-static-split.tar.gz", "archive": "/abs/x/x86_64/libchdb.a", "manifest": "/abs/x/x86_64/libchdb-split.json", "symbols": "/abs/x/linux-x86_64.all"},
+  "linux-arm64": {"tarball": "/abs/dl/linux-aarch64-libchdb-static-split.tar.gz", "archive": "/abs/x/aarch64/libchdb.a", "manifest": "/abs/x/aarch64/libchdb-split.json", "symbols": "/abs/x/linux-aarch64.all"}
+}

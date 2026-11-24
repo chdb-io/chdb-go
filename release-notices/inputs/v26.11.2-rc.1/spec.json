@@ -1,0 +1,937 @@
+{
+  "engine": "v26.11.2-rc.1",
+  "core_commit": "59a7f688d1fc8d895115e104f09a2c4071490d6a",
+  "upstream_files": {
+    "ClickHouse/ClickHouse@00c46a11583af48ba0ea5f88e65e1d072fa13e40:LICENSE": {
+      "cache": "upstream/ClickHouse-LICENSE-00c46a11583.txt",
+      "sha256": "af5d33e7f3dbbd25e889d8bdc61c83562c257d20c22386bb04106cd22937341a",
+      "note": "ClickHouse master baseline of chdb-core PR #314 (the sync included in the core commit). Fetched read-only with gh api; the core tree replaced ClickHouse's LICENSE with LICENSE.txt."
+    }
+  },
+  "families": [
+    {
+      "id": "chdb-clickhouse",
+      "license": "Apache-2.0",
+      "platforms": "all",
+      "files": [
+        {
+          "module": ".",
+          "path": "LICENSE.txt"
+        },
+        {
+          "upstream": "ClickHouse/ClickHouse@00c46a11583af48ba0ea5f88e65e1d072fa13e40:LICENSE"
+        }
+      ],
+      "note": "chDB is derived from ClickHouse. The native payload is chdb-core's static library, repackaged unchanged into Go modules: on Linux each split-archive member is copied as one .syso; on macOS archive members are merged with ld -r after anchoring section-leading data. No source changes are made by the packaging."
+    },
+    {
+      "id": "abseil-cpp",
+      "license": "Apache-2.0",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/abseil-cpp",
+          "path": "LICENSE"
+        }
+      ]
+    },
+    {
+      "id": "ai-sdk-cpp",
+      "license": "Apache-2.0",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/ai-sdk-cpp",
+          "path": "LICENSE"
+        }
+      ]
+    },
+    {
+      "id": "arrow-parquet",
+      "license": "Apache-2.0 plus bundled component terms",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/arrow",
+          "path": "LICENSE.txt"
+        },
+        {
+          "module": "contrib/arrow",
+          "path": "NOTICE.txt"
+        }
+      ]
+    },
+    {
+      "id": "avro",
+      "license": "Apache-2.0 plus bundled component terms",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/avro",
+          "path": "LICENSE.txt"
+        },
+        {
+          "module": "contrib/avro",
+          "path": "NOTICE.txt"
+        }
+      ]
+    },
+    {
+      "id": "aws-sdk",
+      "license": "Apache-2.0 plus bundled component terms",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/aws",
+          "path": "LICENSE"
+        },
+        {
+          "module": "contrib/aws",
+          "path": "LICENSE.txt"
+        },
+        {
+          "module": "contrib/aws",
+          "path": "NOTICE.txt"
+        },
+        {
+          "module": "contrib/aws-crt-cpp",
+          "path": "LICENSE"
+        },
+        {
+          "module": "contrib/aws-crt-cpp",
+          "path": "NOTICE"
+        },
+        {
+          "module": "contrib/aws-c-auth",
+          "path": "LICENSE"
+        },
+        {
+          "module": "contrib/aws-c-auth",
+          "path": "NOTICE"
+        },
+        {
+          "module": "contrib/aws-c-cal",
+          "path": "LICENSE"
+        },
+        {
+          "module": "contrib/aws-c-cal",
+          "path": "NOTICE"
+        },
+        {
+          "module": "contrib/aws-c-common",
+          "path": "LICENSE"
+        },
+        {
+          "module": "contrib/aws-c-common",
+          "path": "NOTICE"
+        },
+        {
+          "module": "contrib/aws-c-compression",
+          "path": "LICENSE"
+        },
+        {
+          "module": "contrib/aws-c-compression",
+          "path": "NOTICE"
+        },
+        {
+          "module": "contrib/aws-c-event-stream",
+          "path": "LICENSE"
+        },
+        {
+          "module": "contrib/aws-c-event-stream",
+          "path": "NOTICE"
+        },
+        {
+          "module": "contrib/aws-c-http",
+          "path": "LICENSE"
+        },
+        {
+          "module": "contrib/aws-c-http",
+          "path": "NOTICE"
+        },
+        {
+          "module": "contrib/aws-c-io",
+          "path": "LICENSE"
+        },
+        {
+          "module": "contrib/aws-c-io",
+          "path": "NOTICE"
+        },
+        {
+          "module": "contrib/aws-c-mqtt",
+          "path": "LICENSE"
+        },
+        {
+          "module": "contrib/aws-c-mqtt",
+          "path": "NOTICE"
+        },
+        {
+          "module": "contrib/aws-c-s3",
+          "path": "LICENSE"
+        },
+        {
+          "module": "contrib/aws-c-s3",
+          "path": "NOTICE"
+        },
+        {
+          "module": "contrib/aws-c-sdkutils",
+          "path": "LICENSE"
+        },
+        {
+          "module": "contrib/aws-c-sdkutils",
+          "path": "NOTICE"
+        },
+        {
+          "module": "contrib/aws-checksums",
+          "path": "LICENSE"
+        }
+      ]
+    },
+    {
+      "id": "azure-sdk",
+      "license": "MIT",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/azure",
+          "path": "LICENSE.txt"
+        }
+      ]
+    },
+    {
+      "id": "boost",
+      "license": "BSL-1.0",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/boost",
+          "path": "LICENSE_1_0.txt"
+        }
+      ]
+    },
+    {
+      "id": "brotli",
+      "license": "MIT",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/brotli",
+          "path": "LICENSE"
+        }
+      ]
+    },
+    {
+      "id": "mongo-c-driver",
+      "license": "Apache-2.0 plus bundled component terms",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/mongo-c-driver",
+          "path": "COPYING"
+        },
+        {
+          "module": "contrib/mongo-c-driver",
+          "path": "THIRD_PARTY_NOTICES"
+        }
+      ]
+    },
+    {
+      "id": "mongo-cxx-driver",
+      "license": "Apache-2.0",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/mongo-cxx-driver",
+          "path": "LICENSE"
+        },
+        {
+          "module": "contrib/mongo-cxx-driver",
+          "path": "THIRD-PARTY-NOTICES"
+        }
+      ]
+    },
+    {
+      "id": "c-ares",
+      "license": "MIT",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/c-ares",
+          "path": "LICENSE.md"
+        }
+      ]
+    },
+    {
+      "id": "cctz-tzdata",
+      "license": "Apache-2.0; IANA time zone data",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/cctz",
+          "path": "LICENSE.txt"
+        }
+      ],
+      "note": "The embedded time zone data comes from the IANA tz database, which its maintainers place in the public domain."
+    },
+    {
+      "id": "cityhash",
+      "license": "MIT",
+      "platforms": "all",
+      "files": [
+        {
+          "module": ".",
+          "path": "contrib/cityhash102/COPYING"
+        }
+      ]
+    },
+    {
+      "id": "cppkafka",
+      "license": "BSD-2-Clause",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/cppkafka",
+          "path": "LICENSE"
+        }
+      ]
+    },
+    {
+      "id": "crc32c",
+      "license": "BSD-3-Clause",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/crc32c",
+          "path": "LICENSE"
+        }
+      ]
+    },
+    {
+      "id": "double-conversion",
+      "license": "BSD-3-Clause",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/double-conversion",
+          "path": "LICENSE"
+        }
+      ]
+    },
+    {
+      "id": "farmhash",
+      "license": "MIT",
+      "platforms": "all",
+      "files": [
+        {
+          "module": ".",
+          "path": "contrib/libfarmhash/COPYING"
+        }
+      ]
+    },
+    {
+      "id": "fmt",
+      "license": "MIT",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/fmtlib",
+          "path": "LICENSE"
+        }
+      ]
+    },
+    {
+      "id": "gdeflate",
+      "license": "MIT",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/gdeflate",
+          "path": "COPYING"
+        }
+      ],
+      "note": "New in v26.11.2-rc.1: NVIDIA's GDeflate fork of libdeflate (ClickHouse/libdeflate, gdeflate branch), with symbols renamed by contrib/gdeflate-cmake."
+    },
+    {
+      "id": "h3",
+      "license": "Apache-2.0",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/h3",
+          "path": "LICENSE"
+        },
+        {
+          "module": "contrib/h3",
+          "path": "NOTICE"
+        }
+      ]
+    },
+    {
+      "id": "ipcrypt2",
+      "license": "ISC",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/ipcrypt2",
+          "path": "LICENSE"
+        }
+      ]
+    },
+    {
+      "id": "libarchive",
+      "license": "BSD-style, MIT and Apache file-level terms",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/libarchive",
+          "path": "COPYING"
+        }
+      ]
+    },
+    {
+      "id": "openssl",
+      "license": "Apache-2.0",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/openssl",
+          "path": "LICENSE.txt"
+        }
+      ]
+    },
+    {
+      "id": "llvm-runtimes",
+      "license": "Apache-2.0 WITH LLVM-exception and retained legacy notices",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/llvm-project",
+          "path": "LICENSE.TXT"
+        },
+        {
+          "module": "contrib/llvm-project",
+          "path": "libcxx/LICENSE.TXT"
+        },
+        {
+          "module": "contrib/llvm-project",
+          "path": "libcxxabi/LICENSE.TXT"
+        },
+        {
+          "module": "contrib/llvm-project",
+          "path": "libunwind/LICENSE.TXT"
+        }
+      ]
+    },
+    {
+      "id": "libfiu",
+      "license": "BOLA public-domain dedication",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/libfiu",
+          "path": "LICENSE"
+        }
+      ]
+    },
+    {
+      "id": "liblzma",
+      "license": "0BSD",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/xz",
+          "path": "COPYING"
+        },
+        {
+          "module": "contrib/xz",
+          "path": "COPYING.0BSD"
+        }
+      ],
+      "note": "Only liblzma is linked. Per XZ's COPYING it is licensed under 0BSD; the GPL/LGPL texts in the XZ tree apply to command-line tools and scripts that are not shipped."
+    },
+    {
+      "id": "postgres-libpq",
+      "license": "PostgreSQL",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/postgres",
+          "path": "COPYRIGHT"
+        }
+      ]
+    },
+    {
+      "id": "libpqxx",
+      "license": "BSD-3-Clause",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/libpqxx",
+          "path": "COPYING"
+        }
+      ]
+    },
+    {
+      "id": "protobuf",
+      "license": "BSD-3-Clause",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/google-protobuf",
+          "path": "LICENSE"
+        }
+      ]
+    },
+    {
+      "id": "readpassphrase",
+      "license": "ISC-style permission notice",
+      "platforms": "all",
+      "files": [
+        {
+          "module": ".",
+          "path": "base/readpassphrase/readpassphrase.c",
+          "lines": [
+            1,
+            22
+          ]
+        }
+      ]
+    },
+    {
+      "id": "utf8-validity",
+      "license": "MIT (protobuf third_party/utf8_range)",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/google-protobuf",
+          "path": "third_party/utf8_range/LICENSE"
+        }
+      ]
+    },
+    {
+      "id": "utf8proc",
+      "license": "MIT plus Unicode data notices",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/utf8proc",
+          "path": "LICENSE.md"
+        }
+      ]
+    },
+    {
+      "id": "libxml2",
+      "license": "MIT plus retained component notices",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/libxml2",
+          "path": "Copyright"
+        }
+      ]
+    },
+    {
+      "id": "lz4",
+      "license": "BSD-2-Clause (library)",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/lz4",
+          "path": "lib/LICENSE"
+        }
+      ]
+    },
+    {
+      "id": "mariadb-connector-c",
+      "license": "LGPL-2.1 (COPYING.LIB); some files LGPL-2.0-or-later",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/mariadb-connector-c",
+          "path": "COPYING.LIB"
+        }
+      ],
+      "note": "LGPL library. Its corresponding source is the pinned commit listed above; see SOURCE_PROVENANCE.json and STATIC_RELINKING.md. Individual source files carry their own LGPL headers, some of which allow version 2 or any later version."
+    },
+    {
+      "id": "metrohash",
+      "license": "Apache-2.0",
+      "platforms": "all",
+      "files": [
+        {
+          "module": ".",
+          "path": "contrib/libmetrohash/LICENSE"
+        }
+      ]
+    },
+    {
+      "id": "murmurhash",
+      "license": "Public-domain dedication",
+      "platforms": "all",
+      "files": [
+        {
+          "module": ".",
+          "path": "contrib/murmurhash/LICENSE"
+        }
+      ]
+    },
+    {
+      "id": "poco",
+      "license": "BSL-1.0 plus embedded-library notices",
+      "platforms": "all",
+      "files": [
+        {
+          "module": ".",
+          "path": "base/poco/LICENSE"
+        }
+      ]
+    },
+    {
+      "id": "poco-pcre",
+      "license": "BSD-3-Clause",
+      "platforms": "all",
+      "files": [
+        {
+          "module": ".",
+          "path": "base/poco/Foundation/src/pcre_compile.c",
+          "lines": [
+            1,
+            38
+          ]
+        }
+      ]
+    },
+    {
+      "id": "poco-expat",
+      "license": "MIT",
+      "platforms": "all",
+      "files": [
+        {
+          "module": ".",
+          "path": "base/poco/XML/src/xmlparse.cpp",
+          "lines": [
+            1,
+            83
+          ]
+        },
+        {
+          "module": ".",
+          "path": "base/poco/XML/src/xmltok.c",
+          "lines": [
+            1,
+            53
+          ]
+        },
+        {
+          "module": ".",
+          "path": "base/poco/XML/src/xmlrole.c",
+          "lines": [
+            1,
+            41
+          ]
+        }
+      ]
+    },
+    {
+      "id": "poco-pdjson",
+      "license": "Poco BSL-1.0; original pdjson upstream uses the Unlicense",
+      "platforms": "all",
+      "files": [],
+      "note": "base/poco/JSON/src/pdjson.c and pdjson.h carry no license header at this commit. They are distributed under Poco's license above; the original pdjson project dedicates its code to the public domain under the Unlicense."
+    },
+    {
+      "id": "prometheus-protobufs",
+      "license": "Apache-2.0",
+      "platforms": "all",
+      "files": [
+        {
+          "module": ".",
+          "path": "contrib/prometheus-protobufs/LICENSE"
+        }
+      ]
+    },
+    {
+      "id": "librdkafka",
+      "license": "BSD-2-Clause plus bundled license texts",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/librdkafka",
+          "path": "LICENSES.txt"
+        }
+      ]
+    },
+    {
+      "id": "re2",
+      "license": "BSD-3-Clause",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/re2",
+          "path": "LICENSE"
+        }
+      ]
+    },
+    {
+      "id": "replxx",
+      "license": "BSD-3-Clause",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/replxx",
+          "path": "LICENSE.md"
+        }
+      ]
+    },
+    {
+      "id": "croaring",
+      "license": "Apache-2.0",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/croaring",
+          "path": "LICENSE"
+        }
+      ]
+    },
+    {
+      "id": "rocksdb",
+      "license": "Apache-2.0 (chosen alternative) plus BSD LevelDB notice",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/rocksdb",
+          "path": "LICENSE.Apache"
+        },
+        {
+          "module": "contrib/rocksdb",
+          "path": "LICENSE.leveldb"
+        }
+      ],
+      "note": "RocksDB is dual-licensed under GPLv2 and Apache-2.0; it is used here under Apache-2.0. LICENSE.leveldb covers code derived from LevelDB."
+    },
+    {
+      "id": "sha3iuf",
+      "license": "MIT",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/SHA3IUF",
+          "path": "LICENSE"
+        }
+      ]
+    },
+    {
+      "id": "simdjson",
+      "license": "MIT (chosen alternative of Apache-2.0 or MIT)",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/simdjson",
+          "path": "LICENSE-MIT"
+        }
+      ]
+    },
+    {
+      "id": "simdutf",
+      "license": "MIT (chosen alternative of Apache-2.0 or MIT)",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/simdutf",
+          "path": "LICENSE-MIT"
+        }
+      ]
+    },
+    {
+      "id": "simsimd",
+      "license": "Apache-2.0",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/SimSIMD",
+          "path": "LICENSE"
+        }
+      ]
+    },
+    {
+      "id": "snappy",
+      "license": "BSD-3-Clause",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/snappy",
+          "path": "COPYING"
+        }
+      ]
+    },
+    {
+      "id": "sqlite",
+      "license": "SQLite public-domain code plus fork BSD-3-Clause LICENSE",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/sqlite-amalgamation",
+          "path": "LICENSE"
+        }
+      ]
+    },
+    {
+      "id": "stringzilla",
+      "license": "Apache-2.0",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/StringZilla",
+          "path": "LICENSE"
+        }
+      ]
+    },
+    {
+      "id": "thrift",
+      "license": "Apache-2.0",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/thrift",
+          "path": "LICENSE"
+        },
+        {
+          "module": "contrib/thrift",
+          "path": "NOTICE"
+        }
+      ]
+    },
+    {
+      "id": "ulid",
+      "license": "Unlicense public-domain dedication",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/ulid-c",
+          "path": "UNLICENSE"
+        }
+      ]
+    },
+    {
+      "id": "vectorscan",
+      "license": "BSD-3-Clause plus component notices",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/vectorscan",
+          "path": "LICENSE"
+        },
+        {
+          "module": "contrib/vectorscan",
+          "path": "COPYING"
+        }
+      ]
+    },
+    {
+      "id": "zlib-ng",
+      "license": "Zlib",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/zlib-ng",
+          "path": "LICENSE.md"
+        }
+      ]
+    },
+    {
+      "id": "zmij",
+      "license": "MIT",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/zmij",
+          "path": "LICENSE"
+        }
+      ]
+    },
+    {
+      "id": "zstd",
+      "license": "BSD-3-Clause (chosen alternative of BSD or GPLv2)",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/zstd",
+          "path": "LICENSE"
+        }
+      ]
+    },
+    {
+      "id": "zxc",
+      "license": "BSD-style",
+      "platforms": "all",
+      "files": [
+        {
+          "module": "contrib/zxc",
+          "path": "LICENSE"
+        }
+      ]
+    },
+    {
+      "id": "libgsasl",
+      "license": "LGPL-2.1-or-later",
+      "platforms": "linux",
+      "files": [
+        {
+          "module": "contrib/libgsasl",
+          "path": "LICENSE"
+        }
+      ],
+      "note": "LGPL library, Linux only. Its corresponding source, including its bundled gnulib files and their file-level notices, is the pinned commit listed above; see SOURCE_PROVENANCE.json and STATIC_RELINKING.md."
+    },
+    {
+      "id": "krb5",
+      "license": "BSD-style and MIT component notices",
+      "platforms": "linux",
+      "files": [
+        {
+          "module": "contrib/krb5",
+          "path": "NOTICE"
+        }
+      ]
+    },
+    {
+      "id": "icu",
+      "license": "Unicode License V3 and bundled data notices",
+      "platforms": "linux",
+      "files": [
+        {
+          "module": "contrib/icu",
+          "path": "LICENSE"
+        },
+        {
+          "module": "contrib/icudata",
+          "path": "LICENSE"
+        }
+      ]
+    },
+    {
+      "id": "glibc-compatibility",
+      "license": "chDB Apache-2.0 plus musl MIT and component notices",
+      "platforms": "linux",
+      "files": [
+        {
+          "module": ".",
+          "path": "base/glibc-compatibility/musl/COPYRIGHT"
+        }
+      ],
+      "note": "Compatibility code built into the Linux library from base/glibc-compatibility. It is not a copy of GNU glibc."
+    },
+    {
+      "id": "libhdfs3",
+      "license": "Apache-2.0",
+      "platforms": "linux",
+      "files": [
+        {
+          "module": "contrib/libhdfs3",
+          "path": "LICENSE.txt"
+        }
+      ]
+    }
+  ]
+}

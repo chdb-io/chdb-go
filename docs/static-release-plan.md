@@ -119,6 +119,40 @@ creation and uploads CLI binaries, so do not invoke it implicitly for a module
 tag. Every tag push, release creation, upload and deployment retains its own
 confirmation checkpoint.
 
+## New engine baseline checklist
+
+Every upload and deployment is a separate, confirmed action; nothing below
+publishes automatically. A new chdb-core baseline (for example v26.12.x) goes
+through these steps:
+
+1. **Core release.** chdb-core publishes the four static assets for the tag
+   (Linux: `*-libchdb-static-split.tar.gz`; macOS: `*-libchdb-static.tar.gz`).
+   Check the release's files and `SHA256SUMS`, not only its CI.
+2. **Pins (one chdb-go PR).**
+   - `static-release.json`: engine, assets, SHA-256s, header SHA-256, source commit.
+   - `chdb-purego/static_chdb.h`: the release's `chdb.h`.
+   - `static-publication.json`: engine and the derived static version; the root
+     and Arrow RC/stable versions.
+   - `release-notices/<engine>/` and `docs/compliance/static-<engine>-*`:
+     regenerate with [the notice tools](../release-notices/tools/README.md) and
+     review what changed in the payload.
+3. **CI.** All four platforms of `static-modules.yml` pass, including the
+   `quickstart` job (`go get .../static@latest`, tagged build, run, offline
+   rebuild) against the assembled bundle.
+4. **Tags.** Tag the root bindings together with the static release: the static
+   adapter in the root checks that the linked engine has its header's version.
+   Then tag `v2/arrow/vX.Y.Z` if Arrow changed. Each tag push is confirmed.
+5. **Package.** Dispatch `static-modules.yml` with `platform_set=all` and
+   `phase=public-rc` (or `release` for a stable engine). Keep the complete
+   bundle and `blob-plan.json` artifacts.
+6. **Upload and deploy (confirmed separately).** Recompute the plan locally and
+   check its `approval_id`, then `blob-publish`. Generate the site with
+   `blob-site -previous-catalog` (the deployed `https://go.chdb.io/catalog.json`)
+   so earlier versions stay listed, review its inventory, then deploy.
+7. **Public acceptance.** Dispatch `static-public-acceptance.yml`: the same
+   quickstart against `go.chdb.io` with default `GOPROXY`/`GOSUMDB` on all four
+   platforms.
+
 ## Final domain target
 
 `deploy/vercel-modules/go.chdb.io.target.json` is a **local candidate target**.

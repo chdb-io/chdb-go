@@ -1,0 +1,75 @@
+{
+  "_comment": "Reviewed, release-specific inputs for build_inventory.py. Everything here is a review decision for this engine release against the previous inventory.",
+  "engine": "v26.11.2-rc.1",
+  "changesFromPrevious": {
+    "addedFamilies": [
+      "gdeflate"
+    ],
+    "submodulesChanged": {
+      "contrib/llvm-project": "140ad525c086cfe79c8dcf33302a4f168d5a187b -> fa3910d62714",
+      "contrib/jemalloc": "bumped; not linked (only DB::ServerSetting names match 'jemalloc')",
+      "contrib/gdeflate": "added; linked on all four platforms",
+      "contrib/arrow-testing": "added; test data, not linked"
+    },
+    "removedMacGroups": [
+      "chdb_func",
+      "libdarwin-compatibility"
+    ],
+    "licenseFileCorrections": "License records now name the files actually reproduced in THIRD_PARTY_NOTICES.txt (e.g. xz COPYING/COPYING.0BSD, rocksdb LICENSE.Apache/LICENSE.leveldb, lz4 lib/LICENSE, each AWS C library, LLVM runtime LICENSE files)."
+  },
+  "groupFamilies": {
+    "gdeflate": "gdeflate"
+  },
+  "obligations": {
+    "cctz-tzdata": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+    "gdeflate": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+    "glibc-compatibility": "Retain those in-tree source notices; do not misclassify the compatibility code as bundled GNU glibc",
+    "icu": "Include full ICU LICENSE and Unicode/data notices",
+    "libarchive": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+    "libhdfs3": "Retain LICENSE/NOTICE from pinned fork",
+    "liblzma": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+    "librdkafka": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+    "lz4": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+    "mariadb-connector-c": "License and attribution; corresponding library source and build/patch instructions; downstream static relinking conditions",
+    "openssl": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+    "poco-expat": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+    "poco-pcre": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+    "poco-pdjson": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+    "readpassphrase": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+    "rocksdb": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+    "simdjson": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+    "simdutf": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+    "utf8-validity": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+    "vectorscan": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+    "zstd": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms",
+    "zxc": "Retain applicable copyright, license and disclaimers; Apache NOTICE where present; no source/relink requirement identified from the listed permissive terms"
+  },
+  "linuxEvidence": {
+    "libgsasl": "gsasl_init defined in both Linux archives; static build enables HDFS/GSASL only on Linux",
+    "krb5": "krb5_init_context defined in both Linux archives",
+    "icu": "u_getVersion_78 defined in both Linux archives",
+    "glibc-compatibility": "GLIBC_COMPATIBILITY=1 in fixed Linux build; source directory includes musl/Arm/Sun notices",
+    "libhdfs3": "Fixed build explicitly enables HDFS and uses GNU SASL/Kerberos; the split archive's shards cut across library boundaries, so input objects cannot be attributed individually"
+  },
+  "evidenceLimits": [
+    "Both macOS archives retain library-prefixed members and are fully covered by the target-family mapping; an unmapped group fails record generation.",
+    "Linux archives are chdb-core's split archive: nine relocatable shards each, cut across library boundaries. Critical LGPL and platform-specific libraries are verified by defined symbol anchors; remaining libraries are not individually reconstructed from the shards.",
+    "symbolCount counts distinct defined symbol names (nm --defined-only, local symbols included), so it is not comparable with the v26.11.1 counts. The split archive makes most symbols local, so anchors are matched with or without the .chdb suffix.",
+    "Header-only/transitive code is not completely enumerated by archive member names. License and notices collection must preserve bundled component texts.",
+    "A registry type label is heuristic, not the authoritative file license. XZ/liblzma, LLVM, ICU, libarchive, vectorscan, librdkafka and RocksDB illustrate the distinction."
+  ],
+  "notPromotedToBlockersAdded": [
+    {
+      "id": "jemalloc",
+      "reason": "No je_*/mallctl definitions in any archive; only DB::ServerSetting names contain 'jemalloc'"
+    },
+    {
+      "id": "libdeflate",
+      "reason": "No contrib/libdeflate archive group; every libdeflate_* definition is gdeflate's renamed copy"
+    },
+    {
+      "id": "arrow-testing",
+      "reason": "Test data submodule; not built into the library"
+    }
+  ]
+}

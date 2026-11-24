@@ -1,21 +1,10 @@
-# Optional static engine linking (experimental)
+# Static engine (experimental)
 
-An ordinary `go build` uses purego and loads a shared `libchdb` at runtime;
-it does not need cgo. The separate `lib/embedded` module packages a shared
-library into the program but extracts it before loading. With
-`CGO_ENABLED=1 go build -tags chdb_static`, the cgo adapter links a prebuilt
-`libchdb.a` into the executable. This removes the runtime `libchdb` file
-requirement, not every libc, C++ runtime, or operating-system dependency.
+By default chdb-go loads a shared `libchdb` at runtime and needs no cgo. The
+static engine links chDB into your executable instead, so nothing has to be
+installed or downloaded at runtime.
 
-The adapter is pinned to the chdb-core v26.11.2-rc.1 prerelease. Its
-macOS/arm64 archive has passed a local module build, engine query, Arrow
-suite, `cgocheck2`, race and vendor/offline checks. A platform or runtime
-baseline counts as verified only after the four-target CI matrix passes
-against this release.
-
-## Opt-in Go modules (staged, not yet published)
-
-Once the public RC is uploaded, the quickstart is:
+## Quickstart
 
 ```sh
 go mod init example.com/myapp
@@ -44,42 +33,25 @@ func main() {
 ```sh
 go mod tidy
 CGO_ENABLED=1 go build -tags chdb_static -o myapp .
+./myapp   # 42
 ```
 
-`go get .../static@latest` also adds the matching root bindings
-(`github.com/chdb-io/chdb-go/v2`); no version needs to be typed. Without the
-tag the build stops with an error that names it. No native-library paths,
-download script or `CGO_LDFLAGS_ALLOW` are needed.
+`go get` also adds the matching `github.com/chdb-io/chdb-go/v2`; keep the two
+versions it picked together.
 
-What to expect:
+Good to know:
 
-- `go mod tidy` and `go mod vendor` download the engine for all four
-  platforms (roughly 0.9 GB compressed, once per module cache); `go build`
-  alone fetches only the target's. A vendor directory holds files over 100 MiB,
-  so it cannot be committed as is to an ordinary GitHub repository.
-- The executable is large (about 500 MB on macOS arm64; `-ldflags="-s -w"`
-  trims it to about 390 MB) and still needs a C toolchain to build and the
-  system C/C++ runtime to run. Windows is not supported.
-- Root and static versions must match: the static adapter checks that the
-  linked engine reports the version of the header it was built with. Keep both
-  at what `@latest` resolved together.
+- Platforms: Linux and macOS, amd64 and arm64. A C toolchain is needed to build.
+- The executable is 500 to 660 MB.
+- `go mod tidy` downloads the engine for all four platforms (about 0.9 GB, once).
+- The current engine is chdb-core v26.11.2-rc.1, a release candidate.
 
-CI runs this exact quickstart on all four platforms against the assembled
-bundle before an upload (`static-modules.yml`, job `quickstart`), and against
-`go.chdb.io` after one (`static-public-acceptance.yml`). Do not combine the
-module payloads with the manual archive flags below: that would link the
-engine twice.
+## Manual linking (advanced)
 
-Until the engine modules are uploaded, `go get go.chdb.io/chdb/static@latest`
-fails with `404 Not Found`. See [native-module staging and publication](static-module-publishing.md)
-for the staging commands and remaining release gates.
-
-## Where the native library comes from
-
-The [chdb-core v26.11.2-rc.1 prerelease](https://github.com/chdb-io/chdb-core/releases/tag/v26.11.2-rc.1)
-has static archives and matching `chdb.h` files for the four targets below.
-It is a release candidate; these instructions move to the next stable
-chdb-core release once it is pinned. Its SHA-256 digests are:
+To link a `libchdb.a` yourself, for example one you rebuilt, download a static
+archive from the [chdb-core v26.11.2-rc.1 release](https://github.com/chdb-io/chdb-core/releases/tag/v26.11.2-rc.1)
+and point cgo at it. Do not also import `go.chdb.io/chdb/static`: that would
+link the engine twice.
 
 | Go target | Release asset | SHA-256 |
 | --- | --- | --- |
@@ -87,18 +59,6 @@ chdb-core release once it is pinned. Its SHA-256 digests are:
 | `linux/arm64` | `linux-aarch64-libchdb-static.tar.gz` | `87b0046248df34044d130d303194635528c69fd4a9f684ce0d5508c705bf1f06` |
 | `darwin/arm64` | `macos-arm64-libchdb-static.tar.gz` | `c60fa51f4e6d4538441ab9372b4c9b38d235af015d5bc3c40c896e7c79642b64` |
 | `darwin/amd64` | `macos-x86_64-libchdb-static.tar.gz` | `c9c160467da5a1a63775d627de05fb20fd697a163f78f8bde518eed7d299b726` |
-
-The static archive is **not in the `chdb-go/v2` module**. For manual linking, download
-the matching release asset once at build time, verify its digest, and point
-cgo at its `libchdb.a` and `chdb.h`. A normal `go get` cannot run a download
-script during `go build`. Copying all four native archives into the root Go
-module would also make purego users download them. The repository's
-`update_libchdb.sh` installs shared libraries, not this static archive.
-
-The staging implementation above removes that download step once its generated
-modules are published. Until then, the explicit release-asset workflow below
-works independently of a module origin. Go builds do not execute dependency
-download hooks equivalent to a Rust `build.rs`.
 
 ## Build an application
 
