@@ -19,6 +19,11 @@ type Connection interface {
 	QueryArrow(sql string, outStream unsafe.Pointer, options *OutputOptions) error
 	QueryArrowStream(sql string, options *OutputOptions) (Stream, error)
 	QueryArrowStreamParams(sql string, options *OutputOptions, params []Parameter) (Stream, error)
+	// CreateScalarFunction passes a chdb_scalar_function_options the caller
+	// built in C memory to chdb_create_scalar_function. On success core owns
+	// its user_data; on error the caller still does.
+	CreateScalarFunction(name string, options unsafe.Pointer) error
+	DropScalarFunction(name string) error
 }
 
 // Parameter is a per-call ClickHouse {name:Type} binding. Value is parsed by
@@ -35,6 +40,9 @@ type Capabilities struct {
 	TableOutput   bool
 	ReaderOutput  bool
 	ParamBinding  bool
+	// ScalarFunctions reports chdb_create_scalar_function and
+	// chdb_drop_scalar_function.
+	ScalarFunctions bool
 }
 
 // OutputOptions matches the three int fields of chdb_arrow_options in chdb.h.

@@ -21,6 +21,7 @@ Arrow module version.
 | Install the optional module and compatible engine | [Install and run](#install-and-run) below |
 | Query an Arrow batch or one-shot reader as an in-memory SQL source | [Query an Arrow batch in memory](#query-an-arrow-batch-in-memory) and the reader / synchronous pipeline examples below |
 | Return a typed table or fetch typed batches; bulk-insert into a table | [Read typed SQL results](#read-typed-sql-results), [Insert batches](#insert-batches-into-an-existing-table), and the [runnable quickstart](examples/quickstart/main.go) |
+| Call a Go function from SQL as a scalar user-defined function | [Register scalar functions written in Go](#register-scalar-functions-written-in-go) and the [runnable example](examples/scalar_udf/main.go) |
 | Choose between this module and Arrow Database Connectivity (ADBC) | ADBC is a separate standard driver-manager API for results and bulk ingest. Use this module for a `RecordBatch` / `RecordReader` as a temporary SQL `FROM` source; general ADBC `BindStream` binds query parameters instead. |
 | Check lifecycle, cancellation, types, and native behavior | This guide's ownership notes; [integration tests](integration_test.go), [source tests](source_test.go), [reader tests](reader_test.go), and the [core contract](https://github.com/chdb-io/chdb-core/blob/main/docs/NATIVE_ARROW_BINDING_CONTRACT.md) |
 
@@ -262,6 +263,53 @@ table, err := chdbarrow.QueryTableWithOptions(sess, sql,
     chdbarrow.OutputOptions{StringAsBinary: true})
 // Handle err, then Release the table when done.
 ```
+
+## Register scalar functions written in Go
+
+`RegisterScalarUDF(sess, name, f)` makes a Go function callable from SQL.
+`f` implements `ScalarFunc`: `Config()` declares the ClickHouse argument and
+result types, and `Executor()` supplies the function, either per row or per
+batch of Arrow arrays. The design follows
+[duckdb-go](https://github.com/duckdb/duckdb-go)'s `RegisterScalarUDF`.
+
+```go
+type plusOne struct{}
+
+func (plusOne) Config() chdbarrow.ScalarFuncConfig {
+    return chdbarrow.ScalarFuncConfig{InputTypes: []string{"Int64"}, ResultType: "Int64"}
+}
+
+func (plusOne) Executor() chdbarrow.ScalarFuncExecutor {
+    return chdbarrow.ScalarFuncExecutor{RowExecutor: func(values []driver.Value) (any, error) {
+        return values[0].(int64) + 1, nil
+    }}
+}
+
+// Register once; every session of the process can call it until it is dropped.
+if err := chdbarrow.RegisterScalarUDF(sess, "plus_one", plusOne{}); err != nil { return err }
+defer chdbarrow.DropScalarUDF(sess, "plus_one")
+res, err := sess.Query("SELECT plus_one(toInt64(number)) FROM numbers(3)", "CSV")
+```
+
+chDB calls the executor once per block of rows (`RowExecutor` then loops
+over the rows in Go), from several engine threads at once, so the executor
+must be safe for concurrent use. A `RowExecutor` receives Go values (see the
+`ScalarFuncExecutor` documentation for the mapping) and returns `nil`, a
+`bool`, an integer, a float, a `string`, a `[]byte` or a `time.Time`, which
+chDB converts to `ResultType`, so a `Decimal`, `UUID` or `Date` result can
+also be returned as a string. A `BatchExecutor` receives the arguments as an
+`arrow.RecordBatch` and returns one `arrow.Array` of any type that converts
+to `ResultType`; use it for nested results or to avoid per-row overhead.
+
+An argument must have the declared type or one that converts to it without
+loss: an `Int32` column is accepted for an `Int64` parameter, a `UInt64` one
+is not (cast it with `toInt64`). Unless `SpecialNullHandling` is set, a row
+with a NULL argument yields NULL without calling the executor. `Volatile`
+stops chDB from evaluating a call with constant arguments only once, and
+`BinaryStrings` passes `String` arguments as `[]byte` for data that is not
+valid UTF-8. An executor error or panic fails the query with its message.
+Registration needs a libchdb that reports `ScalarFunctions` in
+`GetCapabilities`; static `chdb_static` builds do not support it yet.
 
 ## Supported input and lifetime rules
 

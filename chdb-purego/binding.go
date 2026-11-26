@@ -125,6 +125,10 @@ var (
 	chdbStreamQueryArrowN    func(conn unsafe.Pointer, query *byte, queryLen uint, options unsafe.Pointer) *chdb_result
 	chdbStreamFetchArrow     func(conn unsafe.Pointer, result *chdb_result, outStream unsafe.Pointer) int32
 
+	// Optional scalar UDF registration ABI.
+	chdbCreateScalarFunction func(conn unsafe.Pointer, name string, options unsafe.Pointer) *chdb_result
+	chdbDropScalarFunction   func(conn unsafe.Pointer, name string) *chdb_result
+
 	// Process-wide signal handler control. See issue #30: by default libchdb
 	// installs its own SIGSEGV/SIGABRT/SIGBUS/SIGILL handlers when a
 	// connection is opened, which overwrites the Go runtime's handlers and
@@ -248,6 +252,10 @@ func bindSymbols(libchdb uintptr) {
 	}
 	if has(libchdb, "chdb_stream_query_with_params_n") {
 		purego.RegisterLibFunc(&chdbStreamQueryWithParamsN, libchdb, "chdb_stream_query_with_params_n")
+	}
+	if has(libchdb, "chdb_create_scalar_function") && has(libchdb, "chdb_drop_scalar_function") {
+		purego.RegisterLibFunc(&chdbCreateScalarFunction, libchdb, "chdb_create_scalar_function")
+		purego.RegisterLibFunc(&chdbDropScalarFunction, libchdb, "chdb_drop_scalar_function")
 	}
 
 	// Probed rather than declared, for the same reason the admin symbols are:

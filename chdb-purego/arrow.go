@@ -29,7 +29,45 @@ func (c *connection) Capabilities() nativearrow.Capabilities {
 	out.TableOutput = chdbQueryArrowN != nil
 	out.ReaderOutput = chdbStreamQueryArrowN != nil && chdbStreamFetchArrow != nil && chdbStreamCancelQuery != nil
 	out.ParamBinding = chdbStreamQueryArrowWithParamsN != nil
+	out.ScalarFunctions = chdbCreateScalarFunction != nil && chdbDropScalarFunction != nil
 	return out
+}
+
+// ErrScalarFunctionABIUnavailable means the loaded libchdb cannot register
+// scalar functions; everything else keeps working.
+var ErrScalarFunctionABIUnavailable = errors.New("chdb: loaded libchdb lacks the scalar function ABI symbols")
+
+// CreateScalarFunction registers a scalar function. options points to a
+// chdb_scalar_function_options in C memory, which core only reads during the
+// call.
+func (c *connection) CreateScalarFunction(name string, options unsafe.Pointer) error {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if c.conn == nil {
+		return errors.New("chdb: closed connection")
+	}
+	if chdbCreateScalarFunction == nil {
+		return ErrScalarFunctionABIUnavailable
+	}
+	if name == "" || options == nil {
+		return errors.New("chdb: invalid scalar function registration")
+	}
+	return resultError(chdbCreateScalarFunction(c.conn.internal_data, name, options), "scalar function registration")
+}
+
+func (c *connection) DropScalarFunction(name string) error {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if c.conn == nil {
+		return errors.New("chdb: closed connection")
+	}
+	if chdbDropScalarFunction == nil {
+		return ErrScalarFunctionABIUnavailable
+	}
+	if name == "" {
+		return errors.New("chdb: empty scalar function name")
+	}
+	return resultError(chdbDropScalarFunction(c.conn.internal_data, name), "scalar function drop")
 }
 
 func (c *connection) RegisterStream(name string, stream unsafe.Pointer) error {
