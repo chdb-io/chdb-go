@@ -36,6 +36,8 @@ func (c *fakeArrowConn) QueryArrowStream(string, *nativearrow.OutputOptions) (na
 func (c *fakeArrowConn) QueryArrowStreamParams(string, *nativearrow.OutputOptions, []nativearrow.Parameter) (nativearrow.Stream, error) {
 	return nil, nil
 }
+func (c *fakeArrowConn) CreateScalarFunction(string, unsafe.Pointer) error { return nil }
+func (c *fakeArrowConn) DropScalarFunction(string) error                   { return nil }
 
 func TestWithNativeArrowKeepsConnectionUntilScopeEnds(t *testing.T) {
 	conn := &fakeArrowConn{}
