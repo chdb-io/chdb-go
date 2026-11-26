@@ -18,6 +18,8 @@ type Capabilities struct {
 	TableOutput        bool
 	ReaderOutput       bool
 	ParamBinding       bool
+	// ScalarFunctions reports RegisterScalarUDF support.
+	ScalarFunctions bool
 }
 
 func GetCapabilities(sess *chdb.Session) (Capabilities, error) {
@@ -31,6 +33,7 @@ func GetCapabilities(sess *chdb.Session) (Capabilities, error) {
 			TableOutput:        c.TableOutput,
 			ReaderOutput:       c.ReaderOutput,
 			ParamBinding:       c.ParamBinding,
+			ScalarFunctions:    c.ScalarFunctions,
 		}
 		return nil
 	})
